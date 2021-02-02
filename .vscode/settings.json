@@ -1,4 +1,0 @@
-{
-    "python.pythonPath": ".venv/bin/python3",
-    "python.venvPath": "~/.cache/pypoetry/virtualenvs/"
-}
