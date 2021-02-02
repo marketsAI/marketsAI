@@ -9,12 +9,14 @@ homepage = "https://marketsai.org"
 repository = "https://github/marketsAI/marketsAI"
 
 [tool.poetry.urls]
-"Bug Tracker" = "https://github.com/marketsAI/marketsAI/issues"
+issues = "https://github.com/marketsAI/marketsAI/issues"
 
 [tool.poetry.dependencies]
 python = "^3.8"
 gym = "^0.18.0"
 prettytable = "^2.0.0"
+numpy = "^1.20.0"
+matplotlib = "^3.3.4"
 
 [tool.poetry.dev-dependencies]
 black = "^20.8b1"
