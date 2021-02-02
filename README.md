@@ -4,7 +4,7 @@
 
 marketsAI is a modular framework designed to simulate economies that are composed of multiple interconnected markets. Each market is an OpenAI Gym compatible environment.
 
-# Installation
+## Installation
 
 Because the library is still on heavy development we are not yet on PyPi. You can however install the package using pip:
 ```shell
