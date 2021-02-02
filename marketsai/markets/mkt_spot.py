@@ -25,11 +25,13 @@ class Mkt_spot:
     def reset(self):
         #   del self.pygame
         #   self.pygame = PyGame2D()
-        obs = [1 for i in range(self.n)]
+        obs = 1
         return obs
 
     def step(self, actions):
-        obs_ = actions
+        obs_ = 0
+        for i in range(self.n):
+            obs_ += self.m ** (self.n - 1 - i) * actions[i]
 
         reward_denom = math.e ** (self.a[0] / self.mu)
         for i in range(self.n):

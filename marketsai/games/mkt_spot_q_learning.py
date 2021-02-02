@@ -20,30 +20,32 @@ if __name__ == "__main__":
                 eps_end=0.01,
                 eps_dec=0.9999995,
                 n_actions=m,
-                n_states=n * m,
+                n_states=m ** n,
             )
         )
 
+    scores = []
     score_avge_list = []
     n_steps = 1000000
     obs = env.reset()
     done = False
-    for i in range(n_steps):
-        score = 0
+    for j in range(n_steps):
+        score = [0 for i in range(n)]
         actions = [agent.choose_action(obs) for agent in agents]
         obs_, reward, done, info = env.step(actions)
         for i in range(n):
-            agents[i].learn(obs, actions[i], reward, obs_)
-
-        score += reward
+            agents[i].learn(obs, actions[i], reward[i], obs_)
+            score[i] += reward[i]
+        scores.append(score[0])
         obs = obs_
-        if i % 100 == 0:
-            score_avge = np.mean(score[-100:])
+
+        if j % 100 == 0:
+            score_avge = np.mean(scores[-100:])
             score_avge_list.append(score_avge)
-            if i % 1000 == 0:
+            if j % 1000 == 0:
                 print(
                     "episode",
-                    i,
+                    j,
                     "score_avge %.2f" % score_avge,
                     "epsilon %2f" % agents[0].epsilon,
                 )
