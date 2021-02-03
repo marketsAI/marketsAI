@@ -6,17 +6,26 @@ q_i(p)= e^((a_i-p_i)/mu) / (sum_j=1^N e^((a_j-p_j)/mu)+e^(a_0/mu)
 
 # import gym
 # from gym import spaces
+import numpy as np
 import math
 
 
 class Mkt_spot:
-    def __init__(self, m, n, a, mu, c):
-        self.m = m
-        self.n = n
-        #    self.k = k
+    def __init__(
+        self,
+        n_agents=2,
+        mu=0.25,
+        cost=[1, 1],
+        value=[0, 2, 2],
+        discrete=True,
+        gridpoints=15,
+    ):
+        self.n_agents = n_agents
         self.mu = mu
-        self.c = c
-        self.a = a
+        #    self.k = k
+        self.cost = cost
+        self.value = np.array(value)
+        self.gridpoints = gridpoints
         # self.action_space = spaces.Box(n,1)
         # self.action_space=np.zeros(self.n,1)
         # self.observation_space = spaces.Box(np.zeros(n,1), np.ones(n,1), dtype=np.int)
@@ -30,20 +39,20 @@ class Mkt_spot:
 
     def step(self, actions):
         obs_ = 0
-        for i in range(self.n):
-            obs_ += self.m ** (self.n - 1 - i) * actions[i]
+        for i in range(self.n_agents):
+            obs_ += self.gridpoints ** (self.n_agents - 1 - i) * actions[i]
 
-        reward_denom = math.e ** (self.a[0] / self.mu)
-        for i in range(self.n):
+        reward_denom = math.e ** (self.value[0] / self.mu)
+        for i in range(self.n_agents):
             reward_denom += math.e ** (
-                (self.a[i + 1] - (1 + actions[i] / 15)) / self.mu
+                (self.value[i + 1] - (1 + actions[i] / 14)) / self.mu
             )
 
         reward = [
-            ((1 + actions[j] / 15) - self.c)
-            * math.e ** ((self.a[j + 1] - (1 + actions[j] / 15)) / self.mu)
+            ((1 + actions[j] / 14) - self.cost[j])
+            * math.e ** ((self.value[j + 1] - (1 + actions[j] / 14)) / self.mu)
             / reward_denom
-            for j in range(self.n)
+            for j in range(self.n_agents)
         ]
         done = False
         info = {}
