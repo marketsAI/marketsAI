@@ -25,7 +25,9 @@ class Mkt_spot:
         #    self.k = k
         self.cost = cost
         self.value = np.array(value)
+        self.discrete = discrete
         self.gridpoints = gridpoints
+
         # self.action_space = spaces.Box(n,1)
         # self.action_space=np.zeros(self.n,1)
         # self.observation_space = spaces.Box(np.zeros(n,1), np.ones(n,1), dtype=np.int)
@@ -38,9 +40,13 @@ class Mkt_spot:
         return obs
 
     def step(self, actions):
+
         obs_ = 0
-        for i in range(self.n_agents):
-            obs_ += self.gridpoints ** (self.n_agents - 1 - i) * actions[i]
+        if self.discrete == True:
+            for i in range(self.n_agents):
+                obs_ += self.gridpoints ** (self.n_agents - 1 - i) * actions[i]
+        else:
+            obs_ = np.array([1 + actions[i] / 14 for i in range(n_agents)])
 
         reward_denom = math.e ** (self.value[0] / self.mu)
         for i in range(self.n_agents):

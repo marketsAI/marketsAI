@@ -75,6 +75,11 @@ if __name__ == "__main__":
                 )
 
     plt.plot(score_avge_list)
+    plt.title("Average Profits")
+    plt.xlabel("Episodes")
     plt.show()
+
     plt.plot(margin_avge_list)
+    plt.title("Average Price-Cost Margin")
+    plt.xlabel("Episodes")
     plt.show()
