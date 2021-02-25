@@ -45,10 +45,8 @@ if __name__ == "__main__":
     obs = env.reset()
     done = False
     for j in range(n_steps):
-        score = [0 for i in range(n_agents)]
         actions = [agent.choose_action(obs) for agent in agents]
         obs_, reward, done, info = env.step(actions)
-        margin = []
         score = reward[0]
         margin = 1 + actions[0] / 14 - cost
         # scores.append(reward
