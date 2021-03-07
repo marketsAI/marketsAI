@@ -1,11 +1,10 @@
 from gym.spaces import Discrete, Box
-from marketsai.agents.agents import Household, Firm
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 import math
 import numpy as np
 
 
-class MktSpotDiscrete(MultiAgentEnv):
+class DiffDemandDiscrete(MultiAgentEnv):
     """A gym compatible environment consisting of a differentiated demand..
     Firms post prices and ehe environment gives them back revenue
      (or, equivalenty, quantity).
@@ -15,32 +14,32 @@ class MktSpotDiscrete(MultiAgentEnv):
     def __init__(self, config={}):
 
         # Parameters to create spaces
-        self.gridpoints = config.get("gridpoints", 15)
-        self.agents_dict - config.get(
-            "agents_dict", {"agent_1": Household, "agent_2": Firm, "agent_3": Firm}
-        )
-        self.n_firms = config.get("n_firms", 2)  # count types in the list.
-        self.n_households = config.get("n_households", 1)
-        self.n_agents = self.n_firms + self.n_households  # define length of dictionary
-        self.players = ["player_{}".format(i) for i in range(self.n_agents)]
+        self.gridpoints = config.get("gridpoints", 16)
+        self.n_agents = config.get("n_agents", 2)
+        self.own_price_memory = config.get("own_price_memory", True)
         # spaces
-        self.action_space = {
-            self.players[i]: Discrete(self.gridpoints) for i in range(self.n_agents)
-        }  # define as dictionary
+        self.action_space = Discrete(self.gridpoints)
 
         self.observation_space = Box(
             low=np.array([0 for i in range(self.n_agents)]),
             high=np.array([self.gridpoints - 1 for i in range(self.n_agents)]),
             dtype=np.uint8,
-        )  # define as dictionary
+        )
 
         # Episodic or not
         self.finite_repeats = config.get("finite_repeats", False)
         self.n_repeats = config.get("n_repeats", 1000)
 
+        # Paraterers of the markets
+        self.cost = config.get("cost", [1 for i in range(self.n_agents)])
+        self.values = config.get("values", [2 for i in range(self.n_agents)])
+        self.ext_demand = config.get("ext_demand", 0)
+        self.substitution = config.get("substitution", 0.25)
+
         # Grid of possible prices
-        self.lower_price = config.get("lower_price", [1 for i in range(self.n_firms)])
-        self.higher_price = config.get("higher_price", [2 for i in range(self.n_firms)])
+        self.lower_price = config.get("lower_price", self.cost)
+        self.higher_price = config.get("higher_price", self.values)
+        self.players = ["player_{}".format(i) for i in range(self.n_agents)]
         self.num_steps = 0
 
         # MANUAL LOOGING
@@ -55,7 +54,6 @@ class MktSpotDiscrete(MultiAgentEnv):
 
     def reset(self):
         self.num_steps = 0
-        # Entregar el movimiento que hizo el otro agente
 
         initial_obs = {
             self.players[i]: np.array(
@@ -66,33 +64,31 @@ class MktSpotDiscrete(MultiAgentEnv):
 
         return initial_obs
 
-    def step(self, action_dict):
-        # INPUT: Action Dictionary
-        moves = list(action_dict.values())  # divide in firms and households
+    def step(self, action_dict):  # INPUT: Action Dictionary
+
+        moves = list(action_dict.values())  # evaluate robustness of order
 
         # OUTPUT1: obs_ - Next period obs
         obs_list = [[] for i in range(self.n_agents)]
 
         for i in range(self.n_agents):
             for j in range(self.n_agents):
-                obs_list[i].append(
-                    np.uint8(moves[j])
-                )  # Do I give that info to all agents? No, only prices
+                obs_list[i].append(np.uint8(moves[j]))
 
-        obs_ = {self.players[i]: np.array(obs_list[i]) for i in range(self.n_firms)}
+        obs_ = {self.players[i]: np.array(obs_list[i]) for i in range(self.n_agents)}
 
         # OUTPUT2: rew: Reward Dictionary
-        # THis I have to change a lot
+
         prices = [
             self.lower_price[i]
             + (self.higher_price[i] - self.lower_price[i])
             * (moves[i] / (self.gridpoints - 1))
-            for i in range(self.n_firms)
+            for i in range(self.n_agents)
         ]
 
         rewards_notnorm = [
             math.e ** ((self.values[i] - prices[i]) / self.substitution)
-            for i in range(self.n_firms)
+            for i in range(self.n_agents)
         ]
 
         rewards_denom = math.e ** ((self.ext_demand) / self.substitution) + np.sum(
@@ -101,23 +97,18 @@ class MktSpotDiscrete(MultiAgentEnv):
 
         rewards_list = [
             (prices[i] - self.cost[i]) * rewards_notnorm[i] / rewards_denom
-            for i in range(self.n_firms)
+            for i in range(self.n_agents)
         ]
 
-        rew = {self.players[i]: rewards_list[i] for i in range(self.n_firms)}
+        rew = {self.players[i]: rewards_list[i] for i in range(self.n_agents)}
 
-        # OUTPUT3: done - Done dictionary.
-        # Game stops when done: {_all_: True}
-        # done = {
-        #    "__all__": self.num_steps >= self.episode_length,
-        # }
         if self.finite_repeats:
             done = {"__all__": self.num_steps >= self.n_repeats}
         else:
             done = {"__all__": False}
 
         # OUTPUT4: info - Info dictionary.
-        info = {self.players[i]: prices[i] for i in range(self.n_firms)}
+        info = {self.players[i]: prices[i] for i in range(self.n_agents)}
 
         self.num_steps += 1
 
@@ -147,13 +138,13 @@ class MktSpotDiscrete(MultiAgentEnv):
 # higher_price = 1.92 + price_band_wide
 
 # n_firms = 2
-# env = MktSpotDiscrete(
-# config={
-#     "lower_price": [lower_price for i in range(n_firms)],
-#     "higher_price": [higher_price for i in range(n_firms)],
-# }
+# env = DiffDemandDiscrete(
+#     config={
+#         "lower_price": [lower_price for i in range(n_firms)],
+#         "higher_price": [higher_price for i in range(n_firms)],
+#     }
 # )
 
 # env.reset()
-# obs_, reward, done, info = env.step({"player_1": 7, "player_2": 15})
+# obs_, reward, done, info = env.step({"player_1": 7, "player_2": 7})
 # print(obs_, reward, done, info)

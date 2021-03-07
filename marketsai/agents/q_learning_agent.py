@@ -2,13 +2,13 @@ import numpy as np
 
 
 class Agent:
-    def __init__(self, lr, gamma, n_actions, n_states, eps_start, eps_end, eps_dec):
+    def __init__(self, lr, gamma, n_actions, n_states, eps_start, eps_min, eps_dec):
         self.lr = lr
         self.gamma = gamma
         self.n_actions = n_actions
         self.n_states = n_states
         self.epsilon = eps_start
-        self.eps_min = eps_end
+        self.eps_min = eps_min
         self.eps_dec = eps_dec
 
         self.Q = {}
@@ -18,9 +18,9 @@ class Agent:
     def init_Q(self):
         for state in range(self.n_states):
             for action in range(self.n_actions):
-                self.Q[
-                    (state, action)
-                ] = 0.0  # (state,action) is the key, which in this case is a tuple. self.Q is a dictionary.
+                self.Q[(state, action)] = 0.25 / (
+                    1 - self.gamma
+                )  # (state,action) is the key, which in this case is a tuple. self.Q is a dictionary.
 
     def choose_action(self, state):
         if np.random.random() < self.epsilon:
