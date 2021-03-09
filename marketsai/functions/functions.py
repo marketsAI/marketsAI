@@ -1,5 +1,5 @@
 class CES:
-    def __init__(self, coeff):
+    def __init__(self, coeff=0.5):
 
         self.coeff = coeff
 
@@ -13,7 +13,7 @@ class CES:
 
 # define default coefficients
 class CobbDouglas:
-    def __init__(self, coeffs):
+    def __init__(self, coeffs=[1, 0.3, 0.7]):
 
         self.coeffs = coeffs
 
@@ -24,3 +24,8 @@ class CobbDouglas:
             production *= self.coeffs[0] * inputs[i] ** self.coeffs[i + 1]
 
         return production
+
+
+# class ConstantMC:
+#
+#   def __init__(self,mc):
