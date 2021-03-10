@@ -1,5 +1,6 @@
 from gym.spaces import Discrete, Box
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
+from marketsai.agents.agents import Household, Firm
 import math
 import numpy as np
 
@@ -15,7 +16,8 @@ class DiffDemandDiscrete(MultiAgentEnv):
 
         # Parameters to create spaces
         self.gridpoints = config.get("gridpoints", 16)
-        self.n_agents = config.get("n_agents", 2)
+        self.agents_dict = config.get("agents_dict", {"agent_0": Firm, "agent_1": Firm})
+        self.n_agents = len(self.agents_dict)
         self.own_price_memory = config.get("own_price_memory", True)
         # spaces
         self.action_space = Discrete(self.gridpoints)
@@ -39,7 +41,6 @@ class DiffDemandDiscrete(MultiAgentEnv):
         # Grid of possible prices
         self.lower_price = config.get("lower_price", self.cost)
         self.higher_price = config.get("higher_price", self.values)
-        self.players = ["player_{}".format(i) for i in range(self.n_agents)]
         self.num_steps = 0
 
         # MANUAL LOOGING
@@ -56,7 +57,7 @@ class DiffDemandDiscrete(MultiAgentEnv):
         self.num_steps = 0
 
         initial_obs = {
-            self.players[i]: np.array(
+            "agent_{}".format(i): np.array(
                 [np.uint8(np.floor(self.gridpoints / 2)) for i in range(self.n_agents)]
             )
             for i in range(self.n_agents)
@@ -69,13 +70,13 @@ class DiffDemandDiscrete(MultiAgentEnv):
         moves = list(action_dict.values())  # evaluate robustness of order
 
         # OUTPUT1: obs_ - Next period obs
-        obs_list = [[] for i in range(self.n_agents)]
+        obs_ = {"agent_{}".format(i): np.empty for i in range(self.n_agents)}
 
         for i in range(self.n_agents):
             for j in range(self.n_agents):
-                obs_list[i].append(np.uint8(moves[j]))
+                obs_["agent_{}".format(i)].append(np.uint8(moves[j]))
 
-        obs_ = {self.players[i]: np.array(obs_list[i]) for i in range(self.n_agents)}
+        # does it have to be a numpy array though?
 
         # OUTPUT2: rew: Reward Dictionary
 
@@ -100,7 +101,7 @@ class DiffDemandDiscrete(MultiAgentEnv):
             for i in range(self.n_agents)
         ]
 
-        rew = {self.players[i]: rewards_list[i] for i in range(self.n_agents)}
+        rew = {"agent_{}".format(i): rewards_list[i] for i in range(self.n_agents)}
 
         if self.finite_repeats:
             done = {"__all__": self.num_steps >= self.n_repeats}
@@ -108,7 +109,7 @@ class DiffDemandDiscrete(MultiAgentEnv):
             done = {"__all__": False}
 
         # OUTPUT4: info - Info dictionary.
-        info = {self.players[i]: prices[i] for i in range(self.n_agents)}
+        info = {"agent_{}".format(i): prices[i] for i in range(self.n_agents)}
 
         self.num_steps += 1
 
@@ -146,5 +147,5 @@ class DiffDemandDiscrete(MultiAgentEnv):
 # )
 
 # env.reset()
-# obs_, reward, done, info = env.step({"player_1": 7, "player_2": 7})
+# obs_, reward, done, info = env.step({"agent_0": 7, "agent_1": 7})
 # print(obs_, reward, done, info)
