@@ -3,11 +3,15 @@ from ray import tune
 
 from marketsai.markets.diff_demand import DiffDemandDiscrete
 from ray.tune.registry import register_env
+from ray.rllib.agents.a3c.a2c import A2CTrainer
+from ray.rllib.agents.dqn.dqn import DQNTrainer
+
 from ray.rllib.utils.schedules.exponential_schedule import ExponentialSchedule
 
 import random
 import math
 import pandas as pd
+import numpy as np
 
 # STEP 0: Inititialize ray (only for PPO for some reason)
 NUM_CPUS = 14
@@ -17,7 +21,7 @@ ray.init(num_cpus=NUM_CPUS)
 # STEP 1: register environment
 
 register_env("diffdemanddiscrete", DiffDemandDiscrete)
-env = DiffDemandDiscrete(config={})
+env = DiffDemandDiscrete()
 policy_ids = ["policy_{}".format(i) for i in range(env.n_agents)]
 
 # STEP 2: Experiment configuration
@@ -55,7 +59,12 @@ config = {
     "no_done_at_end": True,
     "multiagent": {
         "policies": {
-            policy_ids[i]: (None, env.observation_space, env.action_space, {})
+            policy_ids[i]: (
+                None,
+                env.observation_space["agent_{}".format(i)],
+                env.action_space["agent_{}".format(i)],
+                {},
+            )
             for i in range(env.n_agents)
         },
         "policy_mapping_fn": (lambda agent_id: random.choice(policy_ids)),
@@ -65,7 +74,7 @@ config = {
     "num_gpus": 0,
 }
 
-stop = {"info/num_steps_trained": MAX_STEPS // 2}
+stop = {"info/num_steps_trained": MAX_STEPS}
 
 # STEP 3: EXPERIMENTS
 # tune.run("A2C", name="A2C_March4", config=config, stop=stop)
@@ -76,19 +85,43 @@ stop = {"info/num_steps_trained": MAX_STEPS // 2}
 # tune.run(trainable, fail_fast=True)
 
 results = tune.run(
-    "A2C",
-    name="A2C_base_March8",
+    "DQN",
+    name="DQN_base_March12",
     config=config,
     checkpoint_freq=250,
     checkpoint_at_end=True,
     stop=stop,
-    # metric="episode_reward_mean",
-    # mode="max",
+    metric="episode_reward_mean",
+    mode="max",
 )
+best_checkpoint = results.best_checkpoint
+print("THIS IS THE BEST CHECKPOINT", best_checkpoint)
 
+# Evaluation of trained trainer
+config["evaluation_config"] = {"explore": False}
+trained_trainer = DQNTrainer(config=config)
+trained_trainer.restore(best_checkpoint)
 
-# best_checkpoint = results.best_checkpoint
-# print("THIS IS THE BEST CHECKPOINT", best_checkpoint)
+# obs_agent0 = env.reset()
+obs = {
+    "agent_0": np.array([1, 7], dtype=np.uint8),
+    "agent_1": np.array([1, 7], dtype=np.uint8),
+}
+
+obs_storage = []
+reward_storage = []
+for i in range(500):
+    obs_agent0 = obs["agent_0"]
+    obs_agent1 = obs["agent_1"]
+    action_agent0 = trained_trainer.compute_action(obs_agent0, policy_id="policy_0")
+    action_agent1 = trained_trainer.compute_action(obs_agent1, policy_id="policy_1")
+    obs, reward, done, info = env.step(
+        {"agent_0": action_agent0, "agent_1": action_agent1}
+    )
+    obs_storage.append(obs.values())
+    reward_storage.append(reward.values())
+    print(obs, reward, done, info)
+
 
 # stop = {"num_iterations": MAX_STEPS}
 
