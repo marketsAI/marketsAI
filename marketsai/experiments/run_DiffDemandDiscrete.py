@@ -25,7 +25,7 @@ env = DiffDemandDiscrete()
 policy_ids = ["policy_{}".format(i) for i in range(env.n_agents)]
 
 # STEP 2: Experiment configuration
-MAX_STEPS = 3000 * 1000
+MAX_STEPS = 100 * 1000
 PRICE_BAND_WIDE = 1 / 15
 LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
 HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
@@ -67,7 +67,7 @@ config = {
             )
             for i in range(env.n_agents)
         },
-        "policy_mapping_fn": (lambda agent_id: random.choice(policy_ids)),
+        "policy_mapping_fn": (lambda agent_id: policy_ids[int(agent_id.split("_")[1])]),
     },
     "framework": "torch",
     "num_workers": NUM_CPUS - 1,
@@ -83,10 +83,10 @@ stop = {"info/num_steps_trained": MAX_STEPS}
 
 # use resources per trial: resources_per_trial={"cpu": 1, "gpu": 1})
 # tune.run(trainable, fail_fast=True)
-
+exp_name = "DQN_base_March12"
 results = tune.run(
     "DQN",
-    name="DQN_base_March12",
+    name=exp_name,
     config=config,
     checkpoint_freq=250,
     checkpoint_at_end=True,
@@ -94,6 +94,7 @@ results = tune.run(
     metric="episode_reward_mean",
     mode="max",
 )
+
 best_checkpoint = results.best_checkpoint
 print("THIS IS THE BEST CHECKPOINT", best_checkpoint)
 
@@ -104,8 +105,8 @@ trained_trainer.restore(best_checkpoint)
 
 # obs_agent0 = env.reset()
 obs = {
-    "agent_0": np.array([1, 7], dtype=np.uint8),
-    "agent_1": np.array([1, 7], dtype=np.uint8),
+    "agent_0": np.array([1, 11], dtype=np.uint8),
+    "agent_1": np.array([1, 11], dtype=np.uint8),
 }
 
 obs_storage = []

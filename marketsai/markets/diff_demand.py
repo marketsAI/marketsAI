@@ -14,7 +14,7 @@ class DiffDemandDiscrete(MultiAgentEnv):
 
     Inputs:
     1. config = a dictionary that ...
-    2. config = a dictionary that ...
+
 
     Example:
 
@@ -28,7 +28,6 @@ class DiffDemandDiscrete(MultiAgentEnv):
         self.gridpoints = config.get("gridpoints", 16)
 
         # spaces
-
         self.action_space = {}
         for (key, value) in self.agents_dict.items():
             self.action_space[key] = Discrete(self.gridpoints)
@@ -65,6 +64,10 @@ class DiffDemandDiscrete(MultiAgentEnv):
         self.higher_price = config.get("higher_price", self.values)
 
         self.num_steps = 0
+
+        # assert isinstance(config["gridpoint"], int)
+        if not isinstance(self.gridpoints, int):
+            raise TypeError("gridpoint must be integer")
 
     def reset(self):
         self.num_steps = 0
@@ -128,7 +131,8 @@ class DiffDemandDiscrete(MultiAgentEnv):
             done["__all__"] = False
 
         # OUTPUT4: info - Info dictionary.
-        info = {"agent_{}".format(i): prices[i] for i in range(self.n_agents)}
+        prices_dict = {"agent_{}".format(i): prices[i] for i in range(self.n_agents)}
+        info = {"prices": prices_dict}
 
         self.num_steps += 1
 
@@ -146,6 +150,7 @@ class DiffDemandDiscrete(MultiAgentEnv):
 #     config={
 #         "lower_price": [lower_price for i in range(n_firms)],
 #         "higher_price": [higher_price for i in range(n_firms)],
+#         "gridpoint": 16,
 #     }
 # )
 
