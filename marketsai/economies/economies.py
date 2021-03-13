@@ -1,4 +1,4 @@
-from gym.spaces import Discrete, Box
+from gym.spaces import Discrete, Box, MultiDiscrete
 from marketsai.agents.agents import Household, Firm
 from marketsai.markets.diff_demand import DiffDemandDiscrete
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
@@ -44,8 +44,10 @@ class Economy(MultiAgentEnv):
 
         self.n_markets = len(self.markets_dict)
         self.n_agents = len(self.agents_dict)
+
+        # Dictionary of agents for each market to instantiate markets
         self.agents_per_market = [{} for i in range(self.n_markets)]
-        # adjust the market to take a list of agents
+
         for i in range(self.n_markets):
             for (key, value) in self.participation_dict.items():
                 if "market_{}".format(i) in value:
@@ -57,6 +59,32 @@ class Economy(MultiAgentEnv):
             )
             for i in range(self.n_markets)
         ]
+
+        # Aggregate spaces
+        self.observation_space = {}
+        self.action_space = {}
+
+        for i in range(self.n_agents):
+            obs_dimension = 0
+            action_dimension = 0
+            for j in range(self.n_markets):
+                if (
+                    "market_{}".format(j)
+                    in self.participation_dict["agent_{}".format(i)]
+                ):
+                    obs_dimension += (
+                        self.markets_dict["market_{}".format(j)]
+                        .observation_space["agent_{}".format(i)]
+                        .n
+                    )
+                    action_dimension += (
+                        self.markets_dict["market_{}".format(j)]
+                        .action_space["agent_{}".format(i)]
+                        .n
+                    )
+            self.observation_space["agent_{}".format(i)] = MultiDiscrete(obs_dimension)
+            self.action_space["agent_{}".format(i)] = MultiDiscrete(obs_dimension)
+
         # configure markets
 
     def reset(self):
@@ -100,7 +128,7 @@ class Economy(MultiAgentEnv):
             for i in range(self.n_markets):
                 if (
                     "market_{}".format(i)
-                    in self.participation_dict_dict["agent_{}".format(j)]
+                    in self.participation_dict["agent_{}".format(j)]
                 ):
                     obs_["agent_{}".format(j)].append(
                         steps_global[i][0]["agent_{}".format(j)]

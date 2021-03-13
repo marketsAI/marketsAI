@@ -141,19 +141,19 @@ class DiffDemandDiscrete(MultiAgentEnv):
 
 
 # Manual test for debugging
-# price_band_wide = 0.1
-# lower_price = 1.47 - price_band_wide
-# higher_price = 1.92 + price_band_wide
+price_band_wide = 0.1
+lower_price = 1.47 - price_band_wide
+higher_price = 1.92 + price_band_wide
 
-# n_firms = 2
-# env = DiffDemandDiscrete(
-#     config={
-#         "lower_price": [lower_price for i in range(n_firms)],
-#         "higher_price": [higher_price for i in range(n_firms)],
-#         "gridpoint": 16,
-#     }
-# )
+n_firms = 2
+env = DiffDemandDiscrete(
+    config={
+        "lower_price": [lower_price for i in range(n_firms)],
+        "higher_price": [higher_price for i in range(n_firms)],
+        "gridpoint": 16,
+    }
+)
 
-# env.reset()
-# obs_, reward, done, info = env.step({"agent_0": 7, "agent_1": 7})
-# print(obs_, reward, done, info)
+env.reset()
+obs_, reward, done, info = env.step({"agent_0": 7, "agent_1": 7})
+print(obs_, reward, done, info)
