@@ -1,4 +1,4 @@
-from gym.spaces import Discrete, Box, MultiDiscrete
+from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
 from marketsai.agents.agents import Household, Firm
 from marketsai.markets.diff_demand import DiffDemandDiscrete
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
@@ -61,47 +61,45 @@ class Economy(MultiAgentEnv):
         ]
 
         # Aggregate spaces
-        self.observation_space = {}
-        self.action_space = {}
+        self.observation_space = {
+            "agent_{}".format(i): [] for i in range(self.n_agents)
+        }
+        self.action_space = {"agent_{}".format(i): [] for i in range(self.n_agents)}
 
         for i in range(self.n_agents):
-            obs_dimension = 0
-            action_dimension = 0
             for j in range(self.n_markets):
                 if (
                     "market_{}".format(j)
                     in self.participation_dict["agent_{}".format(i)]
                 ):
-                    obs_dimension += (
-                        self.markets_dict["market_{}".format(j)]
-                        .observation_space["agent_{}".format(i)]
-                        .n
+                    self.observation_space["agent_{}".format(i)].append(
+                        self.markets[j].observation_space["agent_{}".format(i)]
                     )
-                    action_dimension += (
-                        self.markets_dict["market_{}".format(j)]
-                        .action_space["agent_{}".format(i)]
-                        .n
+                    self.action_space["agent_{}".format(i)].append(
+                        self.markets[j].action_space["agent_{}".format(i)]
                     )
-            self.observation_space["agent_{}".format(i)] = MultiDiscrete(obs_dimension)
-            self.action_space["agent_{}".format(i)] = MultiDiscrete(obs_dimension)
+            self.observation_space["agent_{}".format(i)] = Tuple(
+                self.observation_space["agent_{}".format(i)]
+            )
+            self.action_space["agent_{}".format(i)] = Tuple(
+                self.action_space["agent_{}".format(i)]
+            )
 
         # configure markets
 
     def reset(self):
 
-        initial_obs_global = [self.markets[i].reset for i in range(self.n_markets)]
         initial_obs = {"agent_{}".format(i): [] for i in range(self.n_agents)}
 
-        for j in range(self.n_agents):
-            for i in range(self.n_markets):
+        for i in range(self.n_agents):
+            for j in range(self.n_markets):
                 if (
-                    "market_{}".format(i)
-                    in self.participation_dict["agent_{}".format(j)]
+                    "market_{}".format(j)
+                    in self.participation_dict["agent_{}".format(i)]
                 ):
-                    initial_obs["agent_{}".format(j)].append(initial_obs_global[i])
-            initial_obs["agent_{}".format(j)] = np.array(
-                initial_obs["agent_{}".format(j)]
-            )
+                    initial_obs["agent_{}".format(i)].append(
+                        self.markets[j].reset
+                    )  # notice that I am reseting many times. That could be changed with a gobal initial_obs
 
         return initial_obs
 
@@ -110,9 +108,11 @@ class Economy(MultiAgentEnv):
         # construct actions per market.
         actions_per_market = [{} for i in range(self.n_markets)]
         for i in range(self.n_markets):
-            for (key, value) in self.participation_dict_dict.items():
+            for (key, value) in self.participation_dict.items():
                 if "market_{}".format(i) in value:
-                    actions_per_market[i][key] = actions_dict[key][i]
+                    actions_per_market[i][key] = actions_dict[key][
+                        i
+                    ]  # assuming one action per market
 
         # construct the step per market.
         steps_global = [
@@ -124,26 +124,28 @@ class Economy(MultiAgentEnv):
         done = {"agent_{}".format(i): [] for i in range(self.n_agents)}
         info = {"agent_{}".format(i): [] for i in range(self.n_agents)}
 
-        for j in range(self.n_agents):
-            for i in range(self.n_markets):
+        for i in range(self.n_agents):
+            for j in range(self.n_markets):
                 if (
-                    "market_{}".format(i)
-                    in self.participation_dict["agent_{}".format(j)]
+                    "market_{}".format(j)
+                    in self.participation_dict["agent_{}".format(i)]
                 ):
-                    obs_["agent_{}".format(j)].append(
-                        steps_global[i][0]["agent_{}".format(j)]
+                    obs_["agent_{}".format(i)].append(
+                        steps_global[j][0]["agent_{}".format(i)]
                     )
-                    rew["agent_{}".format(j)].append(
-                        steps_global[i][1]["agent_{}".format(j)]
+                    rew["agent_{}".format(i)].append(
+                        steps_global[j][1]["agent_{}".format(i)]
                     )
-                    done["agent_{}".format(j)].append(
-                        steps_global[i][2]["agent_{}".format(j)]
+                    done["agent_{}".format(i)].append(
+                        steps_global[j][2]["agent_{}".format(i)]
                     )
-                    info["agent_{}".format(j)].append(
-                        steps_global[i][3]["agent_{}".format(j)]
+                    info["agent_{}".format(i)].append(
+                        steps_global[j][3]["agent_{}".format(i)]
                     )
-            # Tranform obs_ back to array.
-            obs_["agent_{}".format(j)] = np.concatenate(obs_["agent_{}".format(j)])
+
+            # Aggregate rewards
+            rew["agent_{}".format(j)] = sum(rew["agent_{}".format(j)])
+
             if False in done["agent_{}".format(j)]:
                 done["agent_{}".format(j)] = False
             else:

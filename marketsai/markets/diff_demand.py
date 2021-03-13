@@ -1,4 +1,4 @@
-from gym.spaces import Discrete, Box
+from gym.spaces import Discrete, Box, MultiDiscrete
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from marketsai.agents.agents import Household, Firm
 import math
@@ -34,10 +34,8 @@ class DiffDemandDiscrete(MultiAgentEnv):
 
         self.observation_space = {}
         for (key, value) in self.agents_dict.items():
-            self.observation_space[key] = Box(
-                low=np.array([0 for i in range(self.n_agents)]),
-                high=np.array([self.gridpoints - 1 for i in range(self.n_agents)]),
-                dtype=np.uint8,
+            self.observation_space[key] = MultiDiscrete(
+                [self.gridpoints, self.gridpoints]
             )
 
         # Episodic or not
@@ -71,28 +69,26 @@ class DiffDemandDiscrete(MultiAgentEnv):
 
     def reset(self):
         self.num_steps = 0
-
-        initial_obs = {
-            "agent_{}".format(i): np.array(
-                [np.uint8(np.floor(self.gridpoints / 2)) for i in range(self.n_agents)]
-            )
+        self.obs = {
+            "agent_{}".format(i): [
+                np.uint8(np.floor(self.gridpoints / 2)) for i in range(self.n_agents)
+            ]
             for i in range(self.n_agents)
         }
 
-        return initial_obs
+        return self.obs
 
     def step(self, action_dict):  # INPUT: Action Dictionary
 
         actions = list(action_dict.values())  # evaluate robustness of order
 
         # OUTPUT1: obs_ - Next period obs
-        obs_ = {"agent_{}".format(i): [] for i in range(self.n_agents)}
+
+        self.obs = {"agent_{}".format(i): [] for i in range(self.n_agents)}
 
         for i in range(self.n_agents):
             for j in range(self.n_agents):
-                obs_["agent_{}".format(i)].append(np.uint8(actions[j]))
-
-            obs_["agent_{}".format(i)] = np.array(obs_["agent_{}".format(i)])
+                self.obs["agent_{}".format(i)].append(np.uint8(actions[j]))
 
         # OUTPUT2: rew: Reward Dictionary
 
@@ -120,6 +116,7 @@ class DiffDemandDiscrete(MultiAgentEnv):
         rew = {"agent_{}".format(i): rewards_list[i] for i in range(self.n_agents)}
 
         # OUTPUT3: done: True if in num_spets is higher than max periods.
+
         if self.finite_periods:
             done = {
                 "agent_{}".format(i): self.num_steps >= self.n_periods
@@ -131,29 +128,29 @@ class DiffDemandDiscrete(MultiAgentEnv):
             done["__all__"] = False
 
         # OUTPUT4: info - Info dictionary.
-        prices_dict = {"agent_{}".format(i): prices[i] for i in range(self.n_agents)}
-        info = {"prices": prices_dict}
+
+        info = {"agent_{}".format(i): prices[i] for i in range(self.n_agents)}
 
         self.num_steps += 1
 
         # RETURN
-        return obs_, rew, done, info
+        return self.obs, rew, done, info
 
 
 # Manual test for debugging
-price_band_wide = 0.1
-lower_price = 1.47 - price_band_wide
-higher_price = 1.92 + price_band_wide
+# price_band_wide = 0.1
+# lower_price = 1.47 - price_band_wide
+# higher_price = 1.92 + price_band_wide
 
-n_firms = 2
-env = DiffDemandDiscrete(
-    config={
-        "lower_price": [lower_price for i in range(n_firms)],
-        "higher_price": [higher_price for i in range(n_firms)],
-        "gridpoint": 16,
-    }
-)
+# n_firms = 2
+# env = DiffDemandDiscrete(
+#     config={
+#         "lower_price": [lower_price for i in range(n_firms)],
+#         "higher_price": [higher_price for i in range(n_firms)],
+#         "gridpoint": 16,
+#     }
+# )
 
-env.reset()
-obs_, reward, done, info = env.step({"agent_0": 7, "agent_1": 7})
-print(obs_, reward, done, info)
+# env.reset()
+# obs_, reward, done, info = env.step({"agent_0": 7, "agent_1": 7})
+# print(obs_, reward, done, info)

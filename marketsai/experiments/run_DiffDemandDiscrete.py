@@ -25,7 +25,7 @@ env = DiffDemandDiscrete()
 policy_ids = ["policy_{}".format(i) for i in range(env.n_agents)]
 
 # STEP 2: Experiment configuration
-MAX_STEPS = 100 * 1000
+MAX_STEPS = 10 * 1000
 PRICE_BAND_WIDE = 1 / 15
 LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
 HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
