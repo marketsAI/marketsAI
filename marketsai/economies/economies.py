@@ -144,23 +144,23 @@ class Economy(MultiAgentEnv):
                     )
 
             # Aggregate rewards
-            rew["agent_{}".format(j)] = sum(rew["agent_{}".format(j)])
+            rew["agent_{}".format(i)] = sum(rew["agent_{}".format(i)])
 
             if False in done["agent_{}".format(j)]:
-                done["agent_{}".format(j)] = False
+                done["agent_{}".format(i)] = False
             else:
-                done["agent_{}".format(j)] = True
+                done["agent_{}".format(i)] = True
 
         return obs_, rew, done, info
 
 
 # test
-economy = Economy()
-economy.reset()
-obs_, rew, done, info = economy.step(
-    {"agent_0": np.array([7, 7]), "agent_1": np.array([15, 15])}
-)  # figure out the strcture
-print(obs_, rew, done, info)
+# economy = Economy()
+# economy.reset()
+# obs_, rew, done, info = economy.step(
+#     {"agent_0": np.array([7, 7]), "agent_1": np.array([15, 15])}
+# )
+# print(obs_, rew, done, info)
 
 # Construct configurations for each market based on agents who partcipate.
 # Instantiate markets.
