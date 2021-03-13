@@ -96,7 +96,7 @@ results = tune.run(
 )
 
 best_checkpoint = results.best_checkpoint
-print("THIS IS THE BEST CHECKPOINT", best_checkpoint)
+print("Best checkpont:", best_checkpoint)
 
 # Evaluation of trained trainer
 config["evaluation_config"] = {"explore": False}
