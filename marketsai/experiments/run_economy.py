@@ -83,9 +83,9 @@ stop = {"info/num_steps_trained": MAX_STEPS}
 
 # use resources per trial: resources_per_trial={"cpu": 1, "gpu": 1})
 # tune.run(trainable, fail_fast=True)
-exp_name = "DQN_base_March12"
+exp_name = "PPO_base_March31"
 results = tune.run(
-    "DQN",
+    "PPO",
     name=exp_name,
     config=config,
     checkpoint_freq=250,

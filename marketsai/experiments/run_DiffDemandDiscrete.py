@@ -12,8 +12,9 @@ import random
 import math
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
-# STEP 0: Inititialize ray (only for PPO for some reason)
+# STEP 0: Inititialize ray
 NUM_CPUS = 14
 ray.shutdown()
 ray.init(num_cpus=NUM_CPUS)
@@ -25,8 +26,8 @@ env = DiffDemandDiscrete()
 policy_ids = ["policy_{}".format(i) for i in range(env.n_agents)]
 
 # STEP 2: Experiment configuration
-MAX_STEPS = 10 * 1000
-PRICE_BAND_WIDE = 1 / 15
+MAX_STEPS = 2000 * 1000
+PRICE_BAND_WIDE = 0.1
 LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
 HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
 DEC_RATE = math.e ** (-4 * 10 ** (-6))
@@ -83,7 +84,7 @@ stop = {"info/num_steps_trained": MAX_STEPS}
 
 # use resources per trial: resources_per_trial={"cpu": 1, "gpu": 1})
 # tune.run(trainable, fail_fast=True)
-exp_name = "DQN_base_March12"
+exp_name = "DQN_base_March31_test"
 results = tune.run(
     "DQN",
     name=exp_name,
@@ -104,24 +105,37 @@ trained_trainer = DQNTrainer(config=config)
 trained_trainer.restore(best_checkpoint)
 
 # obs_agent0 = env.reset()
-obs = {
-    "agent_0": np.array([1, 11], dtype=np.uint8),
-    "agent_1": np.array([1, 11], dtype=np.uint8),
-}
 
-obs_storage = []
-reward_storage = []
+price_agent0_list = []
+reward_agent0_list = []
+price_agent1_list = []
+reward_agent1_list = []
+obs, reward, done, info = env.step({"agent_0": 1, "agent_1": 11})
 for i in range(500):
-    obs_agent0 = obs["agent_0"]
-    obs_agent1 = obs["agent_1"]
-    action_agent0 = trained_trainer.compute_action(obs_agent0, policy_id="policy_0")
-    action_agent1 = trained_trainer.compute_action(obs_agent1, policy_id="policy_1")
+
+    action_agent0 = trained_trainer.compute_action(obs["agent_0"], policy_id="policy_0")
+    action_agent1 = trained_trainer.compute_action(obs["agent_1"], policy_id="policy_1")
     obs, reward, done, info = env.step(
         {"agent_0": action_agent0, "agent_1": action_agent1}
     )
-    obs_storage.append(obs.values())
-    reward_storage.append(reward.values())
-    print(obs, reward, done, info)
+    price_agent0_list.append(info["agent_0"])
+    reward_agent0_list.append(reward["agent_0"])
+    price_agent1_list.append(info["agent_1"])
+    reward_agent1_list.append(reward["agent_1"])
+
+plt.plot(price_agent0_list)
+plt.show()
+plt.plot(price_agent1_list)
+plt.show()
+
+IRresults = {
+    "Profits Agent 0": reward_agent0_list,
+    "Profits Agent 1": reward_agent1_list,
+    "Price Agent 0": price_agent0_list,
+    "Price Agent 1": price_agent1_list,
+}
+df_IR = pd.DataFrame(IRresults)
+df_IR.to_csv("collusion_IR_DQN.csv")
 
 
 # stop = {"num_iterations": MAX_STEPS}

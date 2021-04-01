@@ -8,15 +8,15 @@ import numpy as np
 class Economy(MultiAgentEnv):
     """Class that creates economies.
     Inputs:
-    3. markets_dict: a dictionary of markets, which has markets_id strings as key's and
+    1. markets_dict: a dictionary of markets, which has markets_id strings as key's and
     markets class (e.g. spot market) as values.
     2. agents_dict: a dictionary of agents, which has agents id strings as key's and
     agents class (Household, Firm) as values.
     3. participation_dict: a dictionary with agents id as keys and markets id as values.
 
     Example:
-    economy = Economy(agents_dict = {"agent_0": Firm, "agent_1": Firm},
-        markets_dict = {"market_0": DiffDemandDiscrete, "market_1": DiffDemandDiscrete}),
+    economy = Economy(markets_dict = {"market_0": DiffDemandDiscrete, "market_1": DiffDemandDiscrete}),
+        agents_dict = {"agent_0": Firm, "agent_1": Firm},
         participation_dict = {
                 "agent_0": ["market_0", "market_1"],
                 "agent_1": ["market_0", "market_1"],
@@ -155,12 +155,12 @@ class Economy(MultiAgentEnv):
 
 
 # test
-# economy = Economy()
-# economy.reset()
-# obs_, rew, done, info = economy.step(
-#     {"agent_0": np.array([7, 7]), "agent_1": np.array([15, 15])}
-# )
-# print(obs_, rew, done, info)
+economy = Economy()
+economy.reset()
+obs_, rew, done, info = economy.step(
+    {"agent_0": np.array([7, 7]), "agent_1": np.array([15, 15])}
+)
+print(obs_, rew, done, info)
 
 # Construct configurations for each market based on agents who partcipate.
 # Instantiate markets.
