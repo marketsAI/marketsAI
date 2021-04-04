@@ -5,6 +5,7 @@ from marketsai.markets.diff_demand import DiffDemandDiscrete
 from ray.tune.registry import register_env
 from ray.rllib.agents.a3c.a2c import A2CTrainer
 from ray.rllib.agents.dqn.dqn import DQNTrainer
+from ray.tune.integration.mlflow import MLflowLoggerCallback
 
 from ray.rllib.utils.schedules.exponential_schedule import ExponentialSchedule
 
@@ -26,7 +27,7 @@ env = DiffDemandDiscrete()
 policy_ids = ["policy_{}".format(i) for i in range(env.n_agents)]
 
 # STEP 2: Experiment configuration
-MAX_STEPS = 2000 * 1000
+MAX_STEPS = 5 * 1000
 PRICE_BAND_WIDE = 0.1
 LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
 HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
@@ -84,7 +85,7 @@ stop = {"info/num_steps_trained": MAX_STEPS}
 
 # use resources per trial: resources_per_trial={"cpu": 1, "gpu": 1})
 # tune.run(trainable, fail_fast=True)
-exp_name = "DQN_base_March31"
+exp_name = "DQN_base_April4"
 results = tune.run(
     "DQN",
     name=exp_name,
@@ -94,6 +95,7 @@ results = tune.run(
     stop=stop,
     metric="episode_reward_mean",
     mode="max",
+    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
 )
 
 best_checkpoint = results.best_checkpoint
@@ -123,10 +125,12 @@ for i in range(500):
     price_agent1_list.append(info["agent_1"])
     reward_agent1_list.append(reward["agent_1"])
 
-# plt.plot(price_agent0_list)
-# plt.show()
-# plt.plot(price_agent1_list)
-# plt.show()
+plt.ion()
+
+plt.plot(price_agent0_list)
+plt.show()
+plt.plot(price_agent1_list)
+plt.show()
 
 IRresults = {
     "Profits Agent 0": reward_agent0_list,
