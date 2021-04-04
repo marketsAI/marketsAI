@@ -84,7 +84,7 @@ stop = {"info/num_steps_trained": MAX_STEPS}
 
 # use resources per trial: resources_per_trial={"cpu": 1, "gpu": 1})
 # tune.run(trainable, fail_fast=True)
-exp_name = "DQN_base_March31_test"
+exp_name = "DQN_base_March31"
 results = tune.run(
     "DQN",
     name=exp_name,
@@ -123,10 +123,10 @@ for i in range(500):
     price_agent1_list.append(info["agent_1"])
     reward_agent1_list.append(reward["agent_1"])
 
-plt.plot(price_agent0_list)
-plt.show()
-plt.plot(price_agent1_list)
-plt.show()
+# plt.plot(price_agent0_list)
+# plt.show()
+# plt.plot(price_agent1_list)
+# plt.show()
 
 IRresults = {
     "Profits Agent 0": reward_agent0_list,
@@ -136,6 +136,61 @@ IRresults = {
 }
 df_IR = pd.DataFrame(IRresults)
 df_IR.to_csv("collusion_IR_DQN.csv")
+
+
+# A2C
+# exp_name = "A2C_base_March31"
+# results = tune.run(
+#     "A2C",
+#     name=exp_name,
+#     config=config,
+#     checkpoint_freq=250,
+#     checkpoint_at_end=True,
+#     stop=stop,
+#     metric="episode_reward_mean",
+#     mode="max",
+# )
+
+# best_checkpoint = results.best_checkpoint
+# print("Best checkpont:", best_checkpoint)
+
+# # Evaluation of trained trainer
+# config["evaluation_config"] = {"explore": False}
+# trained_trainer = DQNTrainer(config=config)
+# trained_trainer.restore(best_checkpoint)
+
+# # obs_agent0 = env.reset()
+
+# price_agent0_list = []
+# reward_agent0_list = []
+# price_agent1_list = []
+# reward_agent1_list = []
+# obs, reward, done, info = env.step({"agent_0": 1, "agent_1": 11})
+# for i in range(500):
+
+#     action_agent0 = trained_trainer.compute_action(obs["agent_0"], policy_id="policy_0")
+#     action_agent1 = trained_trainer.compute_action(obs["agent_1"], policy_id="policy_1")
+#     obs, reward, done, info = env.step(
+#         {"agent_0": action_agent0, "agent_1": action_agent1}
+#     )
+#     price_agent0_list.append(info["agent_0"])
+#     reward_agent0_list.append(reward["agent_0"])
+#     price_agent1_list.append(info["agent_1"])
+#     reward_agent1_list.append(reward["agent_1"])
+
+# # plt.plot(price_agent0_list)
+# # plt.show()
+# # plt.plot(price_agent1_list)
+# # plt.show()
+
+# IRresults = {
+#     "Profits Agent 0": reward_agent0_list,
+#     "Profits Agent 1": reward_agent1_list,
+#     "Price Agent 0": price_agent0_list,
+#     "Price Agent 1": price_agent1_list,
+# }
+# df_IR = pd.DataFrame(IRresults)
+# df_IR.to_csv("collusion_IR_A2C.csv")
 
 
 # stop = {"num_iterations": MAX_STEPS}
