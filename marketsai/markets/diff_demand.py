@@ -20,12 +20,12 @@ class DiffDemandDiscrete(MultiAgentEnv):
 
     """
 
-    def __init__(self, config={}):
+    def __init__(self, mkt_config={}, agents_dict={"agent_0": Firm, "agent_1": Firm}):
 
         # Parameters to create spaces
-        self.agents_dict = config.get("agents_dict", {"agent_0": Firm, "agent_1": Firm})
+        self.agents_dict = agents_dict
         self.n_agents = len(self.agents_dict)
-        self.gridpoints = config.get("gridpoints", 16)
+        self.gridpoints = mkt_config.get("gridpoints", 16)
 
         # spaces
         self.action_space = {}
@@ -39,11 +39,11 @@ class DiffDemandDiscrete(MultiAgentEnv):
             )
 
         # Episodic or not
-        self.finite_periods = config.get("finite_periods", False)
-        self.n_periods = config.get("n_periods", 1000)
+        self.finite_periods = mkt_config.get("finite_periods", False)
+        self.n_periods = mkt_config.get("n_periods", 1000)
 
         # Paraterers of the markets
-        self.parameters = config.get(
+        self.parameters = mkt_config.get(
             "parameters",
             {
                 "cost": [1 for i in range(self.n_agents)],
@@ -58,8 +58,8 @@ class DiffDemandDiscrete(MultiAgentEnv):
         self.substitution = self.parameters["substitution"]
 
         # Grid of possible prices
-        self.lower_price = config.get("lower_price", self.cost)
-        self.higher_price = config.get("higher_price", self.values)
+        self.lower_price = mkt_config.get("lower_price", self.cost)
+        self.higher_price = mkt_config.get("higher_price", self.values)
 
         self.num_steps = 0
 

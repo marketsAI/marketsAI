@@ -31,7 +31,10 @@ class Economy(MultiAgentEnv):
     def __init__(self, config={}):
         self.markets_dict = config.get(
             "markets_dict",
-            {"market_0": DiffDemandDiscrete, "market_1": DiffDemandDiscrete},
+            {
+                "market_0": (DiffDemandDiscrete, {}),
+                "market_1": (DiffDemandDiscrete, {}),
+            },
         )
         self.agents_dict = config.get("agents_dict", {"agent_0": Firm, "agent_1": Firm})
         self.participation_dict = config.get(
@@ -50,12 +53,13 @@ class Economy(MultiAgentEnv):
 
         for i in range(self.n_markets):
             for (key, value) in self.participation_dict.items():
-                if "market_{}".format(i) in value:
+                if f"market_{i}" in value:
                     self.agents_per_market[i][key] = self.agents_dict[key]
 
         self.markets = [
-            self.markets_dict["market_{}".format(i)](
-                config={"agents_dict": self.agents_per_market[i]}
+            self.markets_dict[f"market_{i}"][0](
+                mkt_config=self.markets_dict[f"market_{i}"][1],
+                agents_dict=self.agents_per_market[i],
             )
             for i in range(self.n_markets)
         ]
@@ -109,7 +113,7 @@ class Economy(MultiAgentEnv):
         actions_per_market = [{} for i in range(self.n_markets)]
         for i in range(self.n_markets):
             for (key, value) in self.participation_dict.items():
-                if "market_{}".format(i) in value:
+                if f"market_{i}" in value:
                     actions_per_market[i][key] = actions_dict[key][
                         i
                     ]  # assuming one action per market
@@ -155,7 +159,21 @@ class Economy(MultiAgentEnv):
 
 
 # test
-economy = Economy()
+env = Economy()
+PRICE_BAND_WIDE = 0.1
+LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
+HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
+market_config = {
+    "LOWER_PRICE": [LOWER_PRICE for i in range(env.n_agents)],
+    "HIGHER_PRICE": [HIGHER_PRICE for i in range(env.n_agents)],
+}
+env_config = {
+    "markets_dict": {
+        "market_0": (DiffDemandDiscrete, market_config),
+        "market_1": (DiffDemandDiscrete, market_config),
+    }
+}
+economy = Economy(env_config)
 economy.reset()
 obs_, rew, done, info = economy.step(
     {"agent_0": np.array([7, 7]), "agent_1": np.array([15, 15])}
