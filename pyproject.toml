@@ -33,6 +33,7 @@ flake8 = "^3.9.0"
 mlflow = "^1.15.0"
 ipykernel = "^5.5.3"
 jupyter = "^1.0.0"
+seaborn = "^0.11.1"
 
 [tool.pytest.ini_options]
 addopts = "--cov=marketsai"
