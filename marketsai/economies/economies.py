@@ -65,45 +65,45 @@ class Economy(MultiAgentEnv):
         ]
 
         # Aggregate spaces
-        self.observation_space = {
-            "agent_{}".format(i): [] for i in range(self.n_agents)
-        }
-        self.action_space = {"agent_{}".format(i): [] for i in range(self.n_agents)}
+        self.observation_space = {f"agent_{i}": [] for i in range(self.n_agents)}
+        self.action_space = {f"agent_{i}": [] for i in range(self.n_agents)}
 
         for i in range(self.n_agents):
+            dims_action = []
+            dims_observation = []
             for j in range(self.n_markets):
-                if (
-                    "market_{}".format(j)
-                    in self.participation_dict["agent_{}".format(i)]
-                ):
-                    self.observation_space["agent_{}".format(i)].append(
-                        self.markets[j].observation_space["agent_{}".format(i)]
+                if f"market_{j}" in self.participation_dict[f"agent_{i}"]:
+                    self.observation_space[f"agent_{i}"].append(
+                        self.markets[j].observation_space[f"agent_{i}"]
                     )
-                    self.action_space["agent_{}".format(i)].append(
-                        self.markets[j].action_space["agent_{}".format(i)]
+                    self.action_space[f"agent_{i}"].append(
+                        self.markets[j].action_space[f"agent_{i}"]
                     )
-            self.observation_space["agent_{}".format(i)] = Tuple(
-                self.observation_space["agent_{}".format(i)]
+                    dims_observation += list(
+                        self.markets[j].observation_space[f"agent_{i}"].nvec
+                    )
+                    dims_action.append(self.markets[j].action_space[f"agent_{i}"].n)
+            # self.observation_space[f"agent_{i}"] = MultiDiscrete(dims_observation)
+            # self.action_space[f"agent_{i}"] = MultiDiscrete(dims_action)
+
+            self.observation_space[f"agent_{i}"] = Tuple(
+                self.observation_space[f"agent_{i}"]
             )
-            self.action_space["agent_{}".format(i)] = Tuple(
-                self.action_space["agent_{}".format(i)]
-            )
+            self.action_space[f"agent_{i}"] = Tuple(self.action_space[f"agent_{i}"])
 
         # configure markets
 
     def reset(self):
 
-        initial_obs = {"agent_{}".format(i): [] for i in range(self.n_agents)}
+        initial_obs = {f"agent_{i}": [] for i in range(self.n_agents)}
 
         for i in range(self.n_agents):
             for j in range(self.n_markets):
-                if (
-                    "market_{}".format(j)
-                    in self.participation_dict["agent_{}".format(i)]
-                ):
-                    initial_obs["agent_{}".format(i)].append(
-                        self.markets[j].reset
-                    )  # notice that I am reseting many times. That could be changed with a gobal initial_obs
+                if f"market_{j}" in self.participation_dict[f"agent_{i}"]:
+                    initial_obs[f"agent_{i}"].append(
+                        self.markets[j].reset()[f"agent_{i}"]
+                    )
+                    # notice that I am reseting many times. That could be changed with a gobal initial_obs
 
         return initial_obs
 
@@ -123,62 +123,52 @@ class Economy(MultiAgentEnv):
             self.markets[i].step(actions_per_market[i]) for i in range(self.n_markets)
         ]
 
-        obs_ = {"agent_{}".format(i): [] for i in range(self.n_agents)}
-        rew = {"agent_{}".format(i): [] for i in range(self.n_agents)}
-        done = {"agent_{}".format(i): [] for i in range(self.n_agents)}
-        info = {"agent_{}".format(i): [] for i in range(self.n_agents)}
+        obs_ = {f"agent_{i}": [] for i in range(self.n_agents)}
+        rew = {f"agent_{i}": [] for i in range(self.n_agents)}
+        info = {f"agent_{i}": [] for i in range(self.n_agents)}
 
         for i in range(self.n_agents):
             for j in range(self.n_markets):
-                if (
-                    "market_{}".format(j)
-                    in self.participation_dict["agent_{}".format(i)]
-                ):
-                    obs_["agent_{}".format(i)].append(
-                        steps_global[j][0]["agent_{}".format(i)]
-                    )
-                    rew["agent_{}".format(i)].append(
-                        steps_global[j][1]["agent_{}".format(i)]
-                    )
-                    done["agent_{}".format(i)].append(
-                        steps_global[j][2]["agent_{}".format(i)]
-                    )
-                    info["agent_{}".format(i)].append(
-                        steps_global[j][3]["agent_{}".format(i)]
-                    )
+                if f"market_{j}" in self.participation_dict[f"agent_{i}"]:
+                    obs_[f"agent_{i}"].append(steps_global[j][0][f"agent_{i}"])
+                    rew[f"agent_{i}"].append(steps_global[j][1][f"agent_{i}"])
+                    # done[f"agent_{i}"].append(steps_global[j][2][f"agent_{i}"])
+                    info[f"agent_{i}"].append(steps_global[j][3][f"agent_{i}"])
 
             # Aggregate rewards
-            rew["agent_{}".format(i)] = sum(rew["agent_{}".format(i)])
+            rew[f"agent_{i}"] = sum(rew[f"agent_{i}"])
 
-            if False in done["agent_{}".format(j)]:
-                done["agent_{}".format(i)] = False
-            else:
-                done["agent_{}".format(i)] = True
+        done = {"__all__": False}
+        # if False in done["agent_{}".format(j)]:
+        #     done[f"agent_{i}"] = False
+        # else:
+        #     done[f"agent_{i}"] = True
 
         return obs_, rew, done, info
 
 
-# test
-env = Economy()
-PRICE_BAND_WIDE = 0.1
-LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
-HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
-market_config = {
-    "LOWER_PRICE": [LOWER_PRICE for i in range(env.n_agents)],
-    "HIGHER_PRICE": [HIGHER_PRICE for i in range(env.n_agents)],
-}
-env_config = {
-    "markets_dict": {
-        "market_0": (DiffDemandDiscrete, market_config),
-        "market_1": (DiffDemandDiscrete, market_config),
-    }
-}
-economy = Economy(env_config)
-economy.reset()
-obs_, rew, done, info = economy.step(
-    {"agent_0": np.array([7, 7]), "agent_1": np.array([15, 15])}
-)
-print(obs_, rew, done, info)
+# MANUAL TEST FOR DEBUGGING
+
+# env = Economy()
+# PRICE_BAND_WIDE = 0.1
+# LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
+# HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
+# mkt_config = {
+#     "lower_price": [LOWER_PRICE for i in range(env.n_agents)],
+#     "higher_price": [HIGHER_PRICE for i in range(env.n_agents)],
+# }
+# env_config = {
+#     "markets_dict": {
+#         "market_0": (DiffDemandDiscrete, mkt_config),
+#         "market_1": (DiffDemandDiscrete, mkt_config),
+#     }
+# }
+# economy = Economy(env_config)
+# economy.reset()
+# obs_, rew, done, info = economy.step(
+#     {"agent_0": np.array([0, 0]), "agent_1": np.array([0, 0])}
+# )
+# print(obs_, rew, done, info)
 
 # Construct configurations for each market based on agents who partcipate.
 # Instantiate markets.

@@ -124,8 +124,8 @@ class DiffDemandDiscrete(MultiAgentEnv):
             }
             done["__all__"] = self.num_steps >= self.n_periods
         else:
-            done = {"agent_{}".format(i): False for i in range(self.n_agents)}
-            done["__all__"] = False
+            # done = {"agent_{}".format(i): False for i in range(self.n_agents)}
+            done = {"__all__": False}
 
         # OUTPUT4: info - Info dictionary.
 
@@ -138,17 +138,19 @@ class DiffDemandDiscrete(MultiAgentEnv):
 
 
 # Manual test for debugging
-# price_band_wide = 0.1
-# lower_price = 1.47 - price_band_wide
-# higher_price = 1.92 + price_band_wide
+
+# PRICE_BAND_WIDE = 0.1
+# LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
+# HIGHER_PRICE = 1.92 + PRICE_BAND_WIDE
 
 # n_firms = 2
 # env = DiffDemandDiscrete(
-#     config={
-#         "lower_price": [lower_price for i in range(n_firms)],
-#         "higher_price": [higher_price for i in range(n_firms)],
+#     mkt_config={
+#         "lower_price": [LOWER_PRICE for i in range(n_firms)],
+#         "higher_price": [HIGHER_PRICE for i in range(n_firms)],
 #         "gridpoint": 16,
-#     }
+#     },
+#     agents_dict={"agent_0": Firm, "agent_1": Firm},
 # )
 
 # env.reset()
