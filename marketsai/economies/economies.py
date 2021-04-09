@@ -1,6 +1,6 @@
 from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
 from marketsai.agents.agents import Household, Firm
-from marketsai.markets.diff_demand import DiffDemandDiscrete
+from marketsai.markets.diff_demand import DiffDemand
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 import numpy as np
 
@@ -9,18 +9,33 @@ class Economy(MultiAgentEnv):
     """Class that creates economies.
     Inputs:
     1. markets_dict: a dictionary of markets, which has markets_id strings as key's and
-    markets class (e.g. spot market) as values.
+    a tpuple of (markets class, mkt_confg) as values.
     2. agents_dict: a dictionary of agents, which has agents id strings as key's and
     agents class (Household, Firm) as values.
     3. participation_dict: a dictionary with agents id as keys and markets id as values.
 
     Example:
-    economy = Economy(markets_dict = {"market_0": DiffDemandDiscrete, "market_1": DiffDemandDiscrete}),
+    PRICE_BAND_WIDE = 0.1
+    LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
+    HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
+    mkt_config = {
+        "lower_price": [LOWER_PRICE for i in range(env.n_agents)],
+        "higher_price": [HIGHER_PRICE for i in range(env.n_agents)],
+    }
+
+    econ_config = {
+        "markets_dict": {
+            "market_0": (DiffDemandDiscrete, mkt_config),
+            "market_1": (DiffDemandDiscrete, mkt_config),
+        },
         agents_dict = {"agent_0": Firm, "agent_1": Firm},
         participation_dict = {
                 "agent_0": ["market_0", "market_1"],
                 "agent_1": ["market_0", "market_1"],
             })
+    }
+
+    economy = Economy(econ_config)
     economy.reset()
     obs_, rew, done, info = economy.step(
         {"agent_0": np.array([7, 7]), "agent_1": np.array([15, 15])}
@@ -32,8 +47,8 @@ class Economy(MultiAgentEnv):
         self.markets_dict = config.get(
             "markets_dict",
             {
-                "market_0": (DiffDemandDiscrete, {}),
-                "market_1": (DiffDemandDiscrete, {}),
+                "market_0": (DiffDemand, {}),
+                "market_1": (DiffDemand, {}),
             },
         )
         self.agents_dict = config.get("agents_dict", {"agent_0": Firm, "agent_1": Firm})
@@ -58,8 +73,10 @@ class Economy(MultiAgentEnv):
 
         self.markets = [
             self.markets_dict[f"market_{i}"][0](
-                mkt_config=self.markets_dict[f"market_{i}"][1],
-                agents_dict=self.agents_per_market[i],
+                env_config={
+                    "mkt_config": self.markets_dict[f"market_{i}"][1],
+                    "agents_dict": self.agents_per_market[i],
+                }
             )
             for i in range(self.n_markets)
         ]
@@ -149,41 +166,23 @@ class Economy(MultiAgentEnv):
 
 # MANUAL TEST FOR DEBUGGING
 
-# env = Economy()
-# PRICE_BAND_WIDE = 0.1
-# LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
-# HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
-# mkt_config = {
-#     "lower_price": [LOWER_PRICE for i in range(env.n_agents)],
-#     "higher_price": [HIGHER_PRICE for i in range(env.n_agents)],
-# }
-# env_config = {
-#     "markets_dict": {
-#         "market_0": (DiffDemandDiscrete, mkt_config),
-#         "market_1": (DiffDemandDiscrete, mkt_config),
-#     }
-# }
-# economy = Economy(env_config)
-# economy.reset()
-# obs_, rew, done, info = economy.step(
-#     {"agent_0": np.array([0, 0]), "agent_1": np.array([0, 0])}
-# )
-# print(obs_, rew, done, info)
-
-# Construct configurations for each market based on agents who partcipate.
-# Instantiate markets.
-# Get the global dimensions based on market dimensions.
-# Construct the dimensionality ofr each agent. At first in can be the same.
-# Creates asserts to make sure the partcipation matrix makes sense.
-
-# get the reset
-# get the step
-
-# NOTES IN TYPES
-# Text Type:	str
-# Numeric Types:	int, float, complex
-# Sequence Types:	list, tuple, range
-# Mapping Type:	dict
-# Set Types:	set, frozenset
-# Boolean Type:	bool
-# Binary Types:	bytes, bytearray, memoryview
+env = Economy()
+PRICE_BAND_WIDE = 0.1
+LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
+HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
+mkt_config = {
+    "lower_price": [LOWER_PRICE for i in range(env.n_agents)],
+    "higher_price": [HIGHER_PRICE for i in range(env.n_agents)],
+}
+env_config = {
+    "markets_dict": {
+        "market_0": (DiffDemand, mkt_config),
+        "market_1": (DiffDemand, mkt_config),
+    }
+}
+economy = Economy(env_config)
+economy.reset()
+obs_, rew, done, info = economy.step(
+    {"agent_0": np.array([0, 0]), "agent_1": np.array([0, 0])}
+)
+print(obs_, rew, done, info)
