@@ -119,16 +119,16 @@ class DiffDemand(MultiAgentEnv):
 
             if self.space_type == "Continuous":
                 self.action_space[key] = Box(
-                    low=np.float64(self.lower_price[0]),
-                    high=np.float64(self.higher_price[0]),
+                    low=float(self.lower_price[0]),
+                    high=float(self.higher_price[0]),
                     shape=(1,),
-                    dtype=np.float64,
+                    dtype=float,
                 )
                 self.observation_space[key] = Box(
-                    low=np.float64(np.array(self.lower_price)),
-                    high=np.float64(np.array(self.higher_price)),
-                    shape=(np.int8(self.n_agents),),
-                    dtype=np.float64,
+                    low=np.array(self.lower_price),
+                    high=np.array(self.higher_price),
+                    shape=(int(self.n_agents),),
+                    dtype=float,
                 )
 
         # Episodic or not
@@ -156,14 +156,12 @@ class DiffDemand(MultiAgentEnv):
 
         if self.space_type == "Continuous":
             self.obs = {
-                f"agent_{i}": np.float64(
-                    np.array(
-                        [
-                            (self.lower_price[i] + self.higher_price[i]) / 2
-                            for i in range(self.n_agents)
-                        ],
-                        dtype=np.float64,
-                    )
+                f"agent_{i}": np.array(
+                    [
+                        (self.lower_price[i] + self.higher_price[i]) / 2
+                        for i in range(self.n_agents)
+                    ],
+                    dtype=float,
                 )
                 for i in range(self.n_agents)
             }
@@ -178,7 +176,7 @@ class DiffDemand(MultiAgentEnv):
 
         if self.space_type == "Discrete" or self.space_type == "MultiDiscrete":
             self.obs_ = {
-                f"agent_{i}": np.array([], dtype=np.int8) for i in range(self.n_agents)
+                f"agent_{i}": np.array([], dtype=int) for i in range(self.n_agents)
             }
             for i in range(self.n_agents):
                 for j in range(self.n_agents):
@@ -195,13 +193,12 @@ class DiffDemand(MultiAgentEnv):
 
         if self.space_type == "Continuous":
             self.obs_ = {
-                f"agent_{i}": np.float64(np.array([], dtype=np.float64))
-                for i in range(self.n_agents)
+                f"agent_{i}": np.array([], dtype=float) for i in range(self.n_agents)
             }
             for i in range(self.n_agents):
                 for j in range(self.n_agents):
                     self.obs_[f"agent_{i}"] = np.append(
-                        self.obs_[f"agent_{i}"], np.float64(actions[j])
+                        self.obs_[f"agent_{i}"], float(actions[j])
                     )
             prices = actions
 
@@ -219,7 +216,7 @@ class DiffDemand(MultiAgentEnv):
             for i in range(self.n_agents)
         ]
 
-        rew = {f"agent_{i}": np.float64(rewards_list[i]) for i in range(self.n_agents)}
+        rew = {f"agent_{i}": float(rewards_list[i]) for i in range(self.n_agents)}
 
         # OUTPUT3: done: True if in num_spets is higher than max periods.
 
@@ -235,7 +232,7 @@ class DiffDemand(MultiAgentEnv):
 
         # OUTPUT4: info - Info dictionary.
 
-        info = {f"agent_{i}": np.float64(prices[i]) for i in range(self.n_agents)}
+        info = {f"agent_{i}": float(prices[i]) for i in range(self.n_agents)}
 
         self.num_steps += 1
 
