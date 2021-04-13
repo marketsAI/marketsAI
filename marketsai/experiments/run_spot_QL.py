@@ -10,7 +10,7 @@ env = DiffDemand(env_config={})
 policy_ids = ["policy_{}".format(i) for i in range(env.n_agents)]
 
 # STEP 2: Experiment configuration
-MAX_STEPS = 40 * 1000
+MAX_STEPS = 4000 * 1000
 PRICE_BAND_WIDE = 0.1
 LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
 HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
@@ -41,25 +41,25 @@ price_avge_list = []
 obs = env.reset()
 # process to preprocess obs to put in choose actions
 for j in range(MAX_STEPS):
-    obs_list = list(obs[env.players[0]])
+    obs_list = list(obs["agent_0"])
     obs_index = 0
     for i in range(env.n_agents):
         obs_index += env.gridpoints ** (env.n_agents - 1 - i) * obs_list[i]
     actions_list = [agents[i].choose_action(obs_index) for i in range(env.n_agents)]
-    actions_dict = {env.players[i]: actions_list[i] for i in range(env.n_agents)}
+    actions_dict = {f"agent_{i}": actions_list[i] for i in range(env.n_agents)}
     obs_, reward, done, info = env.step(actions_dict)
-    obs_list_ = list(obs_[env.players[0]])
+    obs_list_ = list(obs_["agent_0"])
     obs_index_ = 0
     for i in range(env.n_agents):
         obs_index_ += env.gridpoints ** (env.n_agents - 1 - i) * obs_list_[i]
-    profit = reward["player_0"]
-    price = info["player_0"]
+    profit = reward["agent_0"]
+    price = info["agent_0"]
     # profits.append(reward
     for i in range(env.n_agents):
         agents[i].learn(
             obs_index,
-            actions_dict[env.players[i]],
-            reward[env.players[i]],
+            actions_dict[f"agent_{i}"],
+            reward[f"agent_{i}"],
             obs_index_,
         )
     #   profit[i] += reward[i]  # I can do this out of the loop with arrays
