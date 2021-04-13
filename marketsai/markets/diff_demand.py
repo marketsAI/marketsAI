@@ -26,7 +26,9 @@ class DiffDemand(MultiAgentEnv):
                     substitution = substitution parameter mu
                 * You can provide random process instead of values.
 
-                space_type = Either "Discrete", "MultiDiscrete", "Continuous"
+                lower_price: float that denotes minimum price that the firm can change. Default is cost.
+                higher_price: float that denotes maximum price that the firm can change. Default is value.
+                space_type: Either "Discrete", "MultiDiscrete", "Continuous".
 
                 gridpoints = number of gridpoints of the action space
                 * ignored if space_type = "Continuous"

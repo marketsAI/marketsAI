@@ -1,26 +1,26 @@
-from marketsai.markets.diff_demand import DiffDemandDiscrete
+from marketsai.markets.diff_demand import DiffDemand
 from marketsai.agents.q_learning_agent import Agent
 import matplotlib.pyplot as plt
 import math
 import numpy as np
 import pandas as pd
 
-env = DiffDemandDiscrete(config={})
+env = DiffDemand(env_config={})
 
 policy_ids = ["policy_{}".format(i) for i in range(env.n_agents)]
 
 # STEP 2: Experiment configuration
-MAX_STEPS = 4000 * 1000
+MAX_STEPS = 40 * 1000
 PRICE_BAND_WIDE = 0.1
 LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
 HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
 DEC_RATE = math.e ** (-4 * 10 ** (-6))
-env_config = {
-    "LOWER_PRICE": [LOWER_PRICE for i in range(env.n_agents)],
-    "HIGHER_PRICE": [HIGHER_PRICE for i in range(env.n_agents)],
+mkt_config = {
+    "lower_price": [LOWER_PRICE for i in range(env.n_agents)],
+    "higher_price": [HIGHER_PRICE for i in range(env.n_agents)],
 }
 
-env = DiffDemandDiscrete(config=env_config)
+env = DiffDemand(env_config={"mkt_config": mkt_config})
 
 agents = [
     Agent(
@@ -102,4 +102,4 @@ plt.show()
 
 dict = {"Profits": profit_avge_list, "Price": price_avge_list}
 df = pd.DataFrame(dict)
-df.to_csv("collusion_QL_baseline.csv")
+df.to_csv("collusion_QL_test_April13.csv")
