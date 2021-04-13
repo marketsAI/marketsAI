@@ -242,22 +242,22 @@ class DiffDemand(MultiAgentEnv):
 
 # Manual test for debugging
 
-PRICE_BAND_WIDE = 0.1
-LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
-HIGHER_PRICE = 1.92 + PRICE_BAND_WIDE
+# PRICE_BAND_WIDE = 0.1
+# LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
+# HIGHER_PRICE = 1.92 + PRICE_BAND_WIDE
 
-n_firms = 2
-env = DiffDemand(
-    env_config={
-        "mkt_config": {
-            "lower_price": [LOWER_PRICE for i in range(n_firms)],
-            "higher_price": [HIGHER_PRICE for i in range(n_firms)],
-            "gridpoint": 16,
-            "space_type": "Continuous",
-        }
-    },
-)
+# n_firms = 2
+# env = DiffDemand(
+#     env_config={
+#         "mkt_config": {
+#             "lower_price": [LOWER_PRICE for i in range(n_firms)],
+#             "higher_price": [HIGHER_PRICE for i in range(n_firms)],
+#             "gridpoint": 16,
+#             "space_type": "Continuous",
+#         }
+#     },
+# )
 
-env.reset()
-obs_, reward, done, info = env.step({"agent_0": 1.6, "agent_1": 1.6})
-print(obs_, reward, done, info)
+# env.reset()
+# obs_, reward, done, info = env.step({"agent_0": 1.6, "agent_1": 1.6})
+# print(obs_, reward, done, info)
