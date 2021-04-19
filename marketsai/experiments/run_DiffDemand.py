@@ -36,13 +36,13 @@ policy_ids = [f"policy_{i}" for i in range(env.n_agents)]
 
 # Experiment configuration
 test = False
-date = "April20_"
+date = "April20_fin1"
 env_label = "DiffDd"
 if test == True:
-    MAX_STEPS = 10 * 1000
+    MAX_STEPS = 20 * 1000
     exp_label = env_label + "_test_" + date
 else:
-    MAX_STEPS = 4000 * 1000
+    MAX_STEPS = 3000 * 1000
     exp_label = env_label + "_run_" + date
 
 verbosity = 2
@@ -53,7 +53,7 @@ stop = {"timesteps_total": MAX_STEPS}
 PRICE_BAND_WIDE = 0.1
 LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
 HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
-DEC_RATE = float(math.e ** (-4 * 10 ** (-6)))
+DEC_RATE = float(math.e ** (-1 * 10 ** (-6)))
 DEC_RATE_HIGH = float(math.e ** (-4 * 10 ** (-6) * 4))
 
 env_config = {
@@ -66,7 +66,7 @@ env_config = {
             "ext_demand": 0,
             "substitution": 0.25,
         },
-        "space_type": "MultiDiscrete",
+        "space_type": "Discrete",
         "gridpoints": 20,
     }
 }
@@ -86,7 +86,7 @@ exploration_config = {
     # The Exploration class to use.
     "type": "EpsilonGreedy",
     # Config for the Exploration class' constructor:
-    "initial_epsilon": 1.0,
+    "initial_epsilon": 1,
     "final_epsilon": 0.001,
     "epsilon_timesteps": 1000000,  # Timesteps over which to anneal epsilon.
     # For soft_q, use:
@@ -97,11 +97,11 @@ exploration_config = {
 }
 
 training_config = {
-    "gamma": 0.95,
-    "lr": 0.05,
+    "gamma": 0.99,
+    "lr": 0.01,
     "adam_epsilon": 1.5 * 10 ** (-4),
     "env": "diffdemand",
-    "exploration_config": exploration_config,
+    "exploration_config": exploration_config_expdec,
     "env_config": env_config,
     "horizon": 100,
     "soft_horizon": True,
@@ -119,10 +119,10 @@ training_config = {
         "policy_mapping_fn": (lambda agent_id: policy_ids[int(agent_id.split("_")[1])]),
     },
     "framework": "torch",
-    "num_workers": 9,
+    "num_workers": 15,
     "num_gpus": 1,
     # "timesteps_per_iteration": 1000,
-    "learning_starts": 80000,
+    "learning_starts": 10000,
     # "learning_starts": 1000,
     "normalize_actions": False,
     "dueling": True,
@@ -140,6 +140,10 @@ training_config = {
     # Time steps over which the beta parameter is annealed.
     "prioritized_replay_beta_annealing_timesteps": 3000000,
 }
+
+if test == True:
+    training_config["learning_starts"] = 1000
+    training_config["timesteps_per_iteration"] = 1000
 
 
 # stop = {"training_iteration": MAX_STEPS // 1000}
@@ -162,30 +166,30 @@ training_config = {
 #         verbose=verbosity,
 #     )
 
-training_config_noduel = training_config.copy()
-training_config_noduel["dueling"] = False
+# training_config_noduel = training_config.copy()
+# training_config_noduel["dueling"] = False
 
-training_config_nodouble = training_config.copy()
-training_config_nodouble["double_q"] = False
+# training_config_nodouble = training_config.copy()
+# training_config_nodouble["double_q"] = False
 
-training_config_nomulti = training_config.copy()
-training_config_nomulti["n_step"] = 1
+# training_config_nomulti = training_config.copy()
+# training_config_nomulti["n_step"] = 1
 
-training_config_nonoisy = training_config.copy()
-training_config_nonoisy["noisy"] = False
+# training_config_nonoisy = training_config.copy()
+# training_config_nonoisy["noisy"] = False
 
-training_config_nodist = training_config.copy()
-training_config_nodist["num_atoms"] = 1
+# training_config_nodist = training_config.copy()
+# training_config_nodist["num_atoms"] = 1
 
-training_config_noreplay = training_config.copy()
-training_config_noreplay["prioritized_replay"] = False
+# training_config_noreplay = training_config.copy()
+# training_config_noreplay["prioritized_replay"] = False
 
-training_config_DQNbasic = training_config.copy()
-training_config_DQNbasic["dueling"] = False
-training_config_DQNbasic["double_q"] = False
-training_config_DQNbasic["n_step"] = 1
-training_config_DQNbasic["noisy"] = False
-training_config_DQNbasic["num_atoms"] = 1
+# training_config_DQNbasic = training_config.copy()
+# training_config_DQNbasic["dueling"] = False
+# training_config_DQNbasic["double_q"] = False
+# training_config_DQNbasic["n_step"] = 1
+# training_config_DQNbasic["noisy"] = False
+# training_config_DQNbasic["num_atoms"] = 1
 
 
 exp_name = exp_label + "RAINBOW"
@@ -198,7 +202,7 @@ results = tune.run(
     stop=stop,
     callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
     verbose=verbosity,
-    # num_samples=3
+    # num_samples=2
     # resources_per_trial={"gpu": NUM_GPUS},
 )
 
