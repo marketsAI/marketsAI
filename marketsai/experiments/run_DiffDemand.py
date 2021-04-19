@@ -18,13 +18,14 @@ import logging
 
 # STEP 0: Inititialize ray
 NUM_CPUS = 32
-NUM_GPUS = 0
+NUM_GPUS = 3
 shutdown()
 init(
     num_cpus=NUM_CPUS,
     num_gpus=NUM_GPUS,
     logging_level=logging.ERROR,
 )
+
 
 # STEP 1: register environment
 register_env("diffdemand", DiffDemand)
@@ -44,7 +45,7 @@ else:
     MAX_STEPS = 3000 * 1000
     exp_label = env_label + "_run_" + date
 
-verbosity = 2
+verbosity = 3
 stop = {"episodes_total": MAX_STEPS // 100}
 
 # Environment configuration
@@ -117,8 +118,9 @@ training_config = {
     },
     "framework": "torch",
     "num_workers": NUM_CPUS - 1,
-    "num_gpus": 0,
+    "num_gpus": NUM_GPUS,
     "timesteps_per_iteration": 1000,
+    "learning_starts": 80000,
     "normalize_actions": False,
     "dueling": True,
     "double_q": True,
@@ -170,7 +172,7 @@ training_config_nonoisy = training_config.copy()
 training_config_nonoisy["noisy"] = False
 
 training_config_nodist = training_config.copy()
-training_config_nodist["n_atoms"] = 1
+training_config_nodist["num_atoms"] = 1
 
 training_config_noreplay = training_config.copy()
 training_config_noreplay["prioritized_replay"] = False
@@ -180,7 +182,7 @@ training_config_DQNbasic["dueling"] = False
 training_config_DQNbasic["double_q"] = False
 training_config_DQNbasic["n_step"] = 1
 training_config_DQNbasic["noisy"] = False
-training_config_DQNbasic["n_atoms"] = 1
+training_config_DQNbasic["num_atoms"] = 1
 
 
 exp_name = exp_label + "RAINBOW"
@@ -193,6 +195,7 @@ results = tune.run(
     stop=stop,
     callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
     verbose=verbosity,
+    # resources_per_trial={"gpu": NUM_GPUS},
 )
 
 
@@ -230,6 +233,8 @@ results = tune.run(
     stop=stop,
     callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
     verbose=verbosity,
+    num_gpus=NUM_GPUS,
+    num_cpus=NUM_CPUS,
 )
 
 exp_name = exp_label + "nodist"
@@ -278,7 +283,7 @@ results = tune.run(
     stop=stop,
     callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
     verbose=verbosity,
-)
+# )
 # # Policy Gradient Methods: PG, A2C, A3C, PPO, APPO
 
 # # algo_list=["PG", "A2C", "A3C", "PPO", "APPO"]
