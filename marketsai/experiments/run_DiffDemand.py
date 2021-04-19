@@ -35,18 +35,19 @@ policy_ids = [f"policy_{i}" for i in range(env.n_agents)]
 # STEP 2: Experiment configuration
 
 # Experiment configuration
-test = True
-date = "April14_"
+test = False
+date = "April20_"
 env_label = "DiffDd"
 if test == True:
     MAX_STEPS = 10 * 1000
     exp_label = env_label + "_test_" + date
 else:
-    MAX_STEPS = 3000 * 1000
+    MAX_STEPS = 4000 * 1000
     exp_label = env_label + "_run_" + date
 
-verbosity = 3
-stop = {"episodes_total": MAX_STEPS // 100}
+verbosity = 2
+# stop = {"episodes_total": MAX_STEPS // 100}
+stop = {"timesteps_total": MAX_STEPS}
 
 # Environment configuration
 PRICE_BAND_WIDE = 0.1
@@ -66,7 +67,7 @@ env_config = {
             "substitution": 0.25,
         },
         "space_type": "MultiDiscrete",
-        "gridpoints": 16,
+        "gridpoints": 20,
     }
 }
 
@@ -86,8 +87,8 @@ exploration_config = {
     "type": "EpsilonGreedy",
     # Config for the Exploration class' constructor:
     "initial_epsilon": 1.0,
-    "final_epsilon": 0.02,
-    "epsilon_timesteps": 500000,  # Timesteps over which to anneal epsilon.
+    "final_epsilon": 0.001,
+    "epsilon_timesteps": 1000000,  # Timesteps over which to anneal epsilon.
     # For soft_q, use:
     # "exploration_config" = {
     #   "type": "SoftQ"
@@ -97,7 +98,8 @@ exploration_config = {
 
 training_config = {
     "gamma": 0.95,
-    "lr": 0.15,
+    "lr": 0.05,
+    "adam_epsilon": 1.5 * 10 ** (-4),
     "env": "diffdemand",
     "exploration_config": exploration_config,
     "env_config": env_config,
@@ -117,19 +119,20 @@ training_config = {
         "policy_mapping_fn": (lambda agent_id: policy_ids[int(agent_id.split("_")[1])]),
     },
     "framework": "torch",
-    "num_workers": NUM_CPUS - 1,
-    "num_gpus": NUM_GPUS,
-    "timesteps_per_iteration": 1000,
+    "num_workers": 9,
+    "num_gpus": 1,
+    # "timesteps_per_iteration": 1000,
     "learning_starts": 80000,
+    # "learning_starts": 1000,
     "normalize_actions": False,
     "dueling": True,
     "double_q": True,
     "noisy": True,
-    "n_step": 3,
-    "num_atoms": 10,
-    "v_min": 0.5,
-    "v_max": 2,
-    "prioritized_replay": True,
+    "n_step": tune.grid_search([1, 3]),
+    "num_atoms": 1,
+    "v_min": 0,
+    "v_max": 6,
+    "prioritized_replay": tune.grid_search([True, False]),
     "prioritized_replay_alpha": 0.5,
     "prioritized_replay_beta": 0.4,
     # Final value of beta (by default, we use constant beta=0.4).
@@ -139,8 +142,8 @@ training_config = {
 }
 
 
-# stop = {"training_iteration": MAX_STEPS//1000}
-# stop = {"info/num_steps_trained": MAX_STEPS}
+# stop = {"training_iteration": MAX_STEPS // 1000}
+
 
 # DQN Methods: DQN, APEX, R2D2
 
@@ -195,94 +198,93 @@ results = tune.run(
     stop=stop,
     callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
     verbose=verbosity,
+    # num_samples=3
     # resources_per_trial={"gpu": NUM_GPUS},
 )
 
 
-exp_name = exp_label + "noduel"
-results = tune.run(
-    "APEX",
-    name=exp_name,
-    config=training_config_noduel,
-    # checkpoint_freq=250,
-    checkpoint_at_end=True,
-    stop=stop,
-    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
-    verbose=verbosity,
-)
+# exp_name = exp_label + "noduel"
+# results = tune.run(
+#     "APEX",
+#     name=exp_name,
+#     config=training_config_noduel,
+#     # checkpoint_freq=250,
+#     checkpoint_at_end=True,
+#     stop=stop,
+#     callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
+#     verbose=verbosity,
+# )
 
-exp_name = exp_label + "nodouble"
-results = tune.run(
-    "APEX",
-    name=exp_name,
-    config=training_config_nodouble,
-    # checkpoint_freq=250,
-    checkpoint_at_end=True,
-    stop=stop,
-    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
-    verbose=verbosity,
-)
+# exp_name = exp_label + "nodouble"
+# results = tune.run(
+#     "APEX",
+#     name=exp_name,
+#     config=training_config_nodouble,
+#     # checkpoint_freq=250,
+#     checkpoint_at_end=True,
+#     stop=stop,
+#     callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
+#     verbose=verbosity,
+# )
 
-exp_name = exp_label + "nomulti"
-results = tune.run(
-    "APEX",
-    name=exp_name,
-    config=training_config_nomulti,
-    # checkpoint_freq=250,
-    checkpoint_at_end=True,
-    stop=stop,
-    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
-    verbose=verbosity,
-    num_gpus=NUM_GPUS,
-    num_cpus=NUM_CPUS,
-)
+# exp_name = exp_label + "nomulti"
+# results = tune.run(
+#     "APEX",
+#     name=exp_name,
+#     config=training_config_nomulti,
+#     # checkpoint_freq=250,
+#     checkpoint_at_end=True,
+#     stop=stop,
+#     callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
+#     verbose=verbosity,
+# )
 
-exp_name = exp_label + "nodist"
-results = tune.run(
-    "APEX",
-    name=exp_name,
-    config=training_config_nodist,
-    # checkpoint_freq=250,
-    checkpoint_at_end=True,
-    stop=stop,
-    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
-    verbose=verbosity,
-)
+# exp_name = exp_label + "nodist"
+# results = tune.run(
+#     "APEX",
+#     name=exp_name,
+#     config=training_config_nodist,
+#     # checkpoint_freq=250,
+#     checkpoint_at_end=True,
+#     stop=stop,
+#     callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
+#     verbose=verbosity,
+# )
 
-exp_name = exp_label + "nonoisy"
-results = tune.run(
-    "APEX",
-    name=exp_name,
-    config=training_config_nonoisy,
-    # checkpoint_freq=250,
-    checkpoint_at_end=True,
-    stop=stop,
-    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
-    verbose=verbosity,
-)
+# exp_name = exp_label + "nonoisy"
+# results = tune.run(
+#     "APEX",
+#     name=exp_name,
+#     config=training_config_nonoisy,
+#     # checkpoint_freq=250,
+#     checkpoint_at_end=True,
+#     stop=stop,
+#     callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
+#     verbose=verbosity,
+# )
 
-exp_name = exp_label + "noreplay"
-results = tune.run(
-    "APEX",
-    name=exp_name,
-    config=training_config_noreplay,
-    # checkpoint_freq=250,
-    checkpoint_at_end=True,
-    stop=stop,
-    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
-    verbose=verbosity,
-)
+# exp_name = exp_label + "noreplay"
+# results = tune.run(
+#     "APEX",
+#     name=exp_name,
+#     config=training_config_noreplay,
+#     # checkpoint_freq=250,
+#     checkpoint_at_end=True,
+#     stop=stop,
+#     callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
+#     verbose=verbosity,
+# )
 
-exp_name = exp_label + "DQNbasic"
-results = tune.run(
-    "APEX",
-    name=exp_name,
-    config=training_config_DQNbasic,
-    # checkpoint_freq=250,
-    checkpoint_at_end=True,
-    stop=stop,
-    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
-    verbose=verbosity,
+# exp_name = exp_label + "DQNbasic"
+# results = tune.run(
+#     "APEX",
+#     name=exp_name,
+#     config=training_config_DQNbasic,
+#     # checkpoint_freq=250,
+#     checkpoint_at_end=True,
+#     stop=stop,
+#     callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
+#     verbose=verbosity,
 # )
 # # Policy Gradient Methods: PG, A2C, A3C, PPO, APPO
 

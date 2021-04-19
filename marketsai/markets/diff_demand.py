@@ -87,7 +87,7 @@ class DiffDemand(MultiAgentEnv):
 
         self.gridpoints = self.mkt_config.get("gridpoints", 16)
         lower_price_provided = self.mkt_config.get("lower_price", self.cost)
-        higher_price_provided = self.mkt_config.get("higher_price", self.cost)
+        higher_price_provided = self.mkt_config.get("higher_price", self.values)
 
         if isinstance(lower_price_provided, list):
             self.lower_price = lower_price_provided
