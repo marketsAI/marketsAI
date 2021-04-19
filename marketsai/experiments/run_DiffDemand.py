@@ -36,7 +36,7 @@ test = True
 date = "April14_"
 env_label = "DiffDd"
 if test == True:
-    MAX_STEPS = 40 * 1000
+    MAX_STEPS = 10 * 1000
     exp_label = env_label + "_test_" + date
 else:
     MAX_STEPS = 3000 * 1000
@@ -67,7 +67,7 @@ env_config = {
     }
 }
 
-exploration_config = {
+exploration_config_expdec = {
     "type": "EpsilonGreedy",
     "epsilon_schedule": ExponentialSchedule(
         schedule_timesteps=1,
@@ -75,6 +75,21 @@ exploration_config = {
         initial_p=1.0,
         decay_rate=DEC_RATE,
     ),
+}
+
+# === Exploration Settings ===
+exploration_config = {
+    # The Exploration class to use.
+    "type": "EpsilonGreedy",
+    # Config for the Exploration class' constructor:
+    "initial_epsilon": 1.0,
+    "final_epsilon": 0.02,
+    "epsilon_timesteps": 500000,  # Timesteps over which to anneal epsilon.
+    # For soft_q, use:
+    # "exploration_config" = {
+    #   "type": "SoftQ"
+    #   "temperature": [float, e.g. 1.0]
+    # }
 }
 
 training_config = {
@@ -105,8 +120,18 @@ training_config = {
     "normalize_actions": False,
     "dueling": True,
     "double_q": True,
-    # N-step Q learning
-    "n_step": 1,
+    "noisy": True,
+    "n_step": 3,
+    "num_atoms": 10,
+    "v_min": 0.5,
+    "v_max": 2,
+    "prioritized_replay": True,
+    "prioritized_replay_alpha": 0.5,
+    "prioritized_replay_beta": 0.4,
+    # Final value of beta (by default, we use constant beta=0.4).
+    "final_prioritized_replay_beta": 1,
+    # Time steps over which the beta parameter is annealed.
+    "prioritized_replay_beta_annealing_timesteps": 3000000,
 }
 
 
@@ -130,20 +155,37 @@ training_config = {
 #         verbose=verbosity,
 #     )
 
+training_config_noduel = training_config.copy()
+training_config_noduel["dueling"] = False
 
-training_config_RBW = training_config.copy()
-training_config_RBW["n_step"] = 5
-training_config_RBW["noisy"] = True
-training_config_RBW["num_atoms"] = 10
-training_config_RBW["v_min"] = 0.5
-training_config_RBW["v_max"] = 2
+training_config_nodouble = training_config.copy()
+training_config_nodouble["double_q"] = False
+
+training_config_nomulti = training_config.copy()
+training_config_nomulti["n_step"] = 1
+
+training_config_nonoisy = training_config.copy()
+training_config_nonoisy["noisy"] = False
+
+training_config_nodist = training_config.copy()
+training_config_nodist["n_atoms"] = 1
+
+training_config_noreplay = training_config.copy()
+training_config_noreplay["prioritized_replay"] = False
+
+training_config_DQNbasic = training_config.copy()
+training_config_DQNbasic["dueling"] = False
+training_config_DQNbasic["double_q"] = False
+training_config_DQNbasic["n_step"] = 1
+training_config_DQNbasic["noisy"] = False
+training_config_DQNbasic["n_atoms"] = 1
 
 
 exp_name = exp_label + "RAINBOW"
 results = tune.run(
     "APEX",
     name=exp_name,
-    config=training_config_RBW,
+    config=training_config,
     # checkpoint_freq=250,
     checkpoint_at_end=True,
     stop=stop,
@@ -151,6 +193,90 @@ results = tune.run(
     verbose=verbosity,
 )
 
+
+exp_name = exp_label + "noduel"
+results = tune.run(
+    "APEX",
+    name=exp_name,
+    config=training_config_noduel,
+    # checkpoint_freq=250,
+    checkpoint_at_end=True,
+    stop=stop,
+    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
+    verbose=verbosity,
+)
+
+exp_name = exp_label + "nodouble"
+results = tune.run(
+    "APEX",
+    name=exp_name,
+    config=training_config_nodouble,
+    # checkpoint_freq=250,
+    checkpoint_at_end=True,
+    stop=stop,
+    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
+    verbose=verbosity,
+)
+
+exp_name = exp_label + "nomulti"
+results = tune.run(
+    "APEX",
+    name=exp_name,
+    config=training_config_nomulti,
+    # checkpoint_freq=250,
+    checkpoint_at_end=True,
+    stop=stop,
+    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
+    verbose=verbosity,
+)
+
+exp_name = exp_label + "nodist"
+results = tune.run(
+    "APEX",
+    name=exp_name,
+    config=training_config_nodist,
+    # checkpoint_freq=250,
+    checkpoint_at_end=True,
+    stop=stop,
+    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
+    verbose=verbosity,
+)
+
+exp_name = exp_label + "nonoisy"
+results = tune.run(
+    "APEX",
+    name=exp_name,
+    config=training_config_nonoisy,
+    # checkpoint_freq=250,
+    checkpoint_at_end=True,
+    stop=stop,
+    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
+    verbose=verbosity,
+)
+
+exp_name = exp_label + "noreplay"
+results = tune.run(
+    "APEX",
+    name=exp_name,
+    config=training_config_noreplay,
+    # checkpoint_freq=250,
+    checkpoint_at_end=True,
+    stop=stop,
+    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
+    verbose=verbosity,
+)
+
+exp_name = exp_label + "DQNbasic"
+results = tune.run(
+    "APEX",
+    name=exp_name,
+    config=training_config_DQNbasic,
+    # checkpoint_freq=250,
+    checkpoint_at_end=True,
+    stop=stop,
+    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
+    verbose=verbosity,
+)
 # # Policy Gradient Methods: PG, A2C, A3C, PPO, APPO
 
 # # algo_list=["PG", "A2C", "A3C", "PPO", "APPO"]
