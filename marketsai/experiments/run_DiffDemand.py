@@ -17,10 +17,12 @@ import matplotlib.pyplot as plt
 import logging
 
 # STEP 0: Inititialize ray
-NUM_CPUS = 8
+NUM_CPUS = 32
+NUM_GPUS = 0
 shutdown()
 init(
     num_cpus=NUM_CPUS,
+    num_gpus=NUM_GPUS,
     logging_level=logging.ERROR,
 )
 
