@@ -99,7 +99,7 @@ class DiffDemand(MultiAgentEnv):
         else:
             self.higher_price = [higher_price_provided for i in range(self.n_agents)]
 
-        self.higher_price = self.mkt_config.get("higher_price", self.values)
+        # self.higher_price = self.mkt_config.get("higher_price", self.values)
 
         # spaces
         self.space_type = self.mkt_config.get("space_type", "Discrete")
@@ -261,14 +261,14 @@ class DiffDemand(MultiAgentEnv):
 # env = DiffDemand(
 #     env_config={
 #         "mkt_config": {
-#             "lower_price": [LOWER_PRICE for i in range(n_firms)],
-#             "higher_price": [HIGHER_PRICE for i in range(n_firms)],
-#             "gridpoint": 16,
-#             "space_type": "Continuous",
+#             # "lower_price": [LOWER_PRICE for i in range(n_firms)],
+#             # "higher_price": [HIGHER_PRICE for i in range(n_firms)],
+#             "gridpoints": 20,
+#             "space_type": "Discrete",
 #         }
 #     },
 # )
 
 # env.reset()
-# obs_, reward, done, info = env.step({"agent_0": 1.6, "agent_1": 1.6})
+# obs_, reward, done, info = env.step({"agent_0": 17, "agent_1": 17})
 # print(obs_, reward, done, info)
