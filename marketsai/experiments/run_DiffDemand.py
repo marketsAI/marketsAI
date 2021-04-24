@@ -35,8 +35,8 @@ policy_ids = [f"policy_{i}" for i in range(env.n_agents)]
 # STEP 2: Experiment configuration
 
 # Experiment configuration
-test = False
-date = "April20_fin1"
+test = True
+date = "April20_"
 env_label = "DiffDd"
 if test == True:
     MAX_STEPS = 20 * 1000
@@ -71,6 +71,8 @@ env_config = {
     }
 }
 
+env = DiffDemand(env_config)
+
 exploration_config_expdec = {
     "type": "EpsilonGreedy",
     "epsilon_schedule": ExponentialSchedule(
@@ -96,10 +98,10 @@ exploration_config = {
     # }
 }
 
-training_config = {
+common_config = {
+    # common_config
     "gamma": 0.99,
-    "lr": 0.01,
-    "adam_epsilon": 1.5 * 10 ** (-4),
+    "lr": tune.grid_search([0.00025, 0.1]),
     "env": "diffdemand",
     "exploration_config": exploration_config_expdec,
     "env_config": env_config,
@@ -121,29 +123,58 @@ training_config = {
     "framework": "torch",
     "num_workers": 15,
     "num_gpus": 1,
-    # "timesteps_per_iteration": 1000,
-    "learning_starts": 10000,
+    "timesteps_per_iteration": 1000,
     # "learning_starts": 1000,
     "normalize_actions": False,
-    "dueling": True,
-    "double_q": True,
-    "noisy": True,
-    "n_step": tune.grid_search([1, 3]),
-    "num_atoms": 1,
-    "v_min": 0,
-    "v_max": 6,
-    "prioritized_replay": tune.grid_search([True, False]),
-    "prioritized_replay_alpha": 0.5,
-    "prioritized_replay_beta": 0.4,
-    # Final value of beta (by default, we use constant beta=0.4).
-    "final_prioritized_replay_beta": 1,
-    # Time steps over which the beta parameter is annealed.
-    "prioritized_replay_beta_annealing_timesteps": 3000000,
 }
 
 if test == True:
-    training_config["learning_starts"] = 1000
-    training_config["timesteps_per_iteration"] = 1000
+    common_config["timesteps_per_iteration"] = 1000
+
+apex_config = {
+    # APE-X
+    "learning_starts": tune.grid_search([1000, 80000]),
+    "adam_epsilon": 1.5 * 10 ** (-4),
+    "dueling": True,
+    "double_q": True,
+    "noisy": False,
+    "n_step": 1,
+    "num_atoms": 1,
+    "v_min": 0,
+    "v_max": 6,
+    "prioritized_replay": True,
+    "prioritized_replay_alpha": 0.6,
+    "prioritized_replay_beta": 0.4,
+    # Final value of beta (by default, we use constant beta=0.4).
+    "final_prioritized_replay_beta": 0.4,
+    # Time steps over which the beta parameter is annealed.
+    "prioritized_replay_beta_annealing_timesteps": 20000,
+}
+# if test == True:
+#    apex_config["learning_starts"] = 1000
+
+training_config_apex = {**common_config, **apex_config}
+
+exp_name = exp_label + "APEXbasic"
+results = tune.run(
+    "APEX",
+    name=exp_name,
+    config=training_config_apex,
+    # checkpoint_freq=250,
+    checkpoint_at_end=True,
+    stop=stop,
+    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
+    verbose=verbosity,
+    # num_samples=2
+    # resources_per_trial={"gpu": NUM_GPUS},
+)
+
+ppo_config = {
+    # ppo
+    "use_critic": True,
+    "use_gae": True,
+}
+training_config_ppo = {**common_config, **ppo_config}
 
 
 # stop = {"training_iteration": MAX_STEPS // 1000}
@@ -190,21 +221,6 @@ if test == True:
 # training_config_DQNbasic["n_step"] = 1
 # training_config_DQNbasic["noisy"] = False
 # training_config_DQNbasic["num_atoms"] = 1
-
-
-exp_name = exp_label + "RAINBOW"
-results = tune.run(
-    "APEX",
-    name=exp_name,
-    config=training_config,
-    # checkpoint_freq=250,
-    checkpoint_at_end=True,
-    stop=stop,
-    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
-    verbose=verbosity,
-    # num_samples=2
-    # resources_per_trial={"gpu": NUM_GPUS},
-)
 
 
 # exp_name = exp_label + "noduel"
