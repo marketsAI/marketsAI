@@ -1,5 +1,5 @@
 from marketsai.markets.diff_demand import DiffDemand
-from marketsai.agents.q_learning_agent import Agent
+from marketsai.agents.q_learning_agent import Qagent
 import matplotlib.pyplot as plt
 import math
 import numpy as np
@@ -10,20 +10,22 @@ env = DiffDemand(env_config={})
 policy_ids = ["policy_{}".format(i) for i in range(env.n_agents)]
 
 # STEP 2: Experiment configuration
-MAX_STEPS = 4000 * 1000
+MAX_STEPS = 3000 * 1000
 PRICE_BAND_WIDE = 0.1
 LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
 HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
-DEC_RATE = math.e ** (-4 * 10 ** (-6))
+DEC_RATE = math.e ** (-3 * 10 ** (-6))
 mkt_config = {
-    "lower_price": [LOWER_PRICE for i in range(env.n_agents)],
-    "higher_price": [HIGHER_PRICE for i in range(env.n_agents)],
+    # "lower_price": [LOWER_PRICE for i in range(env.n_agents)],
+    # "higher_price": [HIGHER_PRICE for i in range(env.n_agents)],
+    "space_type": "Discrete",
+    "gridpoints": 21,
 }
 
 env = DiffDemand(env_config={"mkt_config": mkt_config})
 
 agents = [
-    Agent(
+    Qagent(
         lr=0.15,
         gamma=0.95,
         eps_start=1.0,
@@ -35,10 +37,13 @@ agents = [
     for i in range(env.n_agents)
 ]
 profits = []
-prices = []
+prices0 = []
+prices1 = []
 profit_avge_list = []
-price_avge_list = []
+price0_avge_list = []
+price1_avge_list = []
 obs = env.reset()
+print(env.step({"agent_0": 11, "agent_1": 12}))
 # process to preprocess obs to put in choose actions
 for j in range(MAX_STEPS):
     obs_list = list(obs["agent_0"])
@@ -53,7 +58,8 @@ for j in range(MAX_STEPS):
     for i in range(env.n_agents):
         obs_index_ += env.gridpoints ** (env.n_agents - 1 - i) * obs_list_[i]
     profit = reward["agent_0"]
-    price = info["agent_0"]
+    price0 = info["agent_0"]
+    price1 = info["agent_1"]
     # profits.append(reward
     for i in range(env.n_agents):
         agents[i].learn(
@@ -65,22 +71,26 @@ for j in range(MAX_STEPS):
     #   profit[i] += reward[i]  # I can do this out of the loop with arrays
     #   price[i] = 1 + actions[i] / 14 - cost[i]
     profits.append(profit)
-    prices.append(price)
+    prices0.append(price0)
+    prices1.append(price1)
     obs = obs_
 
     if j % 100 == 0:
-        price_avge = np.mean(prices[-100:])
-        price_min = np.min(prices[-100:])
-        price_max = np.max(prices[-100:])
+        price0_avge = np.mean(prices0[-100:])
+        price1_avge = np.mean(prices1[-100:])
+        price_min = np.min(prices0[-100:])
+        price_max = np.max(prices0[-100:])
         profit_avge = np.mean(profits[-100:])
         profit_avge_list.append(profit_avge)
-        price_avge_list.append(price_avge)
+        price0_avge_list.append(price0_avge)
+        price1_avge_list.append(price1_avge)
         if j % 1000 == 0:
             print(
                 "step",
                 j,
                 "profit_avge %.4f" % profit_avge,
-                "price_avge %.2f" % price_avge,
+                "price0_avge %.2f" % price0_avge,
+                "price1_avge %.2f" % price1_avge,
                 "price_min %.2f" % price_min,
                 "price_max %.2f" % price_max,
                 "epsilon %2f" % agents[0].epsilon,
@@ -93,13 +103,13 @@ plt.title("Average Profits")
 plt.xlabel("Episodes")
 plt.show()
 
-plt.plot(price_avge_list)
+plt.plot(price0_avge_list)
 plt.title("Average Price")
 plt.xlabel("Episodes")
 plt.show()
 
 # Save to csv
 
-dict = {"Profits": profit_avge_list, "Price": price_avge_list}
+dict = {"Profits": profit_avge_list, "Price": price0_avge_list}
 df = pd.DataFrame(dict)
-df.to_csv("collusion_QL_test_April13.csv")
+df.to_csv("collusion_QL_April23.csv")

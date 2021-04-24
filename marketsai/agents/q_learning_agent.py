@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class Agent:
+class Qagent:
     def __init__(self, lr, gamma, n_actions, n_states, eps_start, eps_min, eps_dec):
         self.lr = lr
         self.gamma = gamma
