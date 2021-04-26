@@ -17,8 +17,8 @@ import matplotlib.pyplot as plt
 import logging
 
 # STEP 0: Inititialize ray
-NUM_CPUS = 32
-NUM_GPUS = 3
+NUM_CPUS = 11
+NUM_GPUS = 0
 shutdown()
 init(
     num_cpus=NUM_CPUS,
@@ -36,10 +36,10 @@ policy_ids = [f"policy_{i}" for i in range(env.n_agents)]
 
 # Experiment configuration
 test = True
-date = "April20_"
+date = "April26_"
 env_label = "DiffDd"
 if test == True:
-    MAX_STEPS = 20 * 1000
+    MAX_STEPS = 300 * 1000
     exp_label = env_label + "_test_" + date
 else:
     MAX_STEPS = 3000 * 1000
@@ -53,8 +53,7 @@ stop = {"timesteps_total": MAX_STEPS}
 PRICE_BAND_WIDE = 0.1
 LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
 HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
-DEC_RATE = float(math.e ** (-1 * 10 ** (-6)))
-DEC_RATE_HIGH = float(math.e ** (-4 * 10 ** (-6) * 4))
+DEC_RATE = float(math.e ** (-3 * 10 ** (-6)))
 
 env_config = {
     "mkt_config": {
@@ -67,7 +66,7 @@ env_config = {
             "substitution": 0.25,
         },
         "space_type": "Discrete",
-        "gridpoints": 20,
+        "gridpoints": 21,
     }
 }
 
@@ -100,14 +99,12 @@ exploration_config = {
 
 common_config = {
     # common_config
-    "gamma": 0.99,
-    "lr": tune.grid_search([0.00025, 0.1]),
+    "gamma": 0.95,
+    # "lr": tune.grid_search([0.00025, 0.1]),
+    "lr": 0.15,
     "env": "diffdemand",
     "exploration_config": exploration_config_expdec,
     "env_config": env_config,
-    "horizon": 100,
-    "soft_horizon": True,
-    "no_done_at_end": True,
     "multiagent": {
         "policies": {
             policy_ids[i]: (
@@ -119,29 +116,37 @@ common_config = {
             for i in range(env.n_agents)
         },
         "policy_mapping_fn": (lambda agent_id: policy_ids[int(agent_id.split("_")[1])]),
+        "replay_mode": "independent",  # you can change to "lockstep".
     },
+    "log_level": "ERROR",
+    # "horizon": "inf",
+    "horizon": 100,
+    "soft_horizon": True,
+    "no_done_at_end": True,
     "framework": "torch",
-    "num_workers": 15,
-    "num_gpus": 1,
-    "timesteps_per_iteration": 1000,
-    # "learning_starts": 1000,
+    "num_workers": tune.grid_search([4, 6, 8, 10]),
+    "num_gpus": NUM_GPUS,
+    # "num_cpus": NUM_CPUS,
+    # "rollout_fragment_length": 100,
+    # "train_batch_size": 1000,
+    # "timesteps_per_iteration": 1000,
     "normalize_actions": False,
 }
 
-if test == True:
-    common_config["timesteps_per_iteration"] = 1000
+# if test == True:
+#     common_config["timesteps_per_iteration"] = 1000
 
 apex_config = {
     # APE-X
-    "learning_starts": tune.grid_search([1000, 80000]),
+    "learning_starts": 1000,
     "adam_epsilon": 1.5 * 10 ** (-4),
     "dueling": True,
     "double_q": True,
     "noisy": False,
     "n_step": 1,
-    "num_atoms": 1,
-    "v_min": 0,
-    "v_max": 6,
+    # "num_atoms": 1,
+    # "v_min": 0,
+    # "v_max": 6,
     "prioritized_replay": True,
     "prioritized_replay_alpha": 0.6,
     "prioritized_replay_beta": 0.4,
@@ -169,12 +174,14 @@ results = tune.run(
     # resources_per_trial={"gpu": NUM_GPUS},
 )
 
-ppo_config = {
-    # ppo
-    "use_critic": True,
-    "use_gae": True,
-}
-training_config_ppo = {**common_config, **ppo_config}
+shutdown()
+
+# ppo_config = {
+#     # ppo
+#     "use_critic": True,
+#     "use_gae": True,
+# }
+# training_config_ppo = {**common_config, **ppo_config}
 
 
 # stop = {"training_iteration": MAX_STEPS // 1000}
@@ -383,5 +390,3 @@ training_config_ppo = {**common_config, **ppo_config}
 #         callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
 #         verbose=verbosity,
 #     )
-
-shutdown()
