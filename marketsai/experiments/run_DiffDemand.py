@@ -17,8 +17,8 @@ import matplotlib.pyplot as plt
 import logging
 
 # STEP 0: Inititialize ray
-NUM_CPUS = 11
-NUM_GPUS = 0
+NUM_CPUS = 32
+NUM_GPUS = 3
 shutdown()
 init(
     num_cpus=NUM_CPUS,
@@ -35,17 +35,17 @@ policy_ids = [f"policy_{i}" for i in range(env.n_agents)]
 # STEP 2: Experiment configuration
 
 # Experiment configuration
-test = True
+test = False
 date = "April26_"
 env_label = "DiffDd"
 if test == True:
     MAX_STEPS = 300 * 1000
     exp_label = env_label + "_test_" + date
 else:
-    MAX_STEPS = 3000 * 1000
+    MAX_STEPS = 15000 * 1000
     exp_label = env_label + "_run_" + date
 
-verbosity = 2
+verbosity = 3
 # stop = {"episodes_total": MAX_STEPS // 100}
 stop = {"timesteps_total": MAX_STEPS}
 
@@ -103,6 +103,9 @@ common_config = {
     # "lr": tune.grid_search([0.00025, 0.1]),
     "lr": 0.15,
     "env": "diffdemand",
+    "horizon": 100,
+    "soft_horizon": True,
+    "no_done_at_end": True,
     "exploration_config": exploration_config_expdec,
     "env_config": env_config,
     "multiagent": {
@@ -118,19 +121,20 @@ common_config = {
         "policy_mapping_fn": (lambda agent_id: policy_ids[int(agent_id.split("_")[1])]),
         "replay_mode": "independent",  # you can change to "lockstep".
     },
-    "log_level": "ERROR",
-    # "horizon": "inf",
-    "horizon": 100,
-    "soft_horizon": True,
-    "no_done_at_end": True,
     "framework": "torch",
-    "num_workers": tune.grid_search([4, 6, 8, 10]),
-    "num_gpus": NUM_GPUS,
+    "num_workers": 30,
+    # "num_envs_per_worker": 10,
+    # "create_env_on_driver": True,
+    "num_gpus": 1,
+    # "num_gpus_per_worker": 2 / 40,
+    # "num_gpus": tune.grid_search([1, 2, 3]),
     # "num_cpus": NUM_CPUS,
-    # "rollout_fragment_length": 100,
-    # "train_batch_size": 1000,
+    # "rollout_fragment_length": 1000,
+    # "train_batch_size": 30000,
+    # "training_intensity": 1,
     # "timesteps_per_iteration": 1000,
     "normalize_actions": False,
+    "log_level": "ERROR",
 }
 
 # if test == True:
@@ -143,11 +147,12 @@ apex_config = {
     "dueling": True,
     "double_q": True,
     "noisy": False,
-    "n_step": 1,
+    "n_step": 3,
     # "num_atoms": 1,
     # "v_min": 0,
     # "v_max": 6,
-    "prioritized_replay": True,
+    # "prioritized_replay": tune.grid_search([True, False]),
+    "prioritized_replay": False,
     "prioritized_replay_alpha": 0.6,
     "prioritized_replay_beta": 0.4,
     # Final value of beta (by default, we use constant beta=0.4).
