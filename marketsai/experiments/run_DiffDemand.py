@@ -3,7 +3,6 @@
 from marketsai.markets.diff_demand import DiffDemand
 
 # import ray
-
 from ray import tune, shutdown, init
 from ray.tune.registry import register_env
 from ray.tune.integration.mlflow import MLflowLoggerCallback
@@ -17,8 +16,8 @@ import matplotlib.pyplot as plt
 import logging
 
 # STEP 0: Inititialize ray
-NUM_CPUS = 32
-NUM_GPUS = 3
+NUM_CPUS = 2
+NUM_GPUS = 0
 shutdown()
 init(
     num_cpus=NUM_CPUS,
@@ -35,14 +34,14 @@ policy_ids = [f"policy_{i}" for i in range(env.n_agents)]
 # STEP 2: Experiment configuration
 
 # Experiment configuration
-test = False
-date = "April26_"
+test = True
+date = "April27_"
 env_label = "DiffDd"
 if test == True:
-    MAX_STEPS = 300 * 1000
+    MAX_STEPS = 25 * 1000
     exp_label = env_label + "_test_" + date
 else:
-    MAX_STEPS = 15000 * 1000
+    MAX_STEPS = 3000 * 1000
     exp_label = env_label + "_run_" + date
 
 verbosity = 3
@@ -122,17 +121,15 @@ common_config = {
         "replay_mode": "independent",  # you can change to "lockstep".
     },
     "framework": "torch",
-    "num_workers": 30,
+    "num_workers": NUM_CPUS - 1,
+    "num_gpus": NUM_GPUS,
     # "num_envs_per_worker": 10,
     # "create_env_on_driver": True,
-    "num_gpus": 1,
-    # "num_gpus_per_worker": 2 / 40,
-    # "num_gpus": tune.grid_search([1, 2, 3]),
-    # "num_cpus": NUM_CPUS,
+    # "num_cpus_for_driver": 1,
     # "rollout_fragment_length": 1000,
     # "train_batch_size": 30000,
-    # "training_intensity": 1,
-    # "timesteps_per_iteration": 1000,
+    "training_intensity": 1,  # the default is train_batch_size_rollout_fragment_length
+    # "timesteps_per_iteration": 1000, #I still don't know how this works. I knwow its a minimum.
     "normalize_actions": False,
     "log_level": "ERROR",
 }
@@ -140,14 +137,14 @@ common_config = {
 # if test == True:
 #     common_config["timesteps_per_iteration"] = 1000
 
-apex_config = {
+dqn_config = {
     # APE-X
     "learning_starts": 1000,
     "adam_epsilon": 1.5 * 10 ** (-4),
     "dueling": True,
     "double_q": True,
     "noisy": False,
-    "n_step": 3,
+    "n_step": 1,
     # "num_atoms": 1,
     # "v_min": 0,
     # "v_max": 6,
@@ -163,13 +160,13 @@ apex_config = {
 # if test == True:
 #    apex_config["learning_starts"] = 1000
 
-training_config_apex = {**common_config, **apex_config}
+training_config_dqn = {**common_config, **dqn_config}
 
-exp_name = exp_label + "APEXbasic"
+exp_name = exp_label + "DQNbasic"
 results = tune.run(
-    "APEX",
+    "DQN",
     name=exp_name,
-    config=training_config_apex,
+    config=training_config_dqn,
     # checkpoint_freq=250,
     checkpoint_at_end=True,
     stop=stop,
