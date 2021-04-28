@@ -1,7 +1,8 @@
 import ray
 from ray import tune
 from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
-from marketsai.economies.economies import Economy
+from marketsai.economies.economy_constructor import Economy
+from marketsai.markets.diff_demand import DiffDemand
 from ray.tune.registry import register_env
 from ray.rllib.agents.a3c.a2c import A2CTrainer
 from ray.rllib.agents.dqn.dqn import DQNTrainer
@@ -14,9 +15,23 @@ import pandas as pd
 import numpy as np
 
 # STEP 0: Inititialize ray (only for PPO for some reason)
-NUM_CPUS = 14
+NUM_CPUS = 2
 ray.shutdown()
 ray.init(num_cpus=NUM_CPUS)
+
+test = True
+date = "April27_"
+env_label = "DiffDd"
+if test == True:
+    MAX_STEPS = 25 * 1000
+    exp_label = env_label + "_test_" + date
+else:
+    MAX_STEPS = 3000 * 1000
+    exp_label = env_label + "_run_" + date
+
+verbosity = 3
+# stop = {"episodes_total": MAX_STEPS // 100}
+stop = {"timesteps_total": MAX_STEPS}
 
 # STEP 1: register environment
 
@@ -25,17 +40,25 @@ env = Economy()
 policy_ids = ["policy_{}".format(i) for i in range(env.n_agents)]
 
 # STEP 2: Experiment configuration
-MAX_STEPS = 10 * 1000
-PRICE_BAND_WIDE = 1 / 15
-LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
-HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
-DEC_RATE = math.e ** (-4 * 10 ** (-6))
-DEC_RATE_HIGH = math.e ** (-4 * 10 ** (-6) * 4)
 
-env_config = {
-    "LOWER_PRICE": [LOWER_PRICE for i in range(env.n_agents)],
-    "HIGHER_PRICE": [HIGHER_PRICE for i in range(env.n_agents)],
+# PRICE_BAND_WIDE = 1 / 15
+# LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
+# HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
+DEC_RATE = math.e ** (-3 * 10 ** (-6))
+
+
+mkt_config = {
+    #    "lower_price": LOWER_PRICE,
+    #    "higher_price": HIGHER_PRICE,
+    "space_type": "Continuous",
 }
+env_config = {
+    "markets_dict": {
+        "market_0": (DiffDemand, mkt_config),
+        "market_1": (DiffDemand, mkt_config),
+    }
+}
+
 exploration_config = {
     "type": "EpsilonGreedy",
     "epsilon_schedule": ExponentialSchedule(
@@ -46,13 +69,13 @@ exploration_config = {
     ),
 }
 
+
 # DQN_base_March7/DQN_diff_demand_discrete_d31f2_00000_0_2021-03-07_20-21-59/checkpoint_2276/checkpoint-2276
 
-config = {
+common_config = {
     "gamma": 0.95,
     "lr": 0.15,
     "env": "economy",
-    "exploration_config": exploration_config,
     "env_config": env_config,
     "horizon": 100,
     "soft_horizon": True,
@@ -70,11 +93,41 @@ config = {
         "policy_mapping_fn": (lambda agent_id: policy_ids[int(agent_id.split("_")[1])]),
     },
     "framework": "torch",
-    "num_workers": NUM_CPUS - 1,
-    "num_gpus": 0,
+    # "prioritized_replay": False,
+    # "training_intensity": 1,
 }
 
-stop = {"info/num_steps_trained": MAX_STEPS}
+ddpg_config = {
+    # Model
+    "actor_hiddens": [64, 64],
+    "critic_hiddens": [64, 64],
+    # Exploration
+    # "exploration_config": exploration_config_ddpg,
+    "timesteps_per_iteration": 1000,
+    # Replay Buffer
+    "buffer_size": 10000,
+    "prioritized_replay": True,
+    "prioritized_replay_alpha": 0.6,
+    "prioritized_replay_beta": 0.4,
+    "prioritized_replay_eps": 0.000001,
+    "clip_rewards": False,
+    # Optimization
+    "critic_lr": 1e-3,
+    "actor_lr": 1e-3,
+    "target_network_update_freq": 0,
+    "tau": 0.001,
+    "use_huber": True,
+    "huber_threshold": 1.0,
+    "l2_reg": 0.000001,
+    "learning_starts": 500,
+    "train_batch_size": 64,
+    "rollout_fragment_length": 1,
+    # Parallelism
+}
+
+
+training_config_ddpg = {**common_config, **ddpg_config}
+
 
 # STEP 3: EXPERIMENTS
 # tune.run("A2C", name="A2C_March4", config=config, stop=stop)
@@ -83,11 +136,11 @@ stop = {"info/num_steps_trained": MAX_STEPS}
 
 # use resources per trial: resources_per_trial={"cpu": 1, "gpu": 1})
 # tune.run(trainable, fail_fast=True)
-exp_name = "PPO_base_March31"
+exp_name = "DDGP_econ_April27"
 results = tune.run(
-    "PPO",
+    "DDPG",
     name=exp_name,
-    config=config,
+    config=training_config_ddpg,
     checkpoint_freq=250,
     checkpoint_at_end=True,
     stop=stop,
