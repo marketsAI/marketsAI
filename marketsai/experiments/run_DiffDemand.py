@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import logging
 
 # STEP 0: Inititialize ray
-NUM_CPUS = 2
+NUM_CPUS = 32
 NUM_GPUS = 0
 shutdown()
 init(
@@ -121,8 +121,8 @@ common_config = {
         "replay_mode": "independent",  # you can change to "lockstep".
     },
     "framework": "torch",
-    "num_workers": NUM_CPUS - 1,
-    "num_gpus": NUM_GPUS,
+    "num_workers": 1,
+    "num_gpus": 0,
     # "num_envs_per_worker": 10,
     # "create_env_on_driver": True,
     # "num_cpus_for_driver": 1,
@@ -141,21 +141,21 @@ dqn_config = {
     # APE-X
     "learning_starts": 1000,
     "adam_epsilon": 1.5 * 10 ** (-4),
-    "dueling": tune.grid_search([True, False]),
-    "double_q": tune.grid_search([True, False]),
+    "dueling": True,
+    "double_q": True,
     "noisy": tune.grid_search([True, False]),
     "n_step": tune.grid_search([1, 3]),
-    # "num_atoms": 1,
-    # "v_min": 0,
-    # "v_max": 6,
+    "num_atoms": tune.grid_search([1, 5]),
+    "v_min": 0,
+    "v_max": 7,
     # "prioritized_replay": tune.grid_search([True, False]),
     "prioritized_replay": tune.grid_search([True, False]),
     "prioritized_replay_alpha": 0.6,
     "prioritized_replay_beta": 0.4,
     # Final value of beta (by default, we use constant beta=0.4).
-    "final_prioritized_replay_beta": 0.4,
+    "final_prioritized_replay_beta": 1,
     # Time steps over which the beta parameter is annealed.
-    "prioritized_replay_beta_annealing_timesteps": 20000,
+    "prioritized_replay_beta_annealing_timesteps": 1000000,
 }
 # if test == True:
 #    apex_config["learning_starts"] = 1000
