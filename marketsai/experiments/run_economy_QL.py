@@ -1,4 +1,5 @@
 from marketsai.markets.diff_demand import DiffDemand
+from marketsai.economies.economy_constructor import Economy
 from marketsai.agents.q_learning_agent import Qagent
 import matplotlib.pyplot as plt
 import math
@@ -16,13 +17,17 @@ LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
 HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
 DEC_RATE = math.e ** (-3 * 10 ** (-6))
 mkt_config = {
-    # "lower_price": [LOWER_PRICE for i in range(env.n_agents)],
-    # "higher_price": [HIGHER_PRICE for i in range(env.n_agents)],
+    #    "lower_price": LOWER_PRICE,
+    #    "higher_price": HIGHER_PRICE,
     "space_type": "Discrete",
-    "gridpoints": 21,
 }
-
-env = DiffDemand(env_config={"mkt_config": mkt_config})
+env_config = {
+    "markets_dict": {
+        "market_0": (DiffDemand, mkt_config),
+        "market_1": (DiffDemand, mkt_config),
+    }
+}
+env = Economy(env_config=env_config)
 
 agents = [
     Qagent(
@@ -31,8 +36,9 @@ agents = [
         eps_start=1.0,
         eps_min=0.00,
         eps_dec=DEC_RATE,
-        n_actions=env.gridpoints,
-        n_states=env.gridpoints ** env.n_agents,
+        n_actions=env.action_space[f"agent_{i}"].n,
+        # Need to fix the action_space to make it discrete.
+        n_states=env.observacion_space[f"agent_{i}"].n,
     )
     for i in range(env.n_agents)
 ]

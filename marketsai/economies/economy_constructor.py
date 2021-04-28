@@ -1,5 +1,6 @@
 from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
 from marketsai.agents.agents import Household, Firm
+from marketsai.utils import index
 from marketsai.markets.diff_demand import DiffDemand
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 import numpy as np
@@ -65,7 +66,9 @@ class Economy(MultiAgentEnv):
             },
         )
 
-        self.space_type = env_config.get("space_type", "Tuple")
+        self.space_type = env_config.get(
+            "space_type", "Continuous"
+        )  # It needs to be automatic
         self.n_markets = len(self.markets_dict)
         self.n_agents = len(self.agents_dict)
 
@@ -90,31 +93,10 @@ class Economy(MultiAgentEnv):
         # Aggregate spaces
         self.observation_space = {f"agent_{i}": [] for i in range(self.n_agents)}
         self.action_space = {f"agent_{i}": [] for i in range(self.n_agents)}
-        dims_observation = []
-        dims_actions = []
-
-        if self.space_type == "Continuous":
-            dims_observation = [
-                self.markets[i].observation_space.shape for i in range(self.n_markets)
-            ]
-            dims_action = [
-                self.markets[i].action_space.shape for i in range(self.n_markets)
-            ]
-
-        if self.space_type == "MultiDiscrete":
-            dims_observation = [
-                self.markets[i].observation_space.nvec for i in range(self.n_markets)
-            ]
-            dims_action = [
-                self.markets[i].action_space.shape.n for i in range(self.n_markets)
-            ]
-
-        if self.space_type == "Discrete":
-            dims_observation = [1 for i in range(self.n_markets)]
 
         # For cintinuous, the procedure is to sum the shapes of the box (or the firs element)
         # For Tuple, we just append the spaces in a list and then create tuple.
-        # For multidiscrete, you add the nvec as a list.
+        # For multiDiscrete, you add the nvec as a list.
         # For Discrete, you need to
         for i in range(self.n_agents):
             dims_action = []
@@ -138,28 +120,25 @@ class Economy(MultiAgentEnv):
                         high_action += list(
                             self.markets[j].action_space[f"agent_{i}"].high
                         )
-                        dims_observation += list(
+                        dims_observation.append(
                             self.markets[j].observation_space[f"agent_{i}"].shape[0]
                         )
-                        dims_action += list(
+                        dims_action.append(
                             self.markets[j].action_space[f"agent_{i}"].shape[0]
                         )
 
-                    if self.space_type == "Multidiscrete":
+                    if self.space_type == "MultiDiscrete":
                         dims_observation += list(
                             self.markets[j].observation_space[f"agent_{i}"].nvec
                         )
-                        dims_action += list(
-                            self.markets[j].action_space[f"agent_{i}"].n
-                        )
+                        dims_action.append(self.markets[j].action_space[f"agent_{i}"].n)
 
                     if self.space_type == "Discrete":
-                        dims_observation += list(
+                        dims_observation.append(
                             self.markets[j].observation_space[f"agent_{i}"].n
                         )
-                        dims_action += list(
-                            self.markets[j].action_space[f"agent_{i}"].n
-                        )
+
+                        dims_action.append(self.markets[j].action_space[f"agent_{i}"].n)
 
                     self.observation_space[f"agent_{i}"].append(
                         self.markets[j].observation_space[f"agent_{i}"]
@@ -176,7 +155,7 @@ class Economy(MultiAgentEnv):
                 )
                 self.action_space[f"agent_{i}"] = Box(
                     low=np.array(low_action, dtype=float),
-                    high=np.array(high=high_action, dtype=float),
+                    high=np.array(high_action, dtype=float),
                     shape=(sum(dims_action),),
                 )
 
@@ -200,42 +179,28 @@ class Economy(MultiAgentEnv):
 
     def reset(self):
 
-        initial_obs_list = {f"agent_{i}": [] for i in range(self.n_agents)}
-        initial_obs = {f"agent_{i}": [] for i in range(self.n_agents)}
+        initial_obs_list = [self.markets[i].reset() for i in range(self.n_markets)]
+        obs = {f"agent_{i}": [] for i in range(self.n_agents)}
 
         for i in range(self.n_agents):
+            max_obspace = []
             for j in range(self.n_markets):
                 if f"market_{j}" in self.participation_dict[f"agent_{i}"]:
-                    initial_obs_list[f"agent_{i}"] += list(
-                        self.markets[j].reset()[f"agent_{i}"]
-                    )
-                    # notice that I am reseting many times. That could be changed with a gobal initial_o
-            if self.space_type == "Continuous" or self.space_type == "Multidiscrete":
-                initial_obs[f"agent_{i}"] = np.array(initial_obs_list[f"agent_{i}"])
+                    if self.space_type == "Discrete" or self.space_type == "Tuple":
+                        obs[f"agent_{i}"].append(initial_obs_list[j][f"agent_{i}"])
+                        max_obspace.append(
+                            self.markets[j].observation_space[f"agent_{i}"].n
+                        )
+                    else:
+                        obs[f"agent_{i}"] += list(initial_obs_list[j][f"agent_{i}"])
+
             if self.space_type == "Discrete":
-                for k in range(len(initial_obs_list[f"agent_{i}"])):
-                    initial_obs[f"agent_{i}"] += initial_obs_list[f"agent_{i}"][-k]
+                obs[f"agent_{i}"] = index(array=obs[f"agent_{i}"], dims=max_obspace)
 
-        if self.space_type == "Discrete":
-            for i in range(self.n_agents):
-                for j in range(self.n_markets):
-                    if f"market_{j}" in self.participation_dict[f"agent_{i}"]:
-                        initial_obs[f"agent_{i}"] += list(
-                            self.markets[j].reset()[f"agent_{i}"]
-                        )
+            if self.space_type == "Continuous" or self.space_type == "MultiDiscrete":
+                obs[f"agent_{i}"] = np.array(obs[f"agent_{i}"])
 
-                        # notice that I am reseting many times. That could be changed with a gobal initial_obs
-
-        if self.space_type == "Tuple":
-            for i in range(self.n_agents):
-                for j in range(self.n_markets):
-                    if f"market_{j}" in self.participation_dict[f"agent_{i}"]:
-                        initial_obs[f"agent_{i}"].append(
-                            self.markets[j].reset()[f"agent_{i}"]
-                        )
-                        # notice that I am reseting many times. That could be changed with a gobal initial_obs
-
-        return initial_obs
+        return obs
 
     def step(self, actions_dict):
 
@@ -258,15 +223,29 @@ class Economy(MultiAgentEnv):
         info = {f"agent_{i}": [] for i in range(self.n_agents)}
 
         for i in range(self.n_agents):
+            max_obspace = []
             for j in range(self.n_markets):
                 if f"market_{j}" in self.participation_dict[f"agent_{i}"]:
-                    obs_[f"agent_{i}"].append(steps_global[j][0][f"agent_{i}"])
                     rew[f"agent_{i}"].append(steps_global[j][1][f"agent_{i}"])
-                    # done[f"agent_{i}"].append(steps_global[j][2][f"agent_{i}"])
                     info[f"agent_{i}"].append(steps_global[j][3][f"agent_{i}"])
+                    if self.space_type == "Discrete" or self.space_type == "Tuple":
+                        obs_[f"agent_{i}"].append(steps_global[j][0][f"agent_{i}"])
+                        max_obspace.append(
+                            self.markets[j].observation_space[f"agent_{i}"].n
+                        )
+                    if (
+                        self.space_type == "MultiDiscrete"
+                        or self.space_type == "Continuous"
+                    ):
+                        obs_[f"agent_{i}"] += list(steps_global[j][0][f"agent_{i}"])
 
             # Aggregate rewards
             rew[f"agent_{i}"] = sum(rew[f"agent_{i}"])
+            if self.space_type == "Discrete":
+                obs_[f"agent_{i}"] = index(array=obs_[f"agent_{i}"], dims=max_obspace)
+
+            if self.space_type == "Continuous" or self.space_type == "MultiDiscrete":
+                obs_[f"agent_{i}"] = np.array(obs_[f"agent_{i}"])
 
         done = {"__all__": False}
         # if False in done["agent_{}".format(j)]:
@@ -279,24 +258,24 @@ class Economy(MultiAgentEnv):
 
 # MANUAL TEST FOR DEBUGGING
 
-env = Economy()
-PRICE_BAND_WIDE = 0.1
-LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
-HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
-mkt_config = {
-    "lower_price": [LOWER_PRICE for i in range(env.n_agents)],
-    "higher_price": [HIGHER_PRICE for i in range(env.n_agents)],
-    "space_type": "Continuous",
-}
-env_config = {
-    "markets_dict": {
-        "market_0": (DiffDemand, mkt_config),
-        "market_1": (DiffDemand, mkt_config),
-    }
-}
-economy = Economy(env_config=env_config)
-economy.reset()
-obs_, rew, done, info = economy.step(
-    {"agent_0": np.array([1.5, 1.5]), "agent_1": np.array([1.5, 1.5])}
-)
-print(obs_, rew, done, info)
+# env = Economy()
+# PRICE_BAND_WIDE = 0.1
+# LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
+# HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
+# mkt_config = {
+#     #    "lower_price": LOWER_PRICE,
+#     #    "higher_price": HIGHER_PRICE,
+#     "space_type": "Continuous",
+# }
+# env_config = {
+#     "markets_dict": {
+#         "market_0": (DiffDemand, mkt_config),
+#         "market_1": (DiffDemand, mkt_config),
+#     }
+# }
+# economy = Economy(env_config=env_config)
+# economy.reset()
+# obs_, rew, done, info = economy.step(
+#     {"agent_0": np.array([1.5, 1.5]), "agent_1": np.array([1.8, 1.8])}
+# )
+# print(obs_, rew, done, info)
