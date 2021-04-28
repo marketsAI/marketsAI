@@ -103,7 +103,7 @@ class DiffDemand(MultiAgentEnv):
         # self.higher_price = self.mkt_config.get("higher_price", self.values)
 
         # spaces
-        self.space_type = self.mkt_config.get("space_type", "Continuous")
+        self.space_type = self.mkt_config.get("space_type", "MultiDiscrete")
         self.action_space = {}
         self.observation_space = {}
 
