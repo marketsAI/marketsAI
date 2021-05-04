@@ -49,11 +49,6 @@ verbosity = 3
 stop = {"timesteps_total": MAX_STEPS}
 
 # Environment configuration
-PRICE_BAND_WIDE = 0.1
-LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
-HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
-DEC_RATE = float(math.e ** (-3 * 10 ** (-6)))
-
 env_config = {
     "mkt_config": {
         # "lower_price": [LOWER_PRICE for i in range(env.n_agents)],
@@ -69,8 +64,8 @@ env_config = {
     }
 }
 
-env = DiffDemand(env_config)
-
+# Expliration config
+DEC_RATE = float(math.e ** (-3 * 10 ** (-6)))
 exploration_config_expdec = {
     "type": "EpsilonGreedy",
     "epsilon_schedule": ExponentialSchedule(
@@ -96,6 +91,8 @@ exploration_config = {
     # }
 }
 
+# Training config (for the algorithm)
+env = DiffDemand(env_config)
 common_config = {
     # common_config
     "gamma": 0.95,

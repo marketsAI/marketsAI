@@ -1,6 +1,7 @@
 from gym.spaces import Discrete, Box, MultiDiscrete
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from marketsai.agents.agents import Household, Firm
+from marketsai.functions.functions import MarkovChain
 from marketsai.utils import index
 import math
 import numpy as np
@@ -65,7 +66,7 @@ class DiffDemand(MultiAgentEnv):
 
         # UNPACK PARAMETERS
         self.agents_dict = env_config.get(
-            "agents_dict", {"agent_0": Firm, "agent_1": Firm}
+            "agents_dict", {"agent_0": (Firm, {}), "agent_1": (Firm, {})}
         )
         self.mkt_config = env_config.get("mkt_config", {})
         self.n_agents = len(self.agents_dict)
@@ -274,19 +275,41 @@ class DiffDemand(MultiAgentEnv):
 # PRICE_BAND_WIDE = 0.1
 # LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
 # HIGHER_PRICE = 1.92 + PRICE_BAND_WIDE
-
 # n_firms = 2
-# env = DiffDemand(
-#     env_config={
-#         "mkt_config": {
-#             # "lower_price": [LOWER_PRICE for i in range(n_firms)],
-#             # "higher_price": [HIGHER_PRICE for i in range(n_firms)],
-#             "gridpoints": 21,
-#             "space_type": "Discrete",
-#         }
-#     },
-# )
 
-# env.reset()
-# obs_, reward, done, info = env.step({"agent_0": 20, "agent_1": 20})
-# print(obs_, reward, done, info)
+
+agent_config = {}
+env = DiffDemand(
+    env_config={
+        "agents_dict": {
+            "agent_0": (Firm, agent_config),
+            "agent_1": (Firm, agent_config),
+        },
+        "mkt_config": {
+            "parameteres": {
+                "cost": [1 for i in range(2)],
+                "values": [2 for i in range(2)],
+                "ext_demand": 0,
+                "substitution": MarkovChain(
+                    values=[0.5, 1.5], transition=[[0.5, 0.5], [0.5, 0.5]]
+                ),
+            },
+            "space_type": "Discrete",
+            "lower_price": 1,
+            "higher_price": 2,
+            "gridpoints": 21,
+        },
+    },
+)
+# 1 loop
+env.reset()
+obs_, reward, done, info = env.step({"agent_0": 20, "agent_1": 20})
+
+
+print(obs_, reward, done, info)
+
+env = DiffDemand()
+# 1 loop
+env.reset()
+obs_, reward, done, info = env.step({"agent_0": 20, "agent_1": 20})
+print(obs_, reward, done, info)

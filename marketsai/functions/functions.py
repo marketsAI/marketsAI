@@ -10,7 +10,7 @@ class CES:
     def evaluate(self, inputs):
         evaluate = 0
         for i in range(len(inputs)):
-            evaluate += inputs[i] ** (-self.coeff)
+            evaluate += inputs[i] ** (self.coeff)
 
         return evaluate
 
@@ -55,7 +55,7 @@ class MarkovChain:
         return evaluate
 
 
-class Normal:
+class iid_Normal:
     def __init__(self, coeffs=[0.9, 1]):
 
         self.coeffs = coeffs

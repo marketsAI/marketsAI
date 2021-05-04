@@ -1,5 +1,6 @@
 from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
 from marketsai.agents.agents import Household, Firm
+from marketsai.functions.functions import CES
 from marketsai.utils import index
 from marketsai.markets.diff_demand import DiffDemand
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
@@ -55,7 +56,7 @@ class Economy(MultiAgentEnv):
         )
 
         self.agents_dict = env_config.get(
-            "agents_dict", {"agent_0": Firm, "agent_1": Firm}
+            "agents_dict", {"agent_0": (Firm, {}), "agent_1": (Firm, {})}
         )
 
         self.participation_dict = env_config.get(
@@ -256,26 +257,27 @@ class Economy(MultiAgentEnv):
         return obs_, rew, done, info
 
 
-# MANUAL TEST FOR DEBUGGING
+# MANUAL TEST FOR DEBUGGING (implement with main)
 
-# env = Economy()
-# PRICE_BAND_WIDE = 0.1
-# LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
-# HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
-# mkt_config = {
-#     #    "lower_price": LOWER_PRICE,
-#     #    "higher_price": HIGHER_PRICE,
-#     "space_type": "Continuous",
-# }
-# env_config = {
-#     "markets_dict": {
-#         "market_0": (DiffDemand, mkt_config),
-#         "market_1": (DiffDemand, mkt_config),
-#     }
-# }
-# economy = Economy(env_config=env_config)
-# economy.reset()
-# obs_, rew, done, info = economy.step(
-#     {"agent_0": np.array([1.5, 1.5]), "agent_1": np.array([1.8, 1.8])}
-# )
+mkt_config = {}
+agents_config = {}
+env_config = {
+    "agents_dict": {"agent_0": (Firm, agents_config), "agent_1": (Firm, agents_config)},
+    "markets_dict": {
+        "market_0": (DiffDemand, mkt_config),
+        "market_1": (DiffDemand, mkt_config),
+    },
+    "participation_dict": {
+        "agent_0": ["market_0", "market_1"],
+        "agent_1": ["market_0", "market_1"],
+    },
+}
+economy = Economy(env_config=env_config)
+# A loop
+economy.reset()
+obs_, rew, done, info = economy.step(
+    {"agent_0": np.array([1.5, 1.5]), "agent_1": np.array([1.8, 1.8])}
+)
+
+
 # print(obs_, rew, done, info)
