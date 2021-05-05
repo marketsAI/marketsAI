@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import logging
 
 # STEP 0: Inititialize ray
-NUM_CPUS = 32
+NUM_CPUS = 2
 NUM_GPUS = 0
 shutdown()
 init(
@@ -34,11 +34,11 @@ policy_ids = [f"policy_{i}" for i in range(env.n_agents)]
 # STEP 2: Experiment configuration
 
 # Experiment configuration
-test = True
-date = "April27_"
+test = False
+date = "May5_"
 env_label = "DiffDd"
 if test == True:
-    MAX_STEPS = 25 * 1000
+    MAX_STEPS = 10 * 1000
     exp_label = env_label + "_test_" + date
 else:
     MAX_STEPS = 3000 * 1000
@@ -140,7 +140,7 @@ dqn_config = {
     "adam_epsilon": 1.5 * 10 ** (-4),
     "dueling": True,
     "double_q": True,
-    "noisy": tune.grid_search([True, False]),
+    "noisy": False,
     "n_step": tune.grid_search([1, 3]),
     "num_atoms": tune.grid_search([1, 5]),
     "v_min": 0,
