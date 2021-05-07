@@ -1,7 +1,7 @@
 from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
 from marketsai.agents.agents import Household, Firm
 from marketsai.functions.functions import CES
-from marketsai.utils import encode
+from marketsai.utils import encode, decode
 from marketsai.markets.diff_demand import DiffDemand
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 import numpy as np
@@ -68,7 +68,7 @@ class Economy(MultiAgentEnv):
         )
 
         self.space_type = env_config.get(
-            "space_type", "Continuous"
+            "space_type", "Discrete"
         )  # It needs to be automatic
         self.n_markets = len(self.markets_dict)
         self.n_agents = len(self.agents_dict)
@@ -99,8 +99,8 @@ class Economy(MultiAgentEnv):
         # For Tuple, we just append the spaces in a list and then create tuple.
         # For multiDiscrete, you add the nvec as a list.
         # For Discrete, you need to
+        self.dims_action = {f"agent_{i}": [] for i in range(self.n_agents)}
         for i in range(self.n_agents):
-            dims_action = []
             dims_observation = []
             low_obs = []
             high_obs = []
@@ -124,7 +124,7 @@ class Economy(MultiAgentEnv):
                         dims_observation.append(
                             self.markets[j].observation_space[f"agent_{i}"].shape[0]
                         )
-                        dims_action.append(
+                        self.dims_action[i].append(
                             self.markets[j].action_space[f"agent_{i}"].shape[0]
                         )
 
@@ -132,14 +132,18 @@ class Economy(MultiAgentEnv):
                         dims_observation += list(
                             self.markets[j].observation_space[f"agent_{i}"].nvec
                         )
-                        dims_action.append(self.markets[j].action_space[f"agent_{i}"].n)
+                        self.dims_action[i].append(
+                            self.markets[j].action_space[f"agent_{i}"].n
+                        )
 
                     if self.space_type == "Discrete":
                         dims_observation.append(
                             self.markets[j].observation_space[f"agent_{i}"].n
                         )
 
-                        dims_action.append(self.markets[j].action_space[f"agent_{i}"].n)
+                        self.dims_action[f"agent_{i}"].append(
+                            self.markets[j].action_space[f"agent_{i}"].n
+                        )
 
                     self.observation_space[f"agent_{i}"].append(
                         self.markets[j].observation_space[f"agent_{i}"]
@@ -157,18 +161,22 @@ class Economy(MultiAgentEnv):
                 self.action_space[f"agent_{i}"] = Box(
                     low=np.array(low_action, dtype=float),
                     high=np.array(high_action, dtype=float),
-                    shape=(sum(dims_action),),
+                    shape=(sum(self.dims_action[i]),),
                 )
 
             if self.space_type == "Discrete":
                 self.observation_space[f"agent_{i}"] = Discrete(
                     np.prod(dims_observation)
                 )
-                self.action_space[f"agent_{i}"] = Discrete(np.prod(dims_action))
+                self.action_space[f"agent_{i}"] = Discrete(
+                    np.prod(self.dims_action[f"agent_{i}"])
+                )
 
             if self.space_type == "MultiDiscrete":
                 self.observation_space[f"agent_{i}"] = MultiDiscrete(dims_observation)
-                self.action_space[f"agent_{i}"] = MultiDiscrete(dims_action)
+                self.action_space[f"agent_{i}"] = MultiDiscrete(
+                    self.dims_action[f"agent_{i}"]
+                )
 
             if self.space_type == "Tuple":
                 self.observation_space[f"agent_{i}"] = Tuple(
@@ -187,9 +195,7 @@ class Economy(MultiAgentEnv):
             max_obspace = []
             for j in range(self.n_markets):
                 if f"market_{j}" in self.participation_dict[f"agent_{i}"]:
-                    if (
-                        self.space_type == "Discrete" or self.space_type == "Tuple"
-                    ):  # why Tuple?
+                    if self.space_type == "Discrete":
                         obs[f"agent_{i}"].append(initial_obs_list[j][f"agent_{i}"])
                         max_obspace.append(
                             self.markets[j].observation_space[f"agent_{i}"].n
@@ -209,14 +215,27 @@ class Economy(MultiAgentEnv):
 
         # construct actions per market.
 
-        # If market is discrete You need to decode 1 number int oactions
         actions_per_market = [{} for i in range(self.n_markets)]
-        for i in range(self.n_markets):
-            for (key, value) in self.participation_dict.items():
-                if f"market_{i}" in value:
-                    actions_per_market[i][key] = actions_dict[key][
-                        i
-                    ]  # assuming one action per market
+        # For the discrete space we need the dims
+        if self.space_type == "Discrete":
+            actions_decoded = {
+                f"agent_{i}": decode(
+                    code=actions_dict[f"agent_{i}"],
+                    dims=self.dims_action[f"agent_{i}"],
+                )
+                for i in range(self.n_agents)
+            }
+
+            for i in range(self.n_markets):
+                for (key, value) in self.participation_dict.items():
+                    if f"market_{i}" in value:
+                        actions_per_market[i][key] = actions_decoded[key][i]
+
+        if self.space_type == "MultiDiscrete" or self.space_type == "Continuous":
+            for i in range(self.n_markets):
+                for (key, value) in self.participation_dict.items():
+                    if f"market_{i}" in value:
+                        actions_per_market[i][key] = actions_dict[key][i]
 
         # construct the step per market.
         steps_global = [
@@ -247,7 +266,7 @@ class Economy(MultiAgentEnv):
             # Aggregate rewards
             rew[f"agent_{i}"] = sum(rew[f"agent_{i}"])
             if self.space_type == "Discrete":
-                obs_[f"agent_{i}"] = index(array=obs_[f"agent_{i}"], dims=max_obspace)
+                obs_[f"agent_{i}"] = encode(array=obs_[f"agent_{i}"], dims=max_obspace)
 
             if self.space_type == "Continuous" or self.space_type == "MultiDiscrete":
                 obs_[f"agent_{i}"] = np.array(obs_[f"agent_{i}"])
@@ -279,9 +298,5 @@ env_config = {
 economy = Economy(env_config=env_config)
 # A loop
 economy.reset()
-obs_, rew, done, info = economy.step(
-    {"agent_0": np.array([1.5, 1.5]), "agent_1": np.array([1.8, 1.8])}
-)
-
-
-# print(obs_, rew, done, info)
+obs_, rew, done, info = economy.step({"agent_0": 440, "agent_1": 440})
+print(obs_, rew, done, info)

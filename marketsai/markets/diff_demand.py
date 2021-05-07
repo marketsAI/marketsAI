@@ -97,7 +97,7 @@ class DiffDemand(MultiAgentEnv):
             self.higher_price = [higher_price_provided for i in range(self.n_agents)]
 
         # spaces
-        self.space_type = self.mkt_config.get("space_type", "MultiDiscrete")
+        self.space_type = self.mkt_config.get("space_type", "Discrete")
         self.action_space = {}
         self.observation_space = {}
 
@@ -206,6 +206,7 @@ class DiffDemand(MultiAgentEnv):
                         array=self.obs_[f"agent_{i}"],
                         dims=[self.gridpoints for i in range(self.n_agents)],
                     )
+                    for i in range(self.n_agents)
                 }
 
         if self.space_type == "Continuous":
@@ -266,38 +267,28 @@ class DiffDemand(MultiAgentEnv):
 # n_firms = 2
 
 
-agent_config = {}
-env = DiffDemand(
-    env_config={
-        "agents_dict": {
-            "agent_0": (Firm, agent_config),
-            "agent_1": (Firm, agent_config),
-        },
-        "mkt_config": {
-            "parameteres": {
-                "cost": [1 for i in range(2)],
-                "values": [2 for i in range(2)],
-                "ext_demand": 0,
-                "substitution": MarkovChain(
-                    values=[0.5, 1.5], transition=[[0.5, 0.5], [0.5, 0.5]]
-                ),
-            },
-            "space_type": "Discrete",
-            "lower_price": 1,
-            "higher_price": 2,
-            "gridpoints": 21,
-        },
-    },
-)
-# 1 loop
-env.reset()
-obs_, reward, done, info = env.step({"agent_0": 20, "agent_1": 20})
+# agent_config = {}
+# env = DiffDemand(
+#     env_config={
+#         "agents_dict": {
+#             "agent_0": (Firm, agent_config),
+#             "agent_1": (Firm, agent_config),
+#         },
+#         "mkt_config": {
+#             "parameteres": {
+#                 "cost": [1 for i in range(2)],
+#                 "values": [2 for i in range(2)],
+#                 "ext_demand": 0,
+#                 "substitution": 0,
+#             },
+#             "space_type": "Discrete",
+#             "lower_price": 1,
+#             "higher_price": 2,
+#             "gridpoints": 21,
+#         },
+#     },
+# )
 
-
-print(obs_, reward, done, info)
-
-env = DiffDemand()
-# 1 loop
-env.reset()
-obs_, reward, done, info = env.step({"agent_0": 20, "agent_1": 20})
-print(obs_, reward, done, info)
+# print(env.reset())
+# obs_, reward, done, info = env.step({"agent_0": 0, "agent_1": 0})
+# print(obs_, reward, done, info)

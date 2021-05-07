@@ -1,11 +1,12 @@
 import numpy as np
 
-dims = [3, 4, 7]
-print(dims[len(dims) - 1 :])
 
-
-def encode(array=[1, 2, 2], dims=[3, 8, 7]):
+def encode(array, dims):
     assert len(array) == len(dims)
+    for i in range(len(dims)):
+        assert array[i] < dims[i]
+        assert type(dims[i]) == int and dims[i] > 0
+
     code = array[-1]
     for i in range(len(dims) - 1):
         code += array[-(i + 2)] * np.product(dims[len(dims) - 1 - i :])
@@ -13,16 +14,16 @@ def encode(array=[1, 2, 2], dims=[3, 8, 7]):
     return code
 
 
-def decode(code=1, dims=[3, 8, 7]):
-    max_code = np.product(dims) - 1
-    array = []
-    array[2] = code % dims[2]
-    array[0] = code // dims[1]
-    array = []
-    for i in range(len(dims) - 1):
-        array += code
+def decode(code, dims):
+    dims_total = np.product(dims)
+    assert code < dims_total
+    array = [0 for i in range(len(dims))]
+
+    array[-1] = code % dims[-1]
+    array[0] = code // np.product(dims[1:])
+    for i in range(1, len(dims) - 1):
+        array[i] = (
+            code - np.dot(array[:i], [np.product(dims[j + 1 :]) for j in range(i)])
+        ) // np.product(dims[i + 1 :])
 
     return array
-
-
-print(encode(array=[1, 2, 3], dims=[3, 3, 4]))

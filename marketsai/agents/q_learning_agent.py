@@ -26,9 +26,9 @@ class Qagent:
         if np.random.random() < self.epsilon:
             action = np.random.choice([i for i in range(self.n_actions)])
         else:
-            actions = np.array([self.Q[(state, a)] for a in range(self.n_actions)])
+            actions_Q = np.array([self.Q[(state, a)] for a in range(self.n_actions)])
             action = np.argmax(
-                actions
+                actions_Q
             )  # probably we don't need numpy for this (evaluate this after wards)
         return action
 
@@ -40,8 +40,8 @@ class Qagent:
         )
 
     def learn(self, state, action, reward, state_):
-        actions = np.array([self.Q[(state_, a)] for a in range(self.n_actions)])
-        a_max = np.argmax(actions)
+        actions_Q = np.array([self.Q[(state_, a)] for a in range(self.n_actions)])
+        a_max = np.argmax(actions_Q)
 
         self.Q[(state, action)] += self.lr * (
             reward + self.gamma * self.Q[(state_, a_max)] - self.Q[(state, action)]

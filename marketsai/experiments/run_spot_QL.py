@@ -1,9 +1,13 @@
 from marketsai.markets.diff_demand import DiffDemand
 from marketsai.agents.q_learning_agent import Qagent
+from marketsai.agents.agents import Household, Firm
+from marketsai.functions.functions import MarkovChain
 import matplotlib.pyplot as plt
 import math
 import numpy as np
 import pandas as pd
+import json
+import pickle
 
 env = DiffDemand(env_config={})
 
@@ -11,19 +15,29 @@ policy_ids = ["policy_{}".format(i) for i in range(env.n_agents)]
 
 # STEP 2: Experiment configuration
 MAX_STEPS = 3000 * 1000
-PRICE_BAND_WIDE = 0.1
-LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
-HIGHER_PRICE = 1.93 + PRICE_BAND_WIDE
-DEC_RATE = math.e ** (-3 * 10 ** (-6))
-mkt_config = {
-    # "lower_price": [LOWER_PRICE for i in range(env.n_agents)],
-    # "higher_price": [HIGHER_PRICE for i in range(env.n_agents)],
-    "space_type": "Discrete",
-    "gridpoints": 21,
-}
+agent_config = {}
+env = DiffDemand(
+    env_config={
+        "agents_dict": {
+            "agent_0": (Firm, agent_config),
+            "agent_1": (Firm, agent_config),
+        },
+        "mkt_config": {
+            "parameteres": {
+                "cost": [1 for i in range(2)],
+                "values": [2 for i in range(2)],
+                "ext_demand": 0,
+                "substitution": 0.15,
+            },
+            "space_type": "Discrete",
+            "lower_price": 1.45,
+            "higher_price": 1.95,
+            "gridpoints": 11,
+        },
+    },
+)
 
-env = DiffDemand(env_config={"mkt_config": mkt_config})
-
+DEC_RATE = float(math.e ** (-3 * 10 ** (-6)))
 agents = [
     Qagent(
         lr=0.15,
@@ -31,8 +45,8 @@ agents = [
         eps_start=1.0,
         eps_min=0.00,
         eps_dec=DEC_RATE,
-        n_actions=env.gridpoints,
-        n_states=env.gridpoints ** env.n_agents,
+        n_actions=env.action_space[f"agent_{i}"].n,
+        n_states=env.observation_space[f"agent_{i}"].n,
     )
     for i in range(env.n_agents)
 ]
@@ -43,32 +57,24 @@ profit_avge_list = []
 price0_avge_list = []
 price1_avge_list = []
 obs = env.reset()
-print(env.step({"agent_0": 11, "agent_1": 12}))
+print(env.step({"agent_0": 5, "agent_1": 5}))
 # process to preprocess obs to put in choose actions
 for j in range(MAX_STEPS):
-    obs_index = obs
-    # obs_index = 0
-    # for i in range(env.n_agents):
-    #    obs_index += env.gridpoints ** (env.n_agents - 1 - i) * obs_list[i]
     actions_list = [
-        agents[i].choose_action(obs_index[f"agent_{i}"]) for i in range(env.n_agents)
+        agents[i].choose_action(obs[f"agent_{i}"]) for i in range(env.n_agents)
     ]
     actions_dict = {f"agent_{i}": actions_list[i] for i in range(env.n_agents)}
     obs_, reward, done, info = env.step(actions_dict)
-    # obs_list_ = list(obs_["agent_0"])
-    obs_index_ = obs_
-    # for i in range(env.n_agents):
-    #    obs_index_ += env.gridpoints ** (env.n_agents - 1 - i) * obs_list_[i]
     profit = reward["agent_0"]
     price0 = info["agent_0"]
     price1 = info["agent_1"]
     # profits.append(reward
     for i in range(env.n_agents):
         agents[i].learn(
-            obs_index[f"agent_{i}"],
+            obs[f"agent_{i}"],
             actions_dict[f"agent_{i}"],
             reward[f"agent_{i}"],
-            obs_index_[f"agent_{i}"],
+            obs_[f"agent_{i}"],
         )
     #   profit[i] += reward[i]  # I can do this out of the loop with arrays
     #   price[i] = 1 + actions[i] / 14 - cost[i]
@@ -103,15 +109,25 @@ for j in range(MAX_STEPS):
 plt.plot(profit_avge_list)
 plt.title("Average Profits")
 plt.xlabel("Episodes")
-plt.show()
+plt.savefig("Profits_QL_May7.png")
+# plt.show()
 
 plt.plot(price0_avge_list)
 plt.title("Average Price")
 plt.xlabel("Episodes")
-plt.show()
+plt.savefig("Price_QL_May7.png")
+# plt.show()
 
 # Save to csv
+dict_Q = agents[0].Q
+pickle.dump(dict_Q, open("collusion_QL_Q", "wb"))
+# dict_Q_loaded = pickle.load(open("collusion_QL_Q", "rb"))
+# print(dict_Q_loaded)
 
-dict = {"Profits": profit_avge_list, "Price": price0_avge_list}
-df = pd.DataFrame(dict)
-df.to_csv("collusion_QL_April27.csv")
+# decode it!
+dict_run = {"Profits": profit_avge_list, "Price": price0_avge_list}
+df_run = pd.DataFrame(dict_run)
+df_run.to_csv("collusion_QL_May7_run.csv")
+
+# with open("Qdic_test.json", "w") as outfile:
+#    json.dump(dict_Q, outfile)

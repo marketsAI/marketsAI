@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import logging
 
 # STEP 0: Inititialize ray
-NUM_CPUS = 8
+NUM_CPUS = 2
 NUM_GPUS = 0
 shutdown()
 init(
@@ -35,7 +35,7 @@ policy_ids = [f"policy_{i}" for i in range(env.n_agents)]
 
 # Experiment configuration
 test = True
-date = "May6_"
+date = "May7_"
 env_label = "DiffDd"
 if test == True:
     MAX_STEPS = 10 * 1000
@@ -141,12 +141,12 @@ dqn_config = {
     "dueling": True,
     "double_q": True,
     "noisy": False,
-    "n_step": tune.grid_search([1, 3]),
-    "num_atoms": tune.grid_search([1, 5]),
+    "n_step": 1,
+    "num_atoms": tune.grid_search([5, 10]),
     "v_min": 0,
-    "v_max": 10,
+    "v_max": tune.grid_search([4, 8, 12]),
     # "prioritized_replay": tune.grid_search([True, False]),
-    "prioritized_replay": tune.grid_search([True, False]),
+    "prioritized_replay": False,
     "prioritized_replay_alpha": 0.6,
     "prioritized_replay_beta": 0.4,
     # Final value of beta (by default, we use constant beta=0.4).
