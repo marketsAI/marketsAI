@@ -2,7 +2,7 @@ from gym.spaces import Discrete, Box, MultiDiscrete
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from marketsai.agents.agents import Household, Firm
 from marketsai.functions.functions import MarkovChain
-from marketsai.utils import index
+from marketsai.utils import encode
 import math
 import numpy as np
 
@@ -39,17 +39,13 @@ class DiffDemand(MultiAgentEnv):
                 n_periods = number of periods
 
     Example:
-    PRICE_BAND_WIDE = 0.1
-    LOWER_PRICE = 1.47 - PRICE_BAND_WIDE
-    HIGHER_PRICE = 1.92 + PRICE_BAND_WIDE
-    self.mkt_config={
-            "lower_price": [LOWER_PRICE for i in range(n_firms)],
-            "higher_price": [HIGHER_PRICE for i in range(n_firms)],
-            "gridpoint": 16,
+    mkt_config={
+            "lower_price": 1
+            "higher_price": 2,
+            "gridpoint": 20,
         }
-    n_firms = 2
 
-    env = DiffDemandDiscrete(mkt_config=MKT_CONFIG,
+    env = DiffDemandDiscrete(mkt_config=mkt_config,
         agents_dict={"agent_0": Firm, "agent_1": Firm},
     )
 
@@ -64,7 +60,8 @@ class DiffDemand(MultiAgentEnv):
         env_config={},
     ):
 
-        # UNPACK PARAMETERS
+        # UNPACK CONFIG
+
         self.agents_dict = env_config.get(
             "agents_dict", {"agent_0": (Firm, {}), "agent_1": (Firm, {})}
         )
@@ -85,8 +82,6 @@ class DiffDemand(MultiAgentEnv):
         self.ext_demand = self.parameters["ext_demand"]
         self.substitution = self.parameters["substitution"]
 
-        # UNPACK STRUCTURE
-
         self.gridpoints = self.mkt_config.get("gridpoints", 21)
         lower_price_provided = self.mkt_config.get("lower_price", self.cost)
         higher_price_provided = self.mkt_config.get("higher_price", self.values)
@@ -100,8 +95,6 @@ class DiffDemand(MultiAgentEnv):
             self.higher_price = higher_price_provided
         else:
             self.higher_price = [higher_price_provided for i in range(self.n_agents)]
-
-        # self.higher_price = self.mkt_config.get("higher_price", self.values)
 
         # spaces
         self.space_type = self.mkt_config.get("space_type", "MultiDiscrete")
@@ -149,26 +142,8 @@ class DiffDemand(MultiAgentEnv):
             raise TypeError("gridpoint must be integer")
 
     def reset(self):
-        if self.space_type == "Discrete":
-            # self.obs_raw = {
-            #     f"agent_{i}": np.array(
-            #         [np.floor(self.gridpoints / 2) for i in range(self.n_agents)],
-            #         dtype=np.int64,
-            #     )
-            #     for i in range(self.n_agents)
-            # }
-            self.obs = {
-                f"agent_{i}": index(
-                    array=np.array(
-                        [np.floor(self.gridpoints / 2) for i in range(self.n_agents)],
-                        dtype=np.int64,
-                    ),
-                    dims=[self.gridpoints for i in range(self.n_agents)],
-                )
-                for i in range(self.n_agents)
-            }
 
-        if self.space_type == "MultiDiscrete":
+        if self.space_type == "MultiDiscrete" or self.space_type == "Discrete":
             self.obs = {
                 f"agent_{i}": np.array(
                     [np.floor(self.gridpoints / 2) for i in range(self.n_agents)],
@@ -176,6 +151,17 @@ class DiffDemand(MultiAgentEnv):
                 )
                 for i in range(self.n_agents)
             }
+
+        # encode into one vector if space is Discrete
+        if self.space_type == "Discrete":
+            self.obs = {
+                f"agent_{i}": encode(
+                    array=self.obs[f"agent_{i}"],
+                    dims=[self.gridpoints for i in range(self.n_agents)],
+                )
+                for i in range(self.n_agents)
+            }
+
         if self.space_type == "Continuous":
             self.obs = {
                 f"agent_{i}": np.array(
@@ -213,12 +199,14 @@ class DiffDemand(MultiAgentEnv):
                 for i in range(self.n_agents)
             ]
 
-        if self.space_type == "Discrete":
-            for i in range(self.n_agents):
-                self.obs_[f"agent_{i}"] = index(
-                    array=self.obs_[f"agent_{i}"],
-                    dims=[self.gridpoints for i in range(self.n_agents)],
-                )
+            if self.space_type == "Discrete":
+
+                self.obs_ = {
+                    f"agent_{i}": encode(
+                        array=self.obs_[f"agent_{i}"],
+                        dims=[self.gridpoints for i in range(self.n_agents)],
+                    )
+                }
 
         if self.space_type == "Continuous":
             self.obs_ = {

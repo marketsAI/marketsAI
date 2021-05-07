@@ -1,7 +1,7 @@
 from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
 from marketsai.agents.agents import Household, Firm
 from marketsai.functions.functions import CES
-from marketsai.utils import index
+from marketsai.utils import encode
 from marketsai.markets.diff_demand import DiffDemand
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 import numpy as np
@@ -187,7 +187,9 @@ class Economy(MultiAgentEnv):
             max_obspace = []
             for j in range(self.n_markets):
                 if f"market_{j}" in self.participation_dict[f"agent_{i}"]:
-                    if self.space_type == "Discrete" or self.space_type == "Tuple":
+                    if (
+                        self.space_type == "Discrete" or self.space_type == "Tuple"
+                    ):  # why Tuple?
                         obs[f"agent_{i}"].append(initial_obs_list[j][f"agent_{i}"])
                         max_obspace.append(
                             self.markets[j].observation_space[f"agent_{i}"].n
@@ -196,7 +198,7 @@ class Economy(MultiAgentEnv):
                         obs[f"agent_{i}"] += list(initial_obs_list[j][f"agent_{i}"])
 
             if self.space_type == "Discrete":
-                obs[f"agent_{i}"] = index(array=obs[f"agent_{i}"], dims=max_obspace)
+                obs[f"agent_{i}"] = encode(array=obs[f"agent_{i}"], dims=max_obspace)
 
             if self.space_type == "Continuous" or self.space_type == "MultiDiscrete":
                 obs[f"agent_{i}"] = np.array(obs[f"agent_{i}"])
@@ -206,6 +208,8 @@ class Economy(MultiAgentEnv):
     def step(self, actions_dict):
 
         # construct actions per market.
+
+        # If market is discrete You need to decode 1 number int oactions
         actions_per_market = [{} for i in range(self.n_markets)]
         for i in range(self.n_markets):
             for (key, value) in self.participation_dict.items():

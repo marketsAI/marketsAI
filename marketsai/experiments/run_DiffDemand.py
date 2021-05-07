@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import logging
 
 # STEP 0: Inititialize ray
-NUM_CPUS = 2
+NUM_CPUS = 8
 NUM_GPUS = 0
 shutdown()
 init(
@@ -34,8 +34,8 @@ policy_ids = [f"policy_{i}" for i in range(env.n_agents)]
 # STEP 2: Experiment configuration
 
 # Experiment configuration
-test = False
-date = "May5_"
+test = True
+date = "May6_"
 env_label = "DiffDd"
 if test == True:
     MAX_STEPS = 10 * 1000
@@ -59,7 +59,7 @@ env_config = {
             "ext_demand": 0,
             "substitution": 0.25,
         },
-        "space_type": "Discrete",
+        "space_type": "MultiDiscrete",
         "gridpoints": 21,
     }
 }
@@ -121,8 +121,8 @@ common_config = {
     "num_workers": 1,
     "num_gpus": 0,
     # "num_envs_per_worker": 10,
-    # "create_env_on_driver": True,
-    # "num_cpus_for_driver": 1,
+    "create_env_on_driver": True,
+    "num_cpus_for_driver": 1,
     # "rollout_fragment_length": 1000,
     # "train_batch_size": 30000,
     "training_intensity": 1,  # the default is train_batch_size_rollout_fragment_length
@@ -144,7 +144,7 @@ dqn_config = {
     "n_step": tune.grid_search([1, 3]),
     "num_atoms": tune.grid_search([1, 5]),
     "v_min": 0,
-    "v_max": 7,
+    "v_max": 10,
     # "prioritized_replay": tune.grid_search([True, False]),
     "prioritized_replay": tune.grid_search([True, False]),
     "prioritized_replay_alpha": 0.6,
