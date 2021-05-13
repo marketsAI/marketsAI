@@ -164,22 +164,22 @@ class Durable(MultiAgentEnv):
             if self.space_type == "Continuous":  # check bounds
                 self.action_space[f"agent_{i}"] = (
                     Box(
-                        low=np.float32(self.lower_bound[i]),
-                        high=np.float32(self.higher_bound[i]),
+                        low=np.float32(self.lower_bound_q[i]),
+                        high=np.float32(self.higher_bound_q[i]),
                         shape=(self.time_to_build + 1,),
                         dtype=np.float32,
                     )
                     if self.roles[i] == "seller"
                     else Box(
-                        low=np.float32(self.lower_bound[i]),
-                        high=np.float32(self.higher_bound[i]),
+                        low=np.float32(self.lower_bound_q[i]),
+                        high=np.float32(self.higher_bound_q[i]),
                         shape=(1,),
                         dtype=np.float32,
                     )
                 )
                 self.observation_space[f"agent_{i}"] = Box(
-                    low=np.float32(np.array(self.lower_bound)),
-                    high=np.float32(np.array(self.higher_bound)),
+                    low=np.float32(np.array(self.lower_bound_q)),
+                    high=np.float32(np.array(self.higher_bound_q)),
                     shape=(
                         int(self.n_sellers * (self.time_to_build + 1) + self.n_buyers),
                     ),
@@ -224,7 +224,7 @@ class Durable(MultiAgentEnv):
             self.obs = {
                 f"agent_{i}": np.array(
                     [
-                        (self.lower_bound[i] + self.higher_bound[i]) / 2
+                        (self.lower_bound_q[i] + self.higher_bound_q[i]) / 2
                         for i in range(self.n_states)
                     ],
                     dtype=np.float32,
