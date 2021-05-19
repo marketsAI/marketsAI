@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import logging
 
 # STEP 0: Inititialize ray
-NUM_CPUS = 16
+NUM_CPUS = 8
 NUM_GPUS = 0
 shutdown()
 init(
@@ -34,8 +34,8 @@ policy_ids = [f"policy_{i}" for i in range(env.n_agents)]
 # STEP 2: Experiment configuration
 
 # Experiment configuration
-test = False
-date = "May8_"
+test = True
+date = "May19_"
 env_label = "DiffDd"
 if test == True:
     MAX_STEPS = 10 * 1000

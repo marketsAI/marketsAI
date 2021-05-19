@@ -1,7 +1,8 @@
 from gym.spaces import Discrete, Box, MultiDiscrete
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from marketsai.agents.agents import Household, Firm
-from marketsai.functions.functions import MarkovChain
+
+# from marketsai.functions.functions import MarkovChain
 from marketsai.utils import encode
 import math
 import numpy as np
