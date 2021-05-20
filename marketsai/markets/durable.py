@@ -127,16 +127,16 @@ class Durable(MultiAgentEnv):
         self.space_type = self.mkt_config.get("space_type", "Discrete")
 
         action_bounds = {
-            "Buyer": [[0, 10]],
-            "Seller": [self.mkt_config["bounds_p"], self.mkt_config["bounds_q"]]
+            "buyer": [[0, 10]],
+            "seller": [self.mkt_config["bounds_p"], self.mkt_config["bounds_q"]]
             + [[0, 1] for i in range(self.parameters["time_to_build"])],
         }
 
         # check observations for sellers
         observation_bounds = {
-            "Buyer": [self.mkt_config["bounds_p"] for i in range(self.n_sellers)]
+            "buyer": [self.mkt_config["bounds_p"] for i in range(self.n_sellers)]
             + [self.mkt_config["bounds_q"]],
-            "Seller": [self.mkt_config["bounds_p"] for i in range(self.n_sellers)]
+            "seller": [self.mkt_config["bounds_p"] for i in range(self.n_sellers)]
             + [
                 self.mkt_config["bounds_q"]
                 for i in range(self.parameters["time_to_build"])
@@ -150,74 +150,6 @@ class Durable(MultiAgentEnv):
             space_type=self.space_type,
             gridpoints=self.gridpoints,
         )
-
-        # # create action space and observation_space for each agent.
-        # for i in range(self.n_agents):
-        #     if self.space_type == "Discrete":
-        #         self.action_space[f"agent_{i}"] = (
-        #             Discrete(self.gridpoints ** (self.time_to_build + 1))
-        #             if self.roles[i] == "seller"
-        #             else Discrete(self.gridpoints),
-        #         )
-
-        #         self.observation_space[f"agent_{i}"] = Discrete(
-        #             self.n_buyers * self.gridpoints
-        #             + self.n_sellers * self.gridpoints ** (self.time_to_build + 1)
-        #         )
-
-        #     if self.space_type == "MultiDiscrete":
-        #         self.action_space[f"agent_{i}"] = (
-        #             MultiDiscrete(
-        #                 np.array(
-        #                     [self.gridpoints for i in range(self.time_to_build + 1)],
-        #                     dtype=np.int64,
-        #                 )
-        #             )
-        #             if self.roles[i] == "seller"
-        #             else MultiDiscrete(
-        #                 np.array(
-        #                     [self.gridpoints for i in range(self.time_to_build)],
-        #                     dtype=np.int64,
-        #                 )
-        #             ),
-        #         )
-        #         self.observation_space[f"agent_{i}"] = MultiDiscrete(
-        #             np.array(
-        #                 [
-        #                     self.gridpoints
-        #                     for i in range(
-        #                         self.n_sellers * (self.time_to_build + 1)
-        #                         + self.n_buyers
-        #                     )
-        #                 ],
-        #                 dtype=np.int64,
-        #             )
-        #         )
-
-        #     if self.space_type == "Continuous":  # check bounds
-        #         self.action_space[f"agent_{i}"] = (
-        #             Box(
-        #                 low=np.float32(self.lower_bound_q[i]),
-        #                 high=np.float32(self.higher_bound_q[i]),
-        #                 shape=(self.time_to_build + 1,),
-        #                 dtype=np.float32,
-        #             )
-        #             if self.roles[i] == "seller"
-        #             else Box(
-        #                 low=np.float32(self.lower_bound_q[i]),
-        #                 high=np.float32(self.higher_bound_q[i]),
-        #                 shape=(1,),
-        #                 dtype=np.float32,
-        #             )
-        #         )
-        #         self.observation_space[f"agent_{i}"] = Box(
-        #             low=np.float32(np.array(self.lower_bound_q)),
-        #             high=np.float32(np.array(self.higher_bound_q)),
-        #             shape=(
-        #                 int(self.n_sellers * (self.time_to_build + 1) + self.n_buyers),
-        #             ),
-        #             dtype=np.float32,
-        #         )
 
         # Episodic or not
         self.finite_periods = self.mkt_config.get("finite_periods", False)
@@ -378,8 +310,8 @@ env = Durable(
                 "time_to_build": 1,
             },
             "space_type": "Discrete",
-            "lower_bound": 1,
-            "higher_bound": 2,
+            "bounds_p": [0, 2],
+            "bounds_q": [0, 10],
             "gridpoints": 21,
         },
     },

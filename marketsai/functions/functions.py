@@ -126,9 +126,6 @@ observation_bounds = {
     "Seller": [[0, 1], [0, 5]],
 }
 
-roles = ["Buyer", "Seller"]
-space_type = "Discrete"
-
 
 def create_spaces(
     roles: list,
@@ -200,14 +197,3 @@ def create_spaces(
                 dtype=np.float32,
             )
     return action_space, observation_space
-
-
-action_space, observation_space = create_spaces(
-    roles=roles,
-    action_bounds=action_bounds,
-    observation_bounds=observation_bounds,
-    space_type="Continuous",
-    gridpoints=15,
-)
-
-print(action_space, observation_space)
