@@ -49,11 +49,11 @@ def CobbDouglas(coeffs: list = [1, 0.3, 0.7]):
 class AR:
     def __init__(self, coeffs=[0.9, 1]):
 
-        coeffs = coeffs
+        self.coeffs = coeffs
 
     def evaluate(self, input):
 
-        evaluate = coeffs[0] * input + np.random.normal(scale=coeffs[1])
+        evaluate = self.coeffs[0] * input + np.random.normal(scale=self.coeffs[1])
 
         return evaluate
 

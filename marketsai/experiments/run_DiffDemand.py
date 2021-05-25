@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import logging
 
 # STEP 0: Inititialize ray
-NUM_CPUS = 2
+NUM_CPUS = 6
 NUM_GPUS = 0
 shutdown()
 init(
@@ -34,8 +34,8 @@ policy_ids = [f"policy_{i}" for i in range(env.n_agents)]
 # STEP 2: Experiment configuration
 
 # Experiment configuration
-test = True
-date = "May19_"
+test = False
+date = "May24_"
 env_label = "DiffDd"
 if test == True:
     MAX_STEPS = 10 * 1000
@@ -121,11 +121,11 @@ common_config = {
     "num_workers": 1,
     "num_gpus": 0,
     # "num_envs_per_worker": 10,
-    "create_env_on_driver": True,
-    "num_cpus_for_driver": 1,
+    # "create_env_on_driver": True,
+    # "num_cpus_for_driver": 1,
     # "rollout_fragment_length": 1000,
     # "train_batch_size": 30000,
-    "training_intensity": 1,  # the default is train_batch_size_rollout_fragment_length
+    # "training_intensity": 1,  # the default is train_batch_size_rollout_fragment_length
     # "timesteps_per_iteration": 1000, #I still don't know how this works. I knwow its a minimum.
     "normalize_actions": False,
     "log_level": "ERROR",
@@ -140,13 +140,13 @@ dqn_config = {
     "adam_epsilon": 1.5 * 10 ** (-4),
     "dueling": True,
     "double_q": True,
-    "noisy": tune.grid_search([True, False]),
-    "n_step": tune.grid_search([1, 3]),
+    "noisy": False,
+    "n_step": tune.grid_search([1, 3, 5]),
     # "num_atoms": tune.grid_search([5, 10]),
     # "v_min": 0,
     # "v_max": tune.grid_search([4, 8, 12]),
     # "prioritized_replay": tune.grid_search([True, False]),
-    "prioritized_replay": tune.grid_search([True, False]),
+    "prioritized_replay": False,
     "prioritized_replay_alpha": 0.6,
     "prioritized_replay_beta": 0.4,
     # Final value of beta (by default, we use constant beta=0.4).

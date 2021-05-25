@@ -9,23 +9,29 @@ import numpy as np
 
 class Durable(MultiAgentEnv):
     """A gym compatible environment consisting of a market for a durable good.
-    Sellers choose prices and decide how many environments to start.
-    Buyers choose thier desired quantity.
+    Sellers choose prices, decide how many prjects to start, and decide the progress
+    of the projects through the different stages.
+    Buyers choose their desired quantity give the observed prices.
 
     Inputs:
-    1. config: a dictionary that contains two (sub) dictionaries.
-        1.1 agents_dict = Dictionary specifying the config of each agent.
+    1. env_config: a dictionary that contains two (sub) dictionaries.
+        1.1 agents_dict = Dictionary specifying the following options.
+            income: int or function. If int, it reflects constant per period income.
+                    if function, it specifies a stochastic prcess. (see example)
+            initial_wealth: int, reflects intial wealth.
 
         1.2 mkt_config: a dictionary that contains the following options
 
                 parameters: a dict with te following parameters
+                    depreciation: the depreciation rate of the durable good.
+                    time_to_build: a parameter specifying the amount of stages.
 
                 * You can provide random process instead of values.
 
-                lower_bound: float that denotes minimum bound that the firm can change. Default is cost.
-                higher_bound: float that denotes maximum bound that the firm can change. Default is value.
-                space_type: Either "Discrete", "MultiDiscrete", "Continuous".
+                bounds_q: float that denotes minimum bound that the firm can change. Default is cost.
+                bounds_p: float that denotes maximum bound that the firm can change. Default is value.
 
+                space_type: Either "Discrete", "MultiDiscrete", "Continuous".
                 gridpoints = number of gridpoints of the action space
                 * ignored if space_type = "Continuous"
 
@@ -33,22 +39,37 @@ class Durable(MultiAgentEnv):
                 n_periods = number of periods
 
     Example:
-    mkt_config={
-            "lower_bound": 1
-            "higher_bound": 2,
-            "gridpoint": 20,
-            "space_type": "MultiDiscrete"
-        }
+    buyer_config = {"role": "buyer"}
+    seller_config = {"role": "seller"}
 
-    env = Durable(mkt_config=mkt_config,
-        agents_dict={"agent_0": seller_config, "agent_1": sellerconfig},
+    env = Durable(
+        env_config={
+            "agents_dict": {
+                "agent_0": (buyer_config),
+                "agent_1": (seller_config),
+            },
+            "mkt_config": {
+                "parameters": {
+                    "depreciation": 0.96,
+                    "time_to_build": 2,
+                },
+                "space_type": "Continuous",
+                "bounds_p": [0, 2],
+                "bounds_q": [0, 10],
+                "gridpoints": 21,
+            },
+        },
     )
 
-    env.reset()
-    obs_, reward, done, info = env.step({"agent_0": [10,10], "agent_1": 10})
-    print(obs_, reward, done, info)
-
     """
+
+    ## TO DO INIT:
+    # correct bounds for progress
+
+    # recognize role of Connected in state space.
+    # check if angents config are unpacked in list or dicrs.
+    # check if there is anything not worh unpacking (like params).
+    # mispellings in the congif can create mistakes. you need to let know the user
 
     def __init__(
         self,
@@ -62,7 +83,8 @@ class Durable(MultiAgentEnv):
         )
         self.mkt_config = env_config.get("mkt_config", {})
 
-        # unpack agents config in lists.
+        # unpack agents config in centralized lists and dicts.
+
         self.n_agents = len(self.agents_config)
         default_roles = ["seller", "buyer"]
 
@@ -71,8 +93,16 @@ class Durable(MultiAgentEnv):
             for i in range(self.n_agents)
         ]
 
-        self.n_sellers = sum(i == "seller" for i in self.roles)
-        self.n_buyers = sum(i == "buyer" for i in self.roles)
+        self.buyers_index = []
+        self.sellers_index = []
+        for i in range(self.n_agents):
+            if self.roles[i] == "seller":
+                self.buyers_index.append(i)
+            if self.roles[i] == "buyer":
+                self.buyers_index.append(i)
+
+        self.n_sellers = len(self.sellers_index)
+        self.n_buyers = len(self.buyers_index)
 
         self.utility_function = {}
         for i in range(self.n_agents):
@@ -88,7 +118,7 @@ class Durable(MultiAgentEnv):
                     f"agent_{i}"
                 ].get("initial_wealth", 10)
 
-        # check if the market needs to handle income
+        # check if the market needs to handle income and budgets
         self.is_connected = self.mkt_config.get("is_connected", False)
 
         if self.is_connected == False:
@@ -99,47 +129,35 @@ class Durable(MultiAgentEnv):
                         "income", 1
                     )
 
-        for i in range(self.n_agents):
-            if self.roles[i] == "buyer":
-                self.utility_function[f"agent_{i}"] = self.agents_config[
-                    f"agent_{i}"
-                ].get("utility_function", CES(coeff=0.5))
-
-        self.parameters = self.mkt_config.get(
+        # UNPACK PARAMETERS
+        self.params = self.mkt_config.get(
             "parameters",
             {
                 "depreciation": 0.04,
                 "time_to_build": 1,
             },
         )
-        # evalute if needed
-        # self.depreciation = self.parameters["depreciation"]
-        # self.time_to_build = self.parameters["time_to_build"]
+
+        # WE CREATE SPACES
+        self.gridpoints = self.mkt_config.get("gridpoints", 10)
+        self.space_type = self.mkt_config.get("space_type", "Discrete")
         self.n_states = (
-            self.n_sellers * (self.parameters["time_to_build"] + 1)
+            self.n_sellers * (self.params["time_to_build"] + 1)
             + self.n_sellers * self.n_buyers
         )
-
-        self.cooperative = self.mkt_config.get("cooperative", False)
-        self.gridpoints = self.mkt_config.get("gridpoints", 10)
-
-        # spaces
-        self.space_type = self.mkt_config.get("space_type", "Discrete")
 
         action_bounds = {
             "buyer": [[0, 10]],
             "seller": [self.mkt_config["bounds_p"], self.mkt_config["bounds_q"]]
-            + [[0, 1] for i in range(self.parameters["time_to_build"])],
+            + [[0, 1] for i in range(self.params["time_to_build"])],
         }
 
-        # check observations for sellers
         observation_bounds = {
             "buyer": [self.mkt_config["bounds_p"] for i in range(self.n_sellers)]
             + [self.mkt_config["bounds_q"]],
             "seller": [self.mkt_config["bounds_p"] for i in range(self.n_sellers)]
             + [
-                self.mkt_config["bounds_q"]
-                for i in range(self.parameters["time_to_build"])
+                self.mkt_config["bounds_q"] for i in range(self.params["time_to_build"])
             ],
         }
 
@@ -151,7 +169,8 @@ class Durable(MultiAgentEnv):
             gridpoints=self.gridpoints,
         )
 
-        # Episodic or not
+        # OTHER CONFIGURATIONS
+        self.cooperative = self.mkt_config.get("cooperative", False)
         self.finite_periods = self.mkt_config.get("finite_periods", False)
         self.n_periods = self.mkt_config.get("n_periods", 1000)
 
@@ -162,51 +181,147 @@ class Durable(MultiAgentEnv):
         if not isinstance(self.gridpoints, int):
             raise TypeError("gridpoint must be integer")
 
-    def reset(self):  # change to reflect endogenous TTB and real
+    ##  TO DO RESET:
 
-        if self.space_type == "Discrete":
-            self.obs = {
-                f"agent_{i}": encode(
-                    array=np.array(
-                        [np.floor(self.gridpoints / 2) for i in range(self.n_states)],
-                        dtype=np.int64,
-                    ),
-                    dims=[self.gridpoints for i in range(self.n_states)],
-                )
-                for i in range(self.n_agents)
-            }
+    # Tuesday:
+    # test reset
+    # define reasonable initial points and Theory.
 
-        if self.space_type == "MultiDiscrete":
-            self.obs = {
-                f"agent_{i}": np.array(
-                    [np.floor(self.gridpoints / 2) for i in range(self.n_states)],
-                    dtype=np.int64,
-                )
-                for i in range(self.n_agents)
-            }
+    # is it worthy to make it a function?
+    # recognize role of connected
 
-        if self.space_type == "Continuous":
-            self.obs = {}
-            # The state for buyers is the only the global state
+    def reset(self):
+
+        self.obs = {}
+
+        prices = []
+
+        if self.space_type == "MultiDiscrete" or self.space_type == "Discrete":
+            prices = [self.gridpoints // 2 for i in range(self.n_sellers)]
+        else:
             prices = [
-                (self.lower_bound_p[j] + self.higher_bound_p[j]) / 2
+                np.array(self.mkt_config["bounds_p"]).mean()
                 for j in range(self.n_sellers)
             ]
 
-            quantities = [0 for j in range(self.n_sellers * self.time_to_build)]
+        inventories = [0 for i in range(self.params["time_to_build"])]
 
-            stocks = [0 for j in range(self.n_buyers * self.n_sellers)]
+        stocks_per_buyer = [0 for i in range(self.n_sellers)]
 
-            self.obs = {
-                f"agent_{i}": np.array(prices + quantities + stocks)
-                for i in range(self.n_agents)
-            }
+        stocks_per_seller = [0 for i in range(self.n_buyers)]
+
+        initial_wealth = list(self.initial_wealth.values())
+
+        state_buyers = prices + stocks_per_buyer + initial_wealth
+
+        state_sellers = prices + inventories + stocks_per_seller
+
+        if self.space_type == "MultiDiscrete" or self.space_type == "Continuous":
+
+            # create relevant lists:
+
+            for i in range(self.n_agents):
+                if i in self.buyers_index:
+                    self.obs[f"agent_i"] = state_buyers
+                else:
+                    self.obs[f"agent_i"] = state_sellers
+
+        if self.space_type == "Discrete":
+            # create relevant lists:
+
+            for i in range(self.n_agents):
+                if i in self.buyers_index:
+                    self.obs[f"agent_i"] = encode(
+                        array=state_buyers,
+                        dims=[self.gridpoints for elem in state_buyers],
+                    )
+                else:
+                    self.obs[f"agent_i"] = encode(
+                        array=state_sellers,
+                        dims=[self.gridpoints for elem in state_sellers],
+                    )
 
         return self.obs
 
+    ##TO DO
+    # Monday:
+
+    # Tuesday:
+    # write next state
+    # write rewards.
+
+    # make it suitable to time_to_build=1.
+    # make it suitable to constant marginal cost.
+    # make it suitable to adjuatment costs.
+
     def step(self, action_dict):  # INPUT: Action Dictionary
 
-        # OUTPUT1: obs_ - Next period obs. We also unpack prices
+        self.obs = self.obs_
+
+        # PREPROCESS STATE
+
+        prices = self.obs["agent_0"][: self.n_sellers + 1]
+        inventories = []
+        stocks_per_agent = []
+        for i in range(self.n_agents):
+            if self.roles[i] == "seller":
+                inventories.append(
+                    self.obs[f"agent_{i}"][
+                        self.n_sellers
+                        + 1 : self.n_sellers
+                        + 1
+                        + self.params["time_to_build"]
+                    ]
+                )
+                stocks_per_agent.append(
+                    self.obs[f"agent_{i}"][
+                        self.n_sellers + 1 + self.params["time_to_build"] :
+                    ]
+                )
+
+            if self.roles[i] == "buyer":
+                stocks_per_agent.append(
+                    self.obs[f"agent_{i}"][self.n_sellers + 1 : 2 * self.n_sellers + 1]
+                )
+
+        # PREPROCESS ACTION DICT
+
+        prices_ = []
+        project_starts = []
+        progress = []
+        demand = []
+        expenditure = []
+
+        # create progress variables using your paper.
+        # Loop for i,j in range (self.time_to_build)
+
+        for i in range(self.n_agents):
+            if self.roles[i] == "seller":
+                prices_.append(action_dict[f"agent_{i}"][0])
+                project_starts.append(action_dict[f"agent_{i}"][1])
+                progress.append(action_dict[f"agent_{i}"][2:])
+            if self.roles[i] == "buyer":
+                demand.append(action_dict[f"agent_{i}"])
+
+        demand_per_firm = [
+            np.array([demand[i][j] for i in range(self.n_buyers)]).sum()
+            for j in range(self.n_sellers)
+        ]
+
+        # OUTPUT1: obs_ - Next period obs.
+        if self.is_connected == False:
+            wealth_ = []
+            for (i,) in range(len(self.buyers_index)):
+                if self.roles[i] == "seller":
+                    wealth_.append[self.obs[f"agent_{i}"][-1] - demand[i]]
+
+        # allocate effective demands.
+        # calculate expenditures and new wealth
+        # calculate new inventories
+        # calculate new stocks
+        # calculateutlities and profits.
+        # compile into new obs and rewards.
+        # create info.
 
         actions = list(action_dict.values())
 
@@ -219,13 +334,6 @@ class Durable(MultiAgentEnv):
                     self.obs_[f"agent_{i}"] = np.append(
                         self.obs_[f"agent_{i}"], np.int64(actions[j])
                     )
-
-            prices = [
-                self.lower_bound[i]
-                + (self.higher_bound[i] - self.lower_bound[i])
-                * (actions[i] / (self.gridpoints - 1))
-                for i in range(self.n_agents)
-            ]
 
             if self.space_type == "Discrete":
 
@@ -305,11 +413,11 @@ env = Durable(
             "agent_1": (seller_config),
         },
         "mkt_config": {
-            "parameteres": {
+            "parameters": {
                 "depreciation": 0.96,
-                "time_to_build": 1,
+                "time_to_build": 2,
             },
-            "space_type": "Discrete",
+            "space_type": "Continuous",
             "bounds_p": [0, 2],
             "bounds_q": [0, 10],
             "gridpoints": 21,
