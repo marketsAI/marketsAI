@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import logging
 
 # STEP 0: Inititialize ray
-NUM_CPUS = 13
+NUM_CPUS = 12
 NUM_GPUS = 0
 shutdown()
 init(
@@ -35,14 +35,14 @@ env = Durable_SA_determ()
 # STEP 2: Experiment configuration
 
 # Experiment configuration
-test = True
-date = "June3_"
+test = False
+date = "June5_"
 env_label = "Durable_SA_determ"
 if test == True:
-    MAX_STEPS = 50 * 1000
+    MAX_STEPS = 30 * 1000
     exp_label = env_label + "_test_" + date
 else:
-    MAX_STEPS = 3000 * 1000
+    MAX_STEPS = 2000 * 1000
     exp_label = env_label + "_run_" + date
 
 verbosity = 3
@@ -50,46 +50,54 @@ verbosity = 3
 stop = {"timesteps_total": MAX_STEPS}
 
 # Expliration config
-DEC_RATE = float(math.e ** (-3 * 10 ** (-6)))
-exploration_config_expdec = {
+DEC_RATE_1 = float(math.e ** (-3 * 10 ** (-6)))
+DEC_RATE_2 = float(math.e ** (-4 * 10 ** (-6)))
+DEC_RATE_3 = float(math.e ** (-6 * 10 ** (-6)))
+explo_config_expdec_1 = {
     "type": "EpsilonGreedy",
     "epsilon_schedule": ExponentialSchedule(
         schedule_timesteps=1,
         framework="Torch",
         initial_p=1.0,
-        decay_rate=DEC_RATE,
+        decay_rate=DEC_RATE_1,
     ),
 }
 
-# === Exploration Settings ===
-exploration_config = {
-    # The Exploration class to use.
-    "type": "EpsilonGreedy",
-    # Config for the Exploration class' constructor:
-    "initial_epsilon": 1,
-    "final_epsilon": 0.001,
-    "epsilon_timesteps": 1000000,  # Timesteps over which to anneal epsilon.
-    # For soft_q, use:
-    # "exploration_config" = {
-    #   "type": "SoftQ"
-    #   "temperature": [float, e.g. 1.0]
-    # }
-}
+explo_config_expdec_2 = explo_config_expdec_1.copy()
+explo_config_expdec_2["epsilon_schedule"] = ExponentialSchedule(
+    schedule_timesteps=1,
+    framework="Torch",
+    initial_p=0.9,
+    decay_rate=DEC_RATE_2,
+)
+
+explo_config_expdec_3 = explo_config_expdec_1.copy()
+explo_config_expdec_3["epsilon_schedule"] = ExponentialSchedule(
+    schedule_timesteps=1,
+    framework="Torch",
+    initial_p=0.8,
+    decay_rate=DEC_RATE_3,
+)
+
+print(explo_config_expdec_3)
 
 # Training config (for the algorithm)
 common_config = {
     # common_config
-    "gamma": 0.95,
+    "gamma": 0.99,
     # "lr": tune.grid_search([0.00025, 0.1]),
-    "lr": 0.1,
+    "lr": tune.grid_search([0.01, 0.001, 0.0001]),
     "env": "Durable_SA_determ",
     "horizon": 100,
     "soft_horizon": True,
     "no_done_at_end": True,
-    "exploration_config": exploration_config_expdec,
+    # "exploration_config": explo_config_expdec_1,
+    "exploration_config": tune.grid_search(
+        [explo_config_expdec_1, explo_config_expdec_2, explo_config_expdec_3]
+    ),
     # "env_config": env_config,
     "framework": "torch",
-    "num_workers": 12,
+    "num_workers": 3,
     "num_gpus": 0,
     # "num_envs_per_worker": 10,
     # "create_env_on_driver": True,
@@ -141,14 +149,29 @@ analysis = results = tune.run(
     callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
     verbose=verbosity,
     metric="episode_reward_mean",
-    mode="max"
-    # num_samples=2
+    mode="max",
+    # num_samples=6
     # resources_per_trial={"gpu": NUM_GPUS},
 )
 
 print(analysis.best_checkpoint)
 
 shutdown()
+
+# === Exploration Settings ===
+explo_config_lin = {
+    # The Exploration class to use.
+    "type": "EpsilonGreedy",
+    # Config for the Exploration class' constructor:
+    "initial_epsilon": 1,
+    "final_epsilon": 0.001,
+    "epsilon_timesteps": 1000000,  # Timesteps over which to anneal epsilon.
+    # For soft_q, use:
+    # "exploration_config" = {
+    #   "type": "SoftQ"
+    #   "temperature": [float, e.g. 1.0]
+    # }
+}
 
 # ppo_config = {
 #     # ppo

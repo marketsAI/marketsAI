@@ -21,6 +21,7 @@ class DurableSingleAgent(gym.Env):
 
         # UNPACK CONFIG
         self.env_config = env_config
+        self.bound_game = env_config.get("boundaries_game", False)
 
         # unpack agents config in centralized lists and dicts.
         self.utility_function = env_config.get("utility_function", CRRA(coeff=2))
@@ -147,7 +148,10 @@ class DurableSingleAgent(gym.Env):
         )
 
         # REWARD
-        rew = self.utility_shock.state * self.utility_function(h) - cost
+        if self.bound_game == True:
+            rew = -penalty
+        else:
+            rew = self.utility_shock.state * self.utility_function(h) - cost - penalty
 
         # DONE FLAGS
         done = False

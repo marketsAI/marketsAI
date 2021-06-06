@@ -25,7 +25,7 @@ class Durable_SA_stoch(gym.Env):
         # unpack agents config in centralized lists and dicts.
         self.utility_function = env_config.get("utility_function", CRRA(coeff=2))
         self.utility_shock = MarkovChain(
-            values=[0.5, 1.5], transition=[[0.5, 0.5], [0.5, 0.5]]
+            values=[0.5, 1.5], transition=[[0.95, 0.05], [0.05, 0.95]]
         )
 
         # UNPACK PARAMETERS
@@ -110,7 +110,7 @@ env = Durable_SA_stoch(
         "max_inv": 4,
         "utility_function": CRRA(coeff=2),
         "utility_shock": MarkovChain(
-            values=[0.5, 1.5], transition=[[0.5, 0.5], [0.5, 0.5]]
+            values=[0.5, 1.5], transition=[[0.95, 0.05], [0.05, 0.95]]
         ),
     },
 )
