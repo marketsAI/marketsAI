@@ -15,11 +15,23 @@ from gym.spaces import Discrete, Box, MultiDiscrete
 #         return evaluate
 
 
+def CRRA(coeff: float = 0.5):
+    def evaluate(input: float) -> float:
+        output = (input ** (1 - coeff)) / (1 - coeff)
+        return output
+
+    return evaluate
+
+
 def CES(coeff: float = 0.5):
     def evaluate(inputs: list) -> float:
         output = 0
-        for i in range(len(inputs)):
-            output += inputs[i] ** (coeff)
+        if isinstance(inputs, list):
+            n_inputs = len(inputs)
+            for i in range(n_inputs):
+                output += inputs[i] ** (coeff)
+        else:
+            output = inputs ** coeff
         return output
 
     return evaluate
@@ -58,45 +70,35 @@ class AR:
         return evaluate
 
 
-# class MarkovChain:
-#     def __init__(self, values=[0.5, 1.5], transition=[[0.5, 0.5], [0.5, 0.5]]):
+# improve evaluate(), I would change name to update.
+# create evaluate_index or something
+class MarkovChain:
+    def __init__(
+        self, values: list = [0.5, 1.5], transition: list = [[0.5, 0.5], [0.5, 0.5]]
+    ):
+        self.values = values
+        self.n_values = len(values)
+        self.transition = transition
+        self.state_idx = random.choices(range(self.n_values))[0]
+        self.state = values[self.state_idx]
 
-#         values = values
-#         transition = transition
-#         initial = random.choice(values)
+    def update(self):
+        self.state_idx = random.choices(
+            list(range(self.n_values)), weights=self.transition[self.state_idx]
+        )[0]
+        self.state = self.values[self.state_idx]
+
+
+# class iid_Normal:
+#     def __init__(self, coeffs=[0.9, 1]):
+
+#         coeffs = coeffs
 
 #     def evaluate(self, input):
-#         for i in range(len(values)):
-#             if input == values[i]:
-#                 evaluate = random.choices(values, weights=transition[i])
+
+#         evaluate = np.random.normal(position=coeffs[0], scale=coeffs[1])
 
 #         return evaluate
-
-
-def MarkovChain(
-    values: list = [0.5, 1.5], transition: list = [[0.5, 0.5], [0.5, 0.5]]
-) -> tuple:
-    initial = random.choices(values)
-
-    def evaluate(input):
-        for i, value in enumerate(values):
-            if input == value:
-                output = random.choice(values, weights=transition[i])
-        return output
-
-    return evaluate, initial
-
-
-class iid_Normal:
-    def __init__(self, coeffs=[0.9, 1]):
-
-        coeffs = coeffs
-
-    def evaluate(self, input):
-
-        evaluate = np.random.normal(position=coeffs[0], scale=coeffs[1])
-
-        return evaluate
 
 
 def iid_Normal(coeffs: list = [0.9, 1]) -> tuple:
