@@ -172,7 +172,10 @@ class Durable_SA_endTTB(gym.Env):
         if self.bound_game == True:
             rew = -penalty
         else:
-            rew = self.utility_shock.state * self.utility_function(h) - cost - penalty
+            rew = max(
+                self.utility_shock.state * self.utility_function(h) - cost - penalty,
+                -30,
+            )
 
         # DONE FLAGS
         done = False
@@ -190,38 +193,38 @@ class Durable_SA_endTTB(gym.Env):
 
 # Manual test for debugging
 
-# env = Durable_SA_endTTB(
-#     env_config={
-#         "parameters": {
-#             "depreciation": 0.04,
-#             "time_to_build": 4,
-#             "adj_cost": 0.5,
-#             "speed_penalty": 1.5,
-#             "bounds_punishment": 1,
-#         },
-#     },
-# )
+env = Durable_SA_endTTB(
+    env_config={
+        "parameters": {
+            "depreciation": 0.04,
+            "time_to_build": 4,
+            "adj_cost": 0.5,
+            "speed_penalty": 1.5,
+            "bounds_punishment": 1,
+        },
+    },
+)
 
-# print(env.observation_space.sample())
-# print(env.observation_space.sample())
-# print(env.action_space.sample())
-# print(env.action_space.sample())
+print(env.observation_space.sample())
+print(env.observation_space.sample())
+print(env.action_space.sample())
+print(env.action_space.sample())
 
-# print(env.reset())
-# # obs_, reward, done, info = env.step(
-# #     [(env.gridpoints_progress - 1) // 2 for i in range(2 * (env.TTB - 1) + 1)]
-# #     + [(env.gridpoints_inv - 1) // 3]
-# # )
-# array = [1, 1, 2, 0, 2, 0, 2] + [(env.gridpoints_inv - 1) // 3]
-# dims = [env.gridpoints_progress for i in range((env.TTB - 1) * 2 + 1)] + [
-#     env.gridpoints_inv
-# ]
-# print(array, dims)
-
+print(env.reset())
 # obs_, reward, done, info = env.step(
-#     encode(
-#         array=array,
-#         dims=dims,
-#     )
+#     [(env.gridpoints_progress - 1) // 2 for i in range(2 * (env.TTB - 1) + 1)]
+#     + [(env.gridpoints_inv - 1) // 3]
 # )
-# print(obs_, reward, done, info)
+array = [1, 1, 2, 0, 2, 0, 2] + [(env.gridpoints_inv - 1) // 3]
+dims = [env.gridpoints_progress for i in range((env.TTB - 1) * 2 + 1)] + [
+    env.gridpoints_inv
+]
+print(array, dims)
+
+obs_, reward, done, info = env.step(
+    encode(
+        array=array,
+        dims=dims,
+    )
+)
+print(obs_, reward, done, info)

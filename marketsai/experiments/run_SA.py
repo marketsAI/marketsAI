@@ -18,8 +18,9 @@ import logging
 
 # STEP 0: Parallelization options
 NUM_CPUS = 12
-NUM_TRIALS = 1
+NUM_TRIALS = 2
 NUM_ROLLOUT = 500
+NUM_ENV_PW = 2  # num_env_per_worker
 NUM_GPUS = 0
 shutdown()
 init(
@@ -40,14 +41,14 @@ env = Durable_SA_endTTB()
 
 
 # Experiment configuration
-test = True
-date = "June6_"
-env_label = "Durable_SA_endTTB_big"
+test = False
+date = "June7_"
+env_label = "Durable_SA_endTTB_sm"
 if test == True:
-    MAX_STEPS = 200 * 1000
+    MAX_STEPS = 100 * 1000
     exp_label = env_label + "_test_" + date
 else:
-    MAX_STEPS = 4000 * 1000
+    MAX_STEPS = 1000 * 1000
     exp_label = env_label + "_run_" + date
 
 
@@ -69,8 +70,8 @@ explo_config_init = {
 explo_config_lin = {
     "type": "EpsilonGreedy",
     "initial_epsilon": 1,
-    "final_epsilon": 0.001,
-    "epsilon_timesteps": MAX_STEPS * 0.5,
+    "final_epsilon": 0.005,
+    "epsilon_timesteps": MAX_STEPS * 0.7,
     # }
 }
 print(explo_config_lin)
@@ -95,11 +96,11 @@ common_config = {
     # "framework": "tf2",
     "num_workers": num_workers,
     "num_gpus": 0,
-    # "num_envs_per_worker": 1,
+    "num_envs_per_worker": NUM_ENV_PW,
     # "create_env_on_driver": True,
     # "num_cpus_for_driver": 1,
     "rollout_fragment_length": NUM_ROLLOUT,
-    "train_batch_size": NUM_ROLLOUT * num_workers,
+    "train_batch_size": NUM_ROLLOUT * num_workers * NUM_ENV_PW,
     # "training_intensity": 1,  # the default is train_batch_size_rollout_fragment_length
     # "timesteps_per_iteration": 1000,  # I still don't know how this works. I knwow its a minimum.
     "normalize_actions": False,
@@ -119,7 +120,7 @@ dqn_config = {
     "learning_starts": 5500,
     "adam_epsilon": 1.5 * 10 ** (-4),
     "model": {
-        "fcnet_hiddens": [16, 16],
+        "fcnet_hiddens": [128, 128],
     },
     # "dueling": True,
     # "double_q": True,
