@@ -4,6 +4,7 @@ from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from marketsai.functions.functions import MarkovChain, CRRA
 from marketsai.utils import decode, encode
 import numpy as np
+import random
 
 # from marketsai.utils import encode
 # import math
@@ -27,14 +28,14 @@ class Durable_SA_endTTB(gym.Env):
         # unpack agents config in centralized lists and dicts.
         self.utility_function = env_config.get("utility_function", CRRA(coeff=2))
         self.utility_shock = MarkovChain(
-            values=[0.5, 1.5], transition=[[0.95, 0.05], [0.05, 0.95]]
+            values=[0.5, 1.5], transition=[[0.975, 0.025], [0.05, 0.95]]
         )
 
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
             {
-                "depreciation": 0.04,
+                "depreciation": 0.01,
                 "adj_cost": 0.5,
                 "time_to_build": 4,
                 "speed_penalty": 1.5,
@@ -46,9 +47,9 @@ class Durable_SA_endTTB(gym.Env):
         self.TTB = self.params["time_to_build"]
 
         # WE CREATE SPACES
-        self.gridpoints_inv = self.env_config.get("gridpoints_inv", 10)
+        self.gridpoints_inv = self.env_config.get("gridpoints_inv", 15)
         self.gridpoints_progress = self.env_config.get("gridpoints_progress", 3)
-        self.max_inv = self.env_config.get("max_inv", 4)
+        self.max_inv = self.env_config.get("max_inv", 2)
         # self.action_space = MultiDiscrete(
         #     [self.gridpoints_progress for i in range((self.TTB - 1) * 2 + 1)]
         #     + [self.gridpoints_inv]
@@ -61,7 +62,7 @@ class Durable_SA_endTTB(gym.Env):
             [
                 Box(
                     low=np.array([0 for i in range(self.TTB + 1)]),
-                    high=np.array([40] + [2 * self.max_inv for i in range(self.TTB)]),
+                    high=np.array([30] + [2 * self.max_inv for i in range(self.TTB)]),
                     shape=(self.TTB + 1,),
                 ),
                 Discrete(2),
@@ -70,9 +71,12 @@ class Durable_SA_endTTB(gym.Env):
 
     def reset(self):
 
-        h_init = [23.2]
+        h_init = random.choices(
+            [0, 5, 10, 15, 20, 30], weights=[0.05, 0.15, 0.3, 0.3, 0.15, 0.05]
+        )
         inv_stages = [self.params["depreciation"] * h_init[0] for i in range(self.TTB)]
         self.obs_ = (np.array(h_init + inv_stages), self.utility_shock.state_idx)
+        self.timestep = 0
 
         return self.obs_
 
@@ -82,6 +86,7 @@ class Durable_SA_endTTB(gym.Env):
         h_old = self.obs_[0][0]
         inv_stages_old = self.obs_[0][1:]
         self.utility_shock.update()
+        self.timestep += 1
 
         # PREPROCESS action and state
         actions = decode(
@@ -169,8 +174,8 @@ class Durable_SA_endTTB(gym.Env):
             if bound_violations[i] < 0:
                 penalty += self.bounds_punishment
 
-        if self.bound_game == True:
-            rew = -penalty
+        if self.bound_game == True or self.timestep < 4000:
+            rew = -20 - penalty
         else:
             rew = max(
                 self.utility_shock.state * self.utility_function(h) - cost - penalty,
@@ -193,38 +198,38 @@ class Durable_SA_endTTB(gym.Env):
 
 # Manual test for debugging
 
-env = Durable_SA_endTTB(
-    env_config={
-        "parameters": {
-            "depreciation": 0.04,
-            "time_to_build": 4,
-            "adj_cost": 0.5,
-            "speed_penalty": 1.5,
-            "bounds_punishment": 1,
-        },
-    },
-)
-
-print(env.observation_space.sample())
-print(env.observation_space.sample())
-print(env.action_space.sample())
-print(env.action_space.sample())
-
-print(env.reset())
-# obs_, reward, done, info = env.step(
-#     [(env.gridpoints_progress - 1) // 2 for i in range(2 * (env.TTB - 1) + 1)]
-#     + [(env.gridpoints_inv - 1) // 3]
+# env = Durable_SA_endTTB(
+#     env_config={
+#         "parameters": {
+#             "depreciation": 0.04,
+#             "time_to_build": 4,
+#             "adj_cost": 0.5,
+#             "speed_penalty": 1.5,
+#             "bounds_punishment": 1,
+#         },
+#     },
 # )
-array = [1, 1, 2, 0, 2, 0, 2] + [(env.gridpoints_inv - 1) // 3]
-dims = [env.gridpoints_progress for i in range((env.TTB - 1) * 2 + 1)] + [
-    env.gridpoints_inv
-]
-print(array, dims)
 
-obs_, reward, done, info = env.step(
-    encode(
-        array=array,
-        dims=dims,
-    )
-)
-print(obs_, reward, done, info)
+# print(env.observation_space.sample())
+# print(env.observation_space.sample())
+# print(env.action_space.sample())
+# print(env.action_space.sample())
+
+# print(env.reset())
+# # obs_, reward, done, info = env.step(
+# #     [(env.gridpoints_progress - 1) // 2 for i in range(2 * (env.TTB - 1) + 1)]
+# #     + [(env.gridpoints_inv - 1) // 3]
+# # )
+# array = [1, 1, 2, 0, 2, 0, 2] + [(env.gridpoints_inv - 1) // 3]
+# dims = [env.gridpoints_progress for i in range((env.TTB - 1) * 2 + 1)] + [
+#     env.gridpoints_inv
+# ]
+# print(array, dims)
+
+# obs_, reward, done, info = env.step(
+#     encode(
+#         array=array,
+#         dims=dims,
+#     )
+# )
+# print(obs_, reward, done, info)
