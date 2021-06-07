@@ -2,13 +2,14 @@ import gym
 from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from marketsai.functions.functions import MarkovChain, CRRA
+from marketsai.utils import decode, encode
 import numpy as np
 
 # from marketsai.utils import encode
 # import math
 
 
-class DurableSingleAgent(gym.Env):
+class Durable_SA_endTTB(gym.Env):
     """An gym compatible environment consisting of a durable good consumption and production problem
     The agent chooses how much to produce of a durable good subject to quadratci costs.
 
@@ -26,7 +27,7 @@ class DurableSingleAgent(gym.Env):
         # unpack agents config in centralized lists and dicts.
         self.utility_function = env_config.get("utility_function", CRRA(coeff=2))
         self.utility_shock = MarkovChain(
-            values=[0.5, 1.5], transition=[[0.5, 0.5], [0.5, 0.5]]
+            values=[0.5, 1.5], transition=[[0.95, 0.05], [0.05, 0.95]]
         )
 
         # UNPACK PARAMETERS
@@ -34,37 +35,34 @@ class DurableSingleAgent(gym.Env):
             "parameters",
             {
                 "depreciation": 0.04,
-                # "time_to_build": 1,
                 "adj_cost": 0.5,
-                "time_to_build": 2,
+                "time_to_build": 4,
                 "speed_penalty": 1.5,
+                "bounds_punishment": 1,
             },
         )
 
+        self.bounds_punishment = self.params["bounds_punishment"]
         self.TTB = self.params["time_to_build"]
 
         # WE CREATE SPACES
         self.gridpoints_inv = self.env_config.get("gridpoints_inv", 10)
-        self.gridpoints_progress = self.env_config.get(
-            "gridpoints_progress",
-        )
+        self.gridpoints_progress = self.env_config.get("gridpoints_progress", 3)
         self.max_inv = self.env_config.get("max_inv", 4)
-        self.action_space = MultiDiscrete(
-            [self.gridpoints_inv]
-            + [self.gridpoints_progress for i in range((self.TTB - 2) * 2 + 1)]
-        )
-        # self.observation_space = Box(
-        #     low=np.array([0, 0]), high=np.array([2, 2]), shape=(2,), dtype=np.float32
+        # self.action_space = MultiDiscrete(
+        #     [self.gridpoints_progress for i in range((self.TTB - 1) * 2 + 1)]
+        #     + [self.gridpoints_inv]
         # )
+        self.action_space = Discrete(
+            self.gridpoints_inv * self.gridpoints_progress ** ((self.TTB - 1) * 2 + 1)
+        )
 
         self.observation_space = Tuple(
             [
                 Box(
-                    low=np.array([0 for i in range(self.TTB)]),
-                    high=np.array(
-                        [40] + [2 * self.max_inv for i in range(self.TTB - 1)]
-                    ),
-                    shape=(1,),
+                    low=np.array([0 for i in range(self.TTB + 1)]),
+                    high=np.array([40] + [2 * self.max_inv for i in range(self.TTB)]),
+                    shape=(self.TTB + 1,),
                 ),
                 Discrete(2),
             ]
@@ -72,16 +70,13 @@ class DurableSingleAgent(gym.Env):
 
     def reset(self):
 
-        h_init = np.array([23.2], dtype=np.float32)
-        inv_stages = np.array(
-            [self.params["depreciation"] * h_init for i in range(self.TTB - 1)],
-            dtype=np.float32,
-        )
-        self.obs_ = (h_init, self.utility_shock.state_idx)
+        h_init = [23.2]
+        inv_stages = [self.params["depreciation"] * h_init[0] for i in range(self.TTB)]
+        self.obs_ = (np.array(h_init + inv_stages), self.utility_shock.state_idx)
 
         return self.obs_
 
-    def step(self, actions):  # INPUT: Action Dictionary
+    def step(self, action):  # INPUT: Action Dictionary
 
         # UPDATE recursive structure
         h_old = self.obs_[0][0]
@@ -89,65 +84,91 @@ class DurableSingleAgent(gym.Env):
         self.utility_shock.update()
 
         # PREPROCESS action and state
+        actions = decode(
+            code=action,
+            dims=[self.gridpoints_progress for i in range((self.TTB - 1) * 2 + 1)]
+            + [self.gridpoints_inv],
+        )
+        new_inv = (actions[-1] / (self.gridpoints_inv - 1)) * self.max_inv
+        progress = [
+            (actions[i] / (self.gridpoints_progress - 1)) * 1
+            for i in range(2 * (self.TTB - 1) + 1)
+        ]
 
         # update stages (better write as new_at_stage and old_at_stage)
-        inv_stages = [0 for i in range(self.TTB - 1)]
-        stuck_at_stage = [0 for i in range(self.TTB - 1)]
+        inv_stages = [0 for i in range(self.TTB)]
+        stuck_at_stage = [0 for i in range(self.TTB)]
         new_at_stage = [0 for i in range(self.TTB)]  # includes completion stage
 
-        for i in range(1, self.TTB - 1):
-            stuck_at_stage[i - 1] = inv_stages_old[i - 1] * (
-                1 - actions[2 * i - 1] - actions[2 * i]
+        for i in range(0, self.TTB - 1):
+            stuck_at_stage[i] = inv_stages_old[i] * (
+                1 - progress[2 * i] - progress[2 * i + 1]
             )
         stuck_at_stage[self.TTB - 1] = inv_stages_old[self.TTB - 1] * (
-            1 - actions[2 * self.TTB]
+            1 - progress[2 * (self.TTB - 1)]
         )
 
-        new_at_stage[0] = (actions[-1] / self.gridpoints_inv) * self.max_inv
+        new_at_stage[0] = new_inv
 
-        new_at_stage[1] = inv_stages_old[0] * actions[0]
+        new_at_stage[1] = inv_stages_old[0] * progress[0]
 
         for i in range(2, self.TTB):
             new_at_stage[i] = (
-                inv_stages_old[i - 1] * actions[2 * (i - 1)]
-                + inv_stages_old[i - 2] * actions[2 * (i - 2) + 2]
+                inv_stages_old[i - 1] * progress[2 * i - 2]
+                + inv_stages_old[i - 2] * progress[2 * i - 3]
             )
 
-        # cost function:
-        weights = [1 / self.TTB for i in range(self.TTB)]
-        cost = new_at_stage[0] * weights[0]
-        for i in range[self.TTB - 2]:
-            cost += inv_stages_old[i] * (
-                actions[2 * i] * weights[i + 1]
-                + actions[2 * i + 1](weights[i + 1] + weights[i + 2])
-                * self.params["speed_penalty"]
-            )
-        cost += (
-            inv_stages_old[self.TTB - 1]
-            * actions[2 * (self.TTB - 1)]
-            * weights(self.TTB + 1)
+        inv_finished = (
+            inv_stages_old[self.TTB - 1] * progress[2 * (self.TTB - 1) - 1]
+            + inv_stages_old[self.TTB - 2] * progress[2 * (self.TTB - 1) - 2]
         )
-
-        # penalty for restrictions
-
-        penalty = [0 for i in range(self.TTB - 1)]
-        for i in range(self.TTB - 2):
-            penalty[i] = 1 - actions[2 * i] - actions[2 * i + 1]
-        penalty[self.TTB - 1] = 1 - actions[2 * self.TTB]
 
         # NEXT OBS
-        for i in range(self.TTB - 1):
-            inv_stages[i] = stuck_at_stage[i] + new_at_stage[i]
+        for i in range(self.TTB):
+            inv_stages[i] = min(
+                max(stuck_at_stage[i] + new_at_stage[i], 0), self.max_inv * 2
+            )
         h = min(
-            h_old * (1 - self.params["depreciation"]) + new_at_stage[-1],
-            np.float(self.observation_space[0].high),
+            h_old * (1 - self.params["depreciation"]) + inv_finished,
+            np.float(self.observation_space[0].high[0]),
         )
         self.obs_ = (
-            np.array([h + inv_stages], dtype=np.float32),
+            np.array([h] + inv_stages, dtype=np.float32),
             self.utility_shock.state_idx,
         )
 
         # REWARD
+
+        # cost function:
+        weights = [1 / self.TTB for i in range(self.TTB)]
+        cost_opt = new_at_stage[0] * weights[0]
+        for i in range(self.TTB - 2):
+            cost_opt += inv_stages_old[i] * (
+                progress[2 * i] * weights[i + 1]
+                + progress[2 * i + 1]
+                * (weights[i + 1] + weights[i + 2])
+                * self.params["speed_penalty"]
+            )
+        cost_opt += (
+            inv_stages_old[self.TTB - 1]
+            * progress[2 * (self.TTB - 1) - 1]
+            * weights[self.TTB - 1]
+        )
+
+        cost = self.params["adj_cost"] * cost_opt ** 2
+
+        # penalty for restrictions
+
+        bound_violations = [0 for i in range(self.TTB)]
+        for i in range(self.TTB - 1):
+            bound_violations[i] = 1 - progress[2 * i] - progress[2 * i + 1]
+        bound_violations[self.TTB - 1] = 1 - progress[2 * (self.TTB - 1)]
+
+        penalty = 0
+        for i in range(self.TTB):
+            if bound_violations[i] < 0:
+                penalty += self.bounds_punishment
+
         if self.bound_game == True:
             rew = -penalty
         else:
@@ -158,9 +179,9 @@ class DurableSingleAgent(gym.Env):
 
         # ADDITION INFO
         info = {
-            "investment": new_at_stage[-1],
+            "investment": inv_finished,
             "new projects": new_at_stage[0],
-            "actions": actions[:-1],
+            "progress": progress,
         }
 
         # RETURN
@@ -169,21 +190,38 @@ class DurableSingleAgent(gym.Env):
 
 # Manual test for debugging
 
-env = DurableSingleAgent(
-    env_config={
-        "parameters": {
-            "depreciation": 0.04,
-            "adj_cost": 0.5,
-        },
-        "gridpoints": 20,
-        "max_inv": 4,
-        "utility_function": CRRA(coeff=2),
-        "utility_shock": MarkovChain(
-            values=[0.5, 1.5], transition=[[0.5, 0.5], [0.5, 0.5]]
-        ),
-    },
-)
+# env = Durable_SA_endTTB(
+#     env_config={
+#         "parameters": {
+#             "depreciation": 0.04,
+#             "time_to_build": 4,
+#             "adj_cost": 0.5,
+#             "speed_penalty": 1.5,
+#             "bounds_punishment": 1,
+#         },
+#     },
+# )
 
-print(env.reset())
-obs_, reward, done, info = env.step(5)
-print(obs_, reward, done, info)
+# print(env.observation_space.sample())
+# print(env.observation_space.sample())
+# print(env.action_space.sample())
+# print(env.action_space.sample())
+
+# print(env.reset())
+# # obs_, reward, done, info = env.step(
+# #     [(env.gridpoints_progress - 1) // 2 for i in range(2 * (env.TTB - 1) + 1)]
+# #     + [(env.gridpoints_inv - 1) // 3]
+# # )
+# array = [1, 1, 2, 0, 2, 0, 2] + [(env.gridpoints_inv - 1) // 3]
+# dims = [env.gridpoints_progress for i in range((env.TTB - 1) * 2 + 1)] + [
+#     env.gridpoints_inv
+# ]
+# print(array, dims)
+
+# obs_, reward, done, info = env.step(
+#     encode(
+#         array=array,
+#         dims=dims,
+#     )
+# )
+# print(obs_, reward, done, info)
