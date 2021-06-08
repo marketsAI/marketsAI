@@ -174,7 +174,7 @@ class Durable_SA_endTTB(gym.Env):
             if bound_violations[i] < 0:
                 penalty += self.bounds_punishment
 
-        if self.bound_game == True or self.timestep < 4000:
+        if self.bound_game == True or self.timestep < 1000:
             rew = -20 - penalty
         else:
             rew = max(
@@ -186,10 +186,17 @@ class Durable_SA_endTTB(gym.Env):
         done = False
 
         # ADDITION INFO
+        hurry_count = 0
+        for i in range(self.TTB-1):
+            if progress[2*i+1]>0:
+                hurry_count += 1
+
         info = {
-            "investment": inv_finished,
-            "new projects": new_at_stage[0],
+            "fin_investment": inv_finished,
+            "new_investment": new_at_stage[0],
             "progress": progress,
+            "penalties": penalty,
+            "hurry_count": hurry_count
         }
 
         # RETURN

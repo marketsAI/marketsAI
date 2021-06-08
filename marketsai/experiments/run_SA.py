@@ -18,18 +18,18 @@ import matplotlib.pyplot as plt
 import logging
 
 # STEP 0: Parallelization options
-NUM_CPUS = 12
+NUM_CPUS = 20
 NUM_TRIALS = 1
-NUM_ROLLOUT = 500
-NUM_ENV_PW = 1  # num_env_per_worker
-NUM_GPUS = 0
+NUM_ROLLOUT = 100
+NUM_ENV_PW = 2  # num_env_per_worker
+NUM_GPUS = 1
 shutdown()
 init(
     num_cpus=NUM_CPUS,
     num_gpus=NUM_GPUS,
     # logging_level=logging.ERROR,
 )
-num_workers = (NUM_CPUS - NUM_TRIALS - 1) // NUM_TRIALS
+num_workers = (NUM_CPUS - NUM_TRIALS) // NUM_TRIALS
 
 
 # STEP 1: register environment
@@ -37,14 +37,14 @@ register_env("Durable_SA_endTTB", Durable_SA_endTTB)
 env = Durable_SA_endTTB()
 
 # STEP 2: Experiment configuration
-test = True
+test = False
 date = "June7_"
-env_label = "Durable_SA_endTTB_sm"
+env_label = "Durable_SA_endTTB_big"
 if test == True:
     MAX_STEPS = 200 * 1000
     exp_label = env_label + "_test_" + date
 else:
-    MAX_STEPS = 1000 * 1000
+    MAX_STEPS = 5000 * 1000
     exp_label = env_label + "_run_" + date
 
 
@@ -66,7 +66,7 @@ explo_config_lin = {
     "type": "EpsilonGreedy",
     "initial_epsilon": 1,
     "final_epsilon": 0.005,
-    "epsilon_timesteps": MAX_STEPS * 0.7,
+    "epsilon_timesteps": MAX_STEPS * 0.6,
 }
 print(explo_config_lin)
 
@@ -74,17 +74,17 @@ print(explo_config_lin)
 common_config = {
     # common_config
     "gamma": 0.99,
-    "lr": 0.001,
+    "lr": 0.0001,
     "env": "Durable_SA_endTTB",
     "horizon": 100,
     "soft_horizon": True,
     "no_done_at_end": True,
-    "exploration_config": explo_config_lin,
-    "evaluation_interval": 10,
+    #"exploration_config": explo_config_lin,
+    #"evaluation_interval": 50,
     "evaluation_num_episodes": 1,
     "framework": "torch",
     "num_workers": num_workers,
-    "num_gpus": 0,
+    "num_gpus": NUM_GPUS // NUM_TRIALS,
     "num_envs_per_worker": NUM_ENV_PW,
     "rollout_fragment_length": NUM_ROLLOUT,
     "train_batch_size": NUM_ROLLOUT * num_workers * NUM_ENV_PW,
@@ -94,7 +94,7 @@ common_config = {
 dqn_config = {
     "adam_epsilon": 1.5 * 10 ** (-4),
     "model": {
-        "fcnet_hiddens": [128, 128],
+        "fcnet_hiddens": [256, 256],
     },
 }
 
@@ -115,8 +115,8 @@ results = tune.run(
     # verbose=verbosity,
     metric="episode_reward_mean",
     mode="max",
-    num_samples=NUM_TRIALS
-    # resources_per_trial={"gpu": NUM_GPUS},
+    num_samples=NUM_TRIALS,
+    #resources_per_trial={"gpu": 0.5},
 )
 print("exp_name:", exp_name)
 print("best_checkpoint:", results.best_checkpoint)
