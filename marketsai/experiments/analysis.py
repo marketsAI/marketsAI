@@ -1,4 +1,4 @@
-#Step 4: Evaluation
+# Step 4: Evaluation
 from marketsai.markets.durable_sa_endTTB import Durable_SA_endTTB
 from ray.rllib.agents.dqn import DQNTrainer
 from ray.tune.registry import register_env
@@ -17,10 +17,10 @@ config_analysis = {
     },
 }
 init()
-#checkpoint_path = results.best_checkpoint
+# checkpoint_path = results.best_checkpoint
 register_env("Durable_SA_endTTB", Durable_SA_endTTB)
 env = Durable_SA_endTTB()
-checkpoint_path = "/home/mc5851/ray_results/Durable_SA_endTTB_big_run_June7_DQN/DQN_Durable_SA_endTTB_08d37_00000_0_2021-06-07_19-21-06/checkpoint_1316/checkpoint-1316"
+checkpoint_path = "/Users/matiascovarrubias/ray_results/Durable_SA_endTTB_big_run_June7_DQN/DQN_Durable_SA_endTTB_90010_00000_0_2021-06-08_01-44-16/checkpoint_001000/checkpoint-1000"
 trained_trainer = DQNTrainer(env="Durable_SA_endTTB", config=config_analysis)
 trained_trainer.restore(checkpoint_path)
 fin_inv_list = []
@@ -47,8 +47,6 @@ for i in range(MAX_STEPS):
     penalty_list.append(info["penalties"])
     hurry_count_list.append(info["hurry_count"])
 
-print(fin_inv_list)
-print(new_inv_list)
 
 plt.subplot(3, 2, 1)
 plt.plot(shock_list)

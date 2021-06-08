@@ -9,7 +9,7 @@ import random
 # import math
 
 
-class Durable_SA_stoch(gym.Env):
+class Durable_SA_sgm(gym.Env):
     """An gym compatible environment consisting of a durable good consumption and production problem
     The agent chooses how much to produce of a durable good subject to quadratci costs.
 
@@ -24,18 +24,14 @@ class Durable_SA_stoch(gym.Env):
         self.env_config = env_config
 
         # unpack agents config in centralized lists and dicts.
-        self.utility_function = env_config.get("utility_function", CRRA(coeff=2))
-        self.utility_shock = MarkovChain(
+        self.shock = MarkovChain(
             values=[0.5, 1.5], transition=[[0.975, 0.025], [0.05, 0.95]]
         )
 
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
-            {
-                "depreciation": 0.04,
-                "adj_cost": 0.5,
-            },
+            {"depreciation": 0.04, "adj_cost": 0.5, "alpha": 0.3},
         )
 
         # WE CREATE SPACES
@@ -51,7 +47,7 @@ class Durable_SA_stoch(gym.Env):
             [
                 Box(
                     low=np.array([0]),
-                    high=np.array([4]),
+                    high=np.array([2]),
                     shape=(1,),
                 ),
                 Discrete(2),
@@ -60,34 +56,34 @@ class Durable_SA_stoch(gym.Env):
 
     def reset(self):
 
-        h_init = np.array(
+        k_init = np.array(
             random.choices(
-                [0, 0.15, 0.3, 0.45, 0.6, 0.75],
+                [0.01, 0.02, 0.1, 0.2, 1.5, 2],
                 weights=[0.05, 0.15, 0.3, 0.3, 0.15, 0.05],
             )
         )
-        self.obs_ = (h_init, self.utility_shock.state_idx)
+        self.obs_ = (k_init, self.shock.state_idx)
 
         return self.obs_
 
     def step(self, action):  # INPUT: Action Dictionary
 
         # UPDATE recursive structure
-        h_old = self.obs_[0][0]
-        self.utility_shock.update()
+        k_old = self.obs_[0][0]
+        self.shock.update()
 
         # PREPROCESS action and state
-        inv = action / (self.gridpoints - 1) * self.max_inv
-        h = min(
-            h_old * (1 - self.params["depreciation"]) + inv,
+        y = max(self.shock.state * k_old ** self.params["alpha"], 0.00001)
+        k = min(
+            action / (self.gridpoints - 1) * y,
             np.float(self.observation_space[0].high),
         )
 
         # NEXT OBS
-        self.obs_ = (np.array([h], dtype=np.float32), self.utility_shock.state_idx)
+        self.obs_ = (np.array([k], dtype=np.float32), self.shock.state_idx)
 
         # REWARD
-        rew = self.utility_shock.state * np.log(h) - self.params["adj_cost"] * inv ** 2
+        rew = max(np.log(max(y - k, 0.00001)), -1000)
 
         # rew = self.utility_function(h) - self.params["adj_cost"] * inv ** 2
 
@@ -95,7 +91,7 @@ class Durable_SA_stoch(gym.Env):
         done = False
 
         # ADDITION INFO
-        info = {"investment": inv}
+        info = {"income": y, "inv_proportion": k / y}
 
         # RETURN
         return self.obs_, rew, done, info
@@ -103,18 +99,10 @@ class Durable_SA_stoch(gym.Env):
 
 # Manual test for debugging
 
-env = Durable_SA_stoch(
+env = Durable_SA_sgm(
     env_config={
-        "parameters": {
-            "depreciation": 0.04,
-            "adj_cost": 0.5,
-        },
+        "parameters": {"depreciation": 0.04, "adj_cost": 0.5, "alpha": 0.3},
         "gridpoints": 20,
-        "max_inv": 1,
-        "utility_function": CRRA(coeff=2),
-        "utility_shock": MarkovChain(
-            values=[0.5, 1.5], transition=[[0.95, 0.05], [0.05, 0.95]]
-        ),
     },
 )
 
