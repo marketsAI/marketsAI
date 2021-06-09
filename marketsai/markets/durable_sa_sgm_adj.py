@@ -109,12 +109,12 @@ class Durable_SA_sgm_adj(gym.Env):
 
 # Manual test for debugging
 
-env = Durable_SA_sgm_adj(
-    env_config={
-        "parameters": {"depreciation": 0.04, "adj_cost": 0.5, "alpha": 0.3},
-    },
-)
+# env = Durable_SA_sgm_adj(
+#     env_config={
+#         "parameters": {"depreciation": 0.04, "adj_cost": 0.5, "alpha": 0.3},
+#     },
+# )
 
-print(env.reset())
-obs_, reward, done, info = env.step([1])
-print(obs_, reward, done, info)
+# print(env.reset())
+# obs_, reward, done, info = env.step([1])
+# print(obs_, reward, done, info)

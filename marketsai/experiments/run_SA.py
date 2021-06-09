@@ -18,11 +18,11 @@ import matplotlib.pyplot as plt
 import logging
 
 # STEP 0: Parallelization options
-NUM_CPUS = 11
+NUM_CPUS = 16
 NUM_TRIALS = 1
-NUM_ROLLOUT = 1000
-NUM_ENV_PW = 2  # num_env_per_worker
-NUM_GPUS = 0
+NUM_ROLLOUT = 500
+NUM_ENV_PW = 5  # num_env_per_worker
+NUM_GPUS = 1
 shutdown()
 init(
     num_cpus=NUM_CPUS,
@@ -38,13 +38,13 @@ env = Durable_SA_sgm_adj()
 
 # STEP 2: Experiment configuration
 test = False
-date = "June_"
+date = "June8_"
 env_label = "Durable_SA_sgm_adj_big"
 if test == True:
     MAX_STEPS = 1000 * 1000
     exp_label = env_label + "_test_" + date
 else:
-    MAX_STEPS = 2000 * 1000
+    MAX_STEPS = 10000 * 1000
     exp_label = env_label + "_run_" + date
 
 
@@ -74,21 +74,20 @@ print(explo_config_lin)
 common_config = {
     # common_config
     "gamma": 0.95,
-    "lr": 0.01,
+    "lr": 0.0001,
     "env": "Durable_SA_sgm_adj",
     "horizon": 100,
     "soft_horizon": True,
-    "no_done_at_end": False,
+    "no_done_at_end": True,
     # "exploration_config": explo_config_lin,
-    # "evaluation_interval": 50,
-    # "evaluation_num_episodes": 1,
-    # "framework": "torch",
+    "evaluation_interval": 1000,
+    "evaluation_num_episodes": 10,
+    "framework": "torch",
     "num_workers": num_workers,
     "num_gpus": NUM_GPUS // NUM_TRIALS,
     "num_envs_per_worker": NUM_ENV_PW,
     "rollout_fragment_length": NUM_ROLLOUT,
     "train_batch_size": NUM_ROLLOUT * num_workers * NUM_ENV_PW,
-    # "normalize_actions": False,
 }
 
 # dqn_config = {
@@ -102,17 +101,17 @@ common_config = {
 # training_config_dqn = {**common_config, **dqn_config}
 training_config = {**common_config}
 
-exp_name = exp_label + "IMPALA"
+exp_name = exp_label + "SAC"
 
 results = tune.run(
-    "IMPALA",
+    "SAC",
     name=exp_name,
     config=training_config,
-    # checkpoint_freq=250,
+    checkpoint_freq=100,
     checkpoint_at_end=True,
     # resume=True,
     stop=stop,
-    # callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
+    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
     # verbose=verbosity,
     metric="episode_reward_mean",
     mode="max",
