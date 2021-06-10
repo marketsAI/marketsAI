@@ -15,11 +15,11 @@ import matplotlib.pyplot as plt
 import logging
 
 # STEP 0: Parallelization options
-NUM_CPUS = 11
+NUM_CPUS = 17
 NUM_TRIALS = 1
-NUM_ROLLOUT = 500
+NUM_ROLLOUT = 1000
 NUM_ENV_PW = 2  # num_env_per_worker
-NUM_GPUS = 0
+NUM_GPUS = 1
 shutdown()
 init(
     num_cpus=NUM_CPUS,
@@ -35,13 +35,13 @@ env = Durable_sgm_stoch()
 
 # STEP 2: Experiment configuration
 test = True
-date = "June9_"
+date = "June10_"
 env_label = "Durable_sgm_stoch"
-if test == True:
+if test == False:
     MAX_STEPS = 1000 * 1000
     exp_label = env_label + "_test_" + date
 else:
-    MAX_STEPS = 5000 * 1000
+    MAX_STEPS = 50000 * 1000
     exp_label = env_label + "_run_" + date
 
 stop = {"timesteps_total": MAX_STEPS}
@@ -52,18 +52,18 @@ exp_name = exp_label + algo
 common_config = {
     # "lr": 0.0003,
     # ENVIRONMENT
-    "gamma": 0.99,
+    "gamma": 0.95,
     "env": "Durable_sgm_stoch",
     "env_config": {},
-    "horizon": 100,
-    "soft_horizon": True,
-    "no_done_at_end": True,
+    "horizon": 1000,
+    # "soft_horizon": True,
+    # "no_done_at_end": True,
     # EXPLORATION
     # "exploration_config": explo_config_lin,
     # EVALUATION
     "evaluation_interval": 10,
     "evaluation_num_episodes": 10,
-    "evaluation_config": {"env_config": {}, "explore": False},
+    "evaluation_config": {"explore": False},
     # MODEL CONFIG
     "framework": "torch",
     "lambda": 0.95,
@@ -72,16 +72,16 @@ common_config = {
     "clip_param": 0.2,
     # TRAINING CONFIG
     "lr": 0.0003,
-    "sgd_minibatch_size": 5000,
-    "train_batch_size": 65000,
+    "sgd_minibatch_size": 4000,
+    "train_batch_size": 512000,
     "num_sgd_iter": 32,
-    "num_workers": 10,
-    # "num_gpus": 1,
+    "num_workers": 16,
+    "num_gpus": 1,
     "grad_clip": 0.5,
     "num_envs_per_worker": 16,
     # "batch_mode": "truncate_episodes",
-    "observation_filter": "MeanStdFilter",
-    # "rollout_fragment_length": NUM_ROLLOUT,
+    # "observation_filter": "MeanStdFilter",
+    "rollout_fragment_length": NUM_ROLLOUT,
     # "train_batch_size": NUM_ROLLOUT * num_workers * NUM_ENV_PW,
     # "num_workers": num_workers,
     # "num_gpus": NUM_GPUS // NUM_TRIALS,
@@ -96,7 +96,7 @@ analysis = tune.run(
     name=exp_name,
     config=training_config,
     stop=stop,
-    checkpoint_freq=100,
+    checkpoint_freq=10,
     checkpoint_at_end=True,
     callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
     # verbose=verbosity,

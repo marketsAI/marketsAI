@@ -32,11 +32,11 @@ class Durable_sgm_stoch(gym.Env):
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
-            {"depreciation": 0.02, "alpha": 0.33},
+            {"depreciation": 0.04, "alpha": 0.33},
         )
 
         # WE CREATE SPACES
-        self.max_saving = self.env_config.get("max_saving", 0.5)
+        self.max_saving = self.env_config.get("max_saving", 0.2)
         self.action_space = Box(low=np.array([-1]), high=np.array([1]), shape=(1,))
 
         # self.observation_space = Box(
@@ -60,8 +60,8 @@ class Durable_sgm_stoch(gym.Env):
 
         k_init = np.array(
             random.choices(
-                [0.01, 1, 2, 5, 10, 15],
-                weights=[0.05, 0.15, 0.3, 0.15, 0.3, 0.05],
+                [0.01, 5, 7, 9, 11, 15],
+                weights=[0.3, 0.15, 0.15, 0.15, 0.15, 0.1],
             )
         )
         self.obs_ = (k_init, self.shock.state_idx)
