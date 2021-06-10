@@ -1,4 +1,4 @@
-from marketsai.markets.durable_sgm_stoch import Durable_sgm_stoch
+from marketsai.markets.durable_sgm import Durable_sgm
 
 # import ray
 from ray import tune, shutdown, init
@@ -30,13 +30,13 @@ num_workers = (NUM_CPUS - NUM_TRIALS) // NUM_TRIALS
 
 
 # STEP 1: register environment
-register_env("Durable_sgm_stoch", Durable_sgm_stoch)
-env = Durable_sgm_stoch()
+register_env("Durable_sgm", Durable_sgm)
+env = Durable_sgm()
 
 # STEP 2: Experiment configuration
 test = True
 date = "June10_"
-env_label = "Durable_sgm_stoch"
+env_label = "Durable_sgm"
 if test == False:
     MAX_STEPS = 1000 * 1000
     exp_label = env_label + "_test_" + date
@@ -53,7 +53,7 @@ common_config = {
     # "lr": 0.0003,
     # ENVIRONMENT
     "gamma": 0.95,
-    "env": "Durable_sgm_stoch",
+    "env": "Durable_sgm",
     "env_config": {},
     "horizon": 1000,
     # "soft_horizon": True,
@@ -62,7 +62,7 @@ common_config = {
     # "exploration_config": explo_config_lin,
     # EVALUATION
     "evaluation_interval": 10,
-    "evaluation_num_episodes": 10,
+    "evaluation_num_episodes": 3,
     "evaluation_config": {"explore": False},
     # MODEL CONFIG
     "framework": "torch",
