@@ -23,7 +23,7 @@ class Durable_sgm_stoch(gym.Env):
 
         # UNPACK CONFIG
         self.env_config = env_config
-
+        self.eval_mode = self.env_config.get("eval_mode", False)
         # unpack agents config in centralized lists and dicts.
         self.shock = MarkovChain(
             values=[0.75, 1.25], transition=[[0.95, 0.05], [0.05, 0.95]]
@@ -58,13 +58,19 @@ class Durable_sgm_stoch(gym.Env):
 
     def reset(self):
 
-        k_init = np.array(
-            random.choices(
-                [0.01, 5, 6.6, 8, 10, 12],
-                weights=[0.3, 0.15, 0.15, 0.15, 0.15, 0.1],
+        if self.eval_mode == True:
+            k_init = np.array([3])
+            self.obs_ = (k_init, 0)
+        else:
+            k_init = np.array(
+                random.choices(
+                    [3, 5, 6.6, 8, 10],
+                    weights=[0.3, 0.1, 0.3, 0.15, 0.15],
+                )
             )
-        )
-        self.obs_ = (k_init, self.shock.state_idx)
+            self.obs_ = (k_init, self.shock.state_idx)
+        
+
 
         return self.obs_
 

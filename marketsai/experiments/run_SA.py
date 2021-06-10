@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import logging
 
 # STEP 0: Parallelization options
-NUM_CPUS = 17
+NUM_CPUS = 18
 NUM_TRIALS = 1
 NUM_ROLLOUT = 1000
 NUM_ENV_PW = 2  # num_env_per_worker
@@ -37,7 +37,7 @@ register_env("Durable_sgm_stoch", Durable_sgm_stoch)
 #env = Durable_sgm_stoch()
 
 # STEP 2: Experiment configuration
-test = True
+test = False
 
 date = "June10_"
 env_label = "Durable_sgm_plus_stoch"
@@ -45,7 +45,7 @@ if test == True:
     MAX_STEPS = 5000 * 1000
     exp_label = env_label + "_test_" + date
 else:
-    MAX_STEPS = 50000 * 1000
+    MAX_STEPS = 64000 * 1000
     exp_label = env_label + "_run_" + date
 
 stop = {"timesteps_total": MAX_STEPS}
@@ -65,9 +65,9 @@ common_config = {
     # EXPLORATION
     # "exploration_config": explo_config_lin,
     # EVALUATION
-    "evaluation_interval": 10,
-    "evaluation_num_episodes": 3,
-    "evaluation_config": {"explore": False},
+    "evaluation_interval": 5,
+    "evaluation_num_episodes": 10,
+    "evaluation_config": {"explore": False, "env_config": {"eval_mode": True}},
     # MODEL CONFIG
     "framework": "torch",
     "lambda": 0.95,
