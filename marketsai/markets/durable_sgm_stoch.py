@@ -79,7 +79,7 @@ class Durable_sgm_stoch(gym.Env):
         y = max(self.shock.state * k_old ** self.params["alpha"], 0.00001)
 
         k = min(
-            k_old * (1 - self.params["depreciation"]) + s,
+            k_old * (1 - self.params["depreciation"]) + s * y,
             np.float(self.observation_space[0].high),
         )
 

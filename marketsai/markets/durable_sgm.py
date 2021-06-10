@@ -24,7 +24,6 @@ class Durable_sgm(gym.Env):
         # UNPACK CONFIG
         self.env_config = env_config
 
-
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
@@ -69,7 +68,7 @@ class Durable_sgm(gym.Env):
         y = max(self.params["tfp"] * k_old ** self.params["alpha"], 0.00001)
 
         k = min(
-            k_old * (1 - self.params["depreciation"]) + s,
+            k_old * (1 - self.params["depreciation"]) + s * y,
             np.float(self.observation_space.high),
         )
 
@@ -99,13 +98,17 @@ class Durable_sgm(gym.Env):
 
 # Manual test for debugging
 
-# env = Durable_sgm(
-#     env_config={
-#         "parameters": {"depreciation": 0.02, "alpha": 0.33, "tfp": 1},
-#     },
-# )
+env = Durable_sgm(
+    env_config={
+        "parameters": {"depreciation": 0.02, "alpha": 0.33, "tfp": 1},
+        "max_saving": 0.2,
+    },
+)
 
-# env.reset()
-# for i in range(100):
-#     obs_, reward, done, info = env.step(np.array([random.uniform(a=-1.0, b=1.0)]))
-#     print(info)
+env.reset()
+saving = 0.04
+action = saving * 2 / env.max_saving - 1
+env.obs_[0] = 6.66
+for i in range(100):
+    obs_, reward, done, info = env.step(np.array([action]))
+    print(info)
