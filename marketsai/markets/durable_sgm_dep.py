@@ -9,7 +9,7 @@ import random
 # import math
 
 
-class Durable_SA_sgm_adj(gym.Env):
+class Durable_sgm_dep(gym.Env):
     """An gym compatible environment consisting of a durable good consumption and production problem
     The agent chooses how much to produce of a durable good subject to quadratci costs.
 
@@ -31,13 +31,13 @@ class Durable_SA_sgm_adj(gym.Env):
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
-            {"depreciation": 0.03, "adj_cost": 0.5, "alpha": 0.3},
+            {"depreciation": 0.02, "alpha": 0.33},
         )
 
         # WE CREATE SPACES
-        # self.gridpoints = self.env_config.get("gridpoints", 40)
+        self.gridpoints = self.env_config.get("gridpoints", 40)
         self.max_inv = self.env_config.get("max_inv", 0.4)
-        self.action_space = Box(low=np.array([0]), high=np.array([0.5]), shape=(1,))
+        self.action_space = Discrete(self.gridpoints)
 
         # self.observation_space = Box(
         #     low=np.array([0, 0]), high=np.array([2, 2]), shape=(2,), dtype=np.float32
@@ -47,7 +47,7 @@ class Durable_SA_sgm_adj(gym.Env):
             [
                 Box(
                     low=np.array([0]),
-                    high=np.array([20]),
+                    high=np.array([40]),
                     shape=(1,),
                 ),
                 Discrete(2),
@@ -77,7 +77,7 @@ class Durable_SA_sgm_adj(gym.Env):
         # PREPROCESS action and state
 
         y = max(self.shock.state * k_old ** self.params["alpha"], 0.00001)
-        inv = action[0] * y
+        inv = action / (self.gridpoints - 1) * self.max_inv * y
         k = min(
             k_old * (1 - self.params["depreciation"]) + inv,
             np.float(self.observation_space[0].high),
@@ -87,13 +87,7 @@ class Durable_SA_sgm_adj(gym.Env):
         self.obs_ = (np.array([k], dtype=np.float32), self.shock.state_idx)
 
         # REWARD
-        rew = max(
-            self.utility_function(
-                max(y - inv - self.params["adj_cost"] * (inv / k_old) * k_old, 0.00001)
-                + 1
-            ),
-            -1000,
-        )
+        rew = max(self.utility_function(max(y - inv, 0.00001)) + 1, -1000)
 
         # rew = self.utility_function(h) - self.params["adj_cost"] * inv ** 2
 
@@ -109,12 +103,13 @@ class Durable_SA_sgm_adj(gym.Env):
 
 # Manual test for debugging
 
-# env = Durable_SA_sgm_adj(
-#     env_config={
-#         "parameters": {"depreciation": 0.04, "adj_cost": 0.5, "alpha": 0.3},
-#     },
-# )
+env = Durable_sgm_dep(
+    env_config={
+        "parameters": {"depreciation": 0.02, "alpha": 0.33},
+        "gridpoints": 40,
+    },
+)
 
-# print(env.reset())
-# obs_, reward, done, info = env.step([1])
-# print(obs_, reward, done, info)
+print(env.reset())
+obs_, reward, done, info = env.step(20)
+print(obs_, reward, done, info)

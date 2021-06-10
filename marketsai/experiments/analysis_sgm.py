@@ -1,43 +1,42 @@
 # Step 4: Evaluation
-from marketsai.markets.durable_sa_sgm_adj import Durable_SA_sgm_adj
+from marketsai.markets.durable_sgm_adj import Durable_sgm_adj
+from ray.rllib.agents.ppo import PPOTrainer
 from ray.rllib.agents.sac import SACTrainer
 from ray.tune.registry import register_env
 from ray import shutdown, init
 import matplotlib.pyplot as plt
 import pandas as pd
 
+register_env("Durable_sgm_adj", Durable_sgm_adj)
 config_analysis = {
-    "env": "Durable_SA_sgm_adj",
+    "env": "Durable_sgm_adj",
     "horizon": 100,
     "soft_horizon": True,
     "no_done_at_end": True,
     "explore": False,
     "framework": "torch",
-    # "model": {
-    #     "fcnet_hiddens": [256, 256],
-    # },
 }
+
 init()
+
 # checkpoint_path = results.best_checkpoint
-register_env("Durable_SA_sgm_adj", Durable_SA_sgm_adj)
-env = Durable_SA_sgm_adj()
-checkpoint_path = "/home/mc5851/ray_results/Durable_SA_sgm_adj_big_run_June8_SAC/SAC_Durable_SA_sgm_adj_67103_00000_0_2021-06-09_12-47-40/checkpoint_100/checkpoint-100"
-trained_trainer = SACTrainer(env="Durable_SA_sgm_adj", config=config_analysis)
+checkpoint_path = "/Users/matiascovarrubias/ray_results/Durable_sgm_adj_test_June9_PPO/PPO_Durable_sgm_adj_76f01_00000_0_2021-06-09_16-37-10/checkpoint_000020/checkpoint-20"
+trained_trainer = PPOTrainer(env="Durable_sgm_adj", config=config_analysis)
 trained_trainer.restore(checkpoint_path)
+
+env = Durable_sgm_adj()
+obs = env.reset()
+obs[0][0] = 5
+env.timestep = 100000
+
 shock_list = []
 inv_list = []
 y_list = []
 k_list = []
-
-
-obs = env.reset()
-obs[0][0] = 1
-env.timestep = 50000
 MAX_STEPS = 300
 for i in range(MAX_STEPS):
     action = trained_trainer.compute_action(obs)
     obs, rew, done, info = env.step(action)
-    print(action)
     shock_list.append(obs[1])
     inv_list.append(info["savings_rate"])
     y_list.append(info["income"])
@@ -70,6 +69,6 @@ IRresults = {
     "y_list": y_list,
 }
 df_IR = pd.DataFrame(IRresults)
-df_IR.to_csv("Durable_SA_sgm_adj_test_June7_DQN.csv")
+df_IR.to_csv("Durable_sgm_adj_test_June8_DQN.csv")
 
 shutdown()

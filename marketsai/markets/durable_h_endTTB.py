@@ -10,7 +10,7 @@ import random
 # import math
 
 
-class Durable_SA_endTTB(gym.Env):
+class Durable_h_endTTB(gym.Env):
     """An gym compatible environment consisting of a durable good consumption and production problem
     The agent chooses how much to produce of a durable good subject to quadratci costs.
 
@@ -207,7 +207,7 @@ class Durable_SA_endTTB(gym.Env):
 
 # Manual test for debugging
 
-env = Durable_SA_endTTB(
+env = Durable_h_endTTB(
     env_config={
         "parameters": {
             "depreciation": 0.04,
