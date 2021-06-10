@@ -23,7 +23,7 @@ class Durable_sgm(gym.Env):
 
         # UNPACK CONFIG
         self.env_config = env_config
-
+        self.eval_mode = self.env_config.get("eval_mode", False)
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
@@ -49,13 +49,25 @@ class Durable_sgm(gym.Env):
 
     def reset(self):
 
-        k_init = np.array(
-            random.choices(
-                [0.01, 5, 7, 9, 11, 15],
-                weights=[0.3, 0.15, 0.15, 0.15, 0.15, 0.1],
+        k_init = np.array([6.66062120761422])
+        # k_init = np.array(
+        #     random.choices(
+        #         [0.01, 5, 7, 9, 11, 15],
+        #         weights=[0.3, 0.15, 0.15, 0.15, 0.15, 0.1],
+        #     )
+        # )
+
+        if self.eval_mode == True:
+            k_init = np.array([3])
+
+        else:
+            k_init = np.array(
+                random.choices(
+                    [3, 5, 6.6, 8, 10],
+                    weights=[0.3, 0.1, 0.3, 0.15, 0.15],
+                )
             )
-        )
-        self.obs_ = k_init
+            self.obs_ = k_init
 
         return self.obs_
 

@@ -37,7 +37,7 @@ register_env("Durable_sgm_stoch", Durable_sgm_stoch)
 #env = Durable_sgm_stoch()
 
 # STEP 2: Experiment configuration
-test = False
+test = True
 
 date = "June10_"
 env_label = "Durable_sgm_plus_stoch"
@@ -45,7 +45,7 @@ if test == True:
     MAX_STEPS = 5000 * 1000
     exp_label = env_label + "_test_" + date
 else:
-    MAX_STEPS = 64000 * 1000
+    MAX_STEPS = 10000 * 1000
     exp_label = env_label + "_run_" + date
 
 stop = {"timesteps_total": MAX_STEPS}
@@ -57,7 +57,7 @@ common_config = {
     # "lr": 0.0003,
     # ENVIRONMENT
     "gamma": 0.95,
-    "env": tune.grid_search(["Durable_sgm" , "Durable_sgm_stoch"]),
+    "env": "Durable_sgm",
     "env_config": {},
     "horizon": 1000,
     # "soft_horizon": True,
@@ -106,7 +106,7 @@ analysis = tune.run(
     # verbose=verbosity,
     metric="episode_reward_mean",
     mode="max",
-    num_samples=NUM_TRIALS,
+    num_samples=2,
     # resources_per_trial={"gpu": 0.5},
 )
 
