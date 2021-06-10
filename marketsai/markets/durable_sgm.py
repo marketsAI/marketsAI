@@ -23,7 +23,7 @@ class Durable_sgm(gym.Env):
 
         # UNPACK CONFIG
         self.env_config = env_config
-        self.eval_mode = self.env_config.get("eval_mode", False)
+        self.eval_mode = self.env_config.get("eval_mode", True)
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
@@ -67,7 +67,8 @@ class Durable_sgm(gym.Env):
                     weights=[0.3, 0.1, 0.3, 0.15, 0.15],
                 )
             )
-            self.obs_ = k_init
+        
+        self.obs_ = k_init
 
         return self.obs_
 

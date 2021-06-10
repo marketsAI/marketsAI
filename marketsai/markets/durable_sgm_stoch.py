@@ -23,7 +23,7 @@ class Durable_sgm_stoch(gym.Env):
 
         # UNPACK CONFIG
         self.env_config = env_config
-        self.eval_mode = self.env_config.get("eval_mode", False)
+        self.eval_mode = self.env_config.get("eval_mode", True)
         # unpack agents config in centralized lists and dicts.
         self.shock = MarkovChain(
             values=[0.75, 1.25], transition=[[0.95, 0.05], [0.05, 0.95]]

@@ -42,7 +42,7 @@ test = True
 date = "June10_"
 env_label = "Durable_sgm_plus_stoch"
 if test == True:
-    MAX_STEPS = 5000 * 1000
+    MAX_STEPS = 12400 * 1000
     exp_label = env_label + "_test_" + date
 else:
     MAX_STEPS = 10000 * 1000
