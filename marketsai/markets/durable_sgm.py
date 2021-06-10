@@ -31,7 +31,7 @@ class Durable_sgm(gym.Env):
         )
 
         # WE CREATE SPACES
-        self.max_saving = self.env_config.get("max_saving", 0.2)
+        self.max_saving = self.env_config.get("max_saving", 0.5)
         self.action_space = Box(low=np.array([-1]), high=np.array([1]), shape=(1,))
 
         # self.observation_space = Box(
@@ -42,6 +42,7 @@ class Durable_sgm(gym.Env):
             low=np.array([0]),
             high=np.array([float("inf")]),
             shape=(1,),
+            dtype = float
         )
 
         self.utility_function = env_config.get("utility_function", CRRA(coeff=2))
@@ -67,10 +68,9 @@ class Durable_sgm(gym.Env):
         s = (action[0] + 1) / 2 * self.max_saving
         y = max(self.params["tfp"] * k_old ** self.params["alpha"], 0.00001)
 
-        k = min(
-            k_old * (1 - self.params["depreciation"]) + s * y,
-            np.float(self.observation_space.high),
-        )
+        k = k_old * (1 - self.params["depreciation"]) + s * y
+
+    
 
         # NEXT OBS
         self.obs_ = np.array([k], dtype=np.float32)
@@ -98,17 +98,18 @@ class Durable_sgm(gym.Env):
 
 # Manual test for debugging
 
-env = Durable_sgm(
-    env_config={
-        "parameters": {"depreciation": 0.02, "alpha": 0.33, "tfp": 1},
-        "max_saving": 0.2,
-    },
-)
+# env = Durable_sgm(
+#     env_config={
+#         "parameters": {"depreciation": 0.04, "alpha": 0.33, "tfp": 1},
+#         "max_saving": 0.2,
+#     },
+# )
 
-env.reset()
-saving = 0.04
-action = saving * 2 / env.max_saving - 1
-env.obs_[0] = 6.66
-for i in range(100):
-    obs_, reward, done, info = env.step(np.array([action]))
-    print(info)
+# env.reset()
+# saving = 0.1425
+# action = saving * 2 / env.max_saving - 1
+# print(action)
+# env.obs_[0] = np.array([10], dtype=float)
+# for i in range(100):
+#     obs_, reward, done, info = env.step(np.array([action]))
+#     print(info)

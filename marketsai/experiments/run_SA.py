@@ -1,3 +1,4 @@
+from marketsai.markets.durable_sgm_stoch import Durable_sgm_stoch
 from marketsai.markets.durable_sgm import Durable_sgm
 
 # import ray
@@ -31,14 +32,17 @@ num_workers = (NUM_CPUS - NUM_TRIALS) // NUM_TRIALS
 
 # STEP 1: register environment
 register_env("Durable_sgm", Durable_sgm)
-env = Durable_sgm()
+register_env("Durable_sgm_stoch", Durable_sgm_stoch)
+
+#env = Durable_sgm_stoch()
 
 # STEP 2: Experiment configuration
 test = True
+
 date = "June10_"
-env_label = "Durable_sgm"
-if test == False:
-    MAX_STEPS = 1000 * 1000
+env_label = "Durable_sgm_plus_stoch"
+if test == True:
+    MAX_STEPS = 5000 * 1000
     exp_label = env_label + "_test_" + date
 else:
     MAX_STEPS = 50000 * 1000
@@ -53,7 +57,7 @@ common_config = {
     # "lr": 0.0003,
     # ENVIRONMENT
     "gamma": 0.95,
-    "env": "Durable_sgm",
+    "env": tune.grid_search(["Durable_sgm" , "Durable_sgm_stoch"]),
     "env_config": {},
     "horizon": 1000,
     # "soft_horizon": True,
@@ -73,10 +77,10 @@ common_config = {
     # TRAINING CONFIG
     "lr": 0.0003,
     "sgd_minibatch_size": 4000,
-    "train_batch_size": 512000,
+    "train_batch_size": 1024000,
     "num_sgd_iter": 32,
-    "num_workers": 16,
-    "num_gpus": 1,
+    "num_workers": 8,
+    "num_gpus": 0.5,
     "grad_clip": 0.5,
     "num_envs_per_worker": 16,
     # "batch_mode": "truncate_episodes",
