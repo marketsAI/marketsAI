@@ -1,9 +1,8 @@
-# Step 4: Evaluation
-#from marketsai.markets.durable_sgm_stoch import Durable_sgm_stoch
+# Evaluation
 from marketsai.markets.durable_sgm_stoch import Durable_sgm_stoch
 
 from ray.rllib.agents.ppo import PPOTrainer
-from ray.rllib.agents.sac import SACTrainer
+#from ray.rllib.agents.sac import SACTrainer
 from ray.tune.registry import register_env
 from ray import shutdown, init
 import matplotlib.pyplot as plt
@@ -22,13 +21,12 @@ config_analysis = {
 init()
 
 # checkpoint_path = results.best_checkpoint
-checkpoint_path = "/home/mc5851/ray_results/Durable_sgm_stoch_small_test_June10_PPO/PPO_Durable_sgm_stoch_caabe_00000_0_2021-06-10_21-46-08/checkpoint_10/checkpoint-10"
+checkpoint_path = "/home/mc5851/ray_results/Durable_sgm_stoch_run_June10_PPO/PPO_Durable_sgm_stoch_e5792_00000_0_2021-06-10_23-12-47/checkpoint_60/checkpoint-60"
 trained_trainer = PPOTrainer(env="Durable_sgm_stoch", config=config_analysis)
 trained_trainer.restore(checkpoint_path)
 
 env = Durable_sgm_stoch(env_config = {"eval_mode": True})
 obs = env.reset()
-#obs[0][0] = 5
 env.timestep = 100000
 
 shock_list = []
@@ -44,33 +42,33 @@ for i in range(MAX_STEPS):
     y_list.append(info["income"])
     k_list.append(info["capital_old"])
 
-#print(inv_list)
+print(k_list)
 plt.subplot(2, 2, 1)
 plt.plot(shock_list[:100])
 plt.title("Shock")
 
 plt.subplot(2, 2, 2)
-plt.plot(inv_list)
+plt.plot(inv_list[:100])
 plt.title("Savings Rate")
 
 plt.subplot(2, 2, 3)
-plt.plot(y_list)
+plt.plot(y_list[:100])
 plt.title("Income")
 
 plt.subplot(2, 2, 4)
-plt.plot(k_list)
+plt.plot(k_list[:100])
 plt.title("Capital")
 
-plt.savefig("sgm_toch_small_IR_PPO_June10.png")
+plt.savefig("sgm_stoch_IR_PPO_June11.png")
 plt.show()
 
 IRresults = {
-    #"shock": shock_list,
+    "shock": shock_list,
     "investment": inv_list,
     "durable_stock": k_list,
     "y_list": y_list,
 }
 df_IR = pd.DataFrame(IRresults)
-df_IR.to_csv("sgm_toch_small_IR_PPO_June10.csv")
+df_IR.to_csv("sgm_stoch_IR_PPO_June11.csv")
 
 shutdown()
