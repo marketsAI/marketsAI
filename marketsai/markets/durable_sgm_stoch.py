@@ -69,8 +69,6 @@ class Durable_sgm_stoch(gym.Env):
                 )
             )
             self.obs_ = (k_init, self.shock.state_idx)
-        
-
 
         return self.obs_
 

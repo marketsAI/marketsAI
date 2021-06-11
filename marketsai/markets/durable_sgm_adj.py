@@ -1,6 +1,7 @@
 import gym
 from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
-from ray.rllib.env.multi_agent_env import MultiAgentEnv
+
+# from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from marketsai.functions.functions import MarkovChain, CRRA
 import numpy as np
 import random
@@ -22,22 +23,21 @@ class Durable_sgm_adj(gym.Env):
 
         # UNPACK CONFIG
         self.env_config = env_config
-
+        self.eval_mode = self.env_config.get("eval_mode", True)
         # unpack agents config in centralized lists and dicts.
         self.shock = MarkovChain(
-            values=[0.75, 1.25], transition=[[0.95, 0.05], [0.025, 0.975]]
+            values=[0.75, 1.25], transition=[[0.95, 0.05], [0.05, 0.95]]
         )
 
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
-            {"depreciation": 0.03, "adj_cost": 0.5, "alpha": 0.3},
+            {"depreciation": 0.04, "alpha": 0.33, "adj_cost": 0.5},
         )
 
         # WE CREATE SPACES
-        # self.gridpoints = self.env_config.get("gridpoints", 40)
-        self.max_inv = self.env_config.get("max_inv", 0.4)
-        self.action_space = Box(low=np.array([0]), high=np.array([0.5]), shape=(1,))
+        self.max_saving = self.env_config.get("max_saving", 0.5)
+        self.action_space = Box(low=np.array([-1]), high=np.array([1]), shape=(1,))
 
         # self.observation_space = Box(
         #     low=np.array([0, 0]), high=np.array([2, 2]), shape=(2,), dtype=np.float32
@@ -58,13 +58,17 @@ class Durable_sgm_adj(gym.Env):
 
     def reset(self):
 
-        k_init = np.array(
-            random.choices(
-                [0.01, 1, 2, 5, 10, 15],
-                weights=[0.05, 0.15, 0.3, 0.15, 0.3, 0.05],
+        if self.eval_mode == True:
+            k_init = np.array([3])
+            self.obs_ = (k_init, 0)
+        else:
+            k_init = np.array(
+                random.choices(
+                    [3, 5, 6.6, 8, 10],
+                    weights=[0.3, 0.1, 0.3, 0.15, 0.15],
+                )
             )
-        )
-        self.obs_ = (k_init, self.shock.state_idx)
+            self.obs_ = (k_init, self.shock.state_idx)
 
         return self.obs_
 
@@ -75,11 +79,11 @@ class Durable_sgm_adj(gym.Env):
         self.shock.update()
 
         # PREPROCESS action and state
-
+        s = (action[0] + 1) / 2 * self.max_saving
         y = max(self.shock.state * k_old ** self.params["alpha"], 0.00001)
-        inv = action[0] * y
+
         k = min(
-            k_old * (1 - self.params["depreciation"]) + inv,
+            k_old * (1 - self.params["depreciation"]) + s * y,
             np.float(self.observation_space[0].high),
         )
 
@@ -87,13 +91,7 @@ class Durable_sgm_adj(gym.Env):
         self.obs_ = (np.array([k], dtype=np.float32), self.shock.state_idx)
 
         # REWARD
-        rew = max(
-            self.utility_function(
-                max(y - inv - self.params["adj_cost"] * (inv / k_old) * k_old, 0.00001)
-                + 1
-            ),
-            -1000,
-        )
+        rew = max(self.utility_function(max(y * (1 - s) - self.params["adj_cost"] * (s * y / k_old) * k_old, 0.00001)) + 1, -1000)
 
         # rew = self.utility_function(h) - self.params["adj_cost"] * inv ** 2
 
@@ -101,7 +99,14 @@ class Durable_sgm_adj(gym.Env):
         done = False
 
         # ADDITION INFO
-        info = {"income": y, "savings_rate": inv / y, "capital": k}
+        info = {
+            "shock": self.shock.state,
+            "savings_rate": s,
+            "rewards": rew,
+            "income": y,
+            "capital_old": k_old,
+            "capital_new": k,
+        }
 
         # RETURN
         return self.obs_, rew, done, info
@@ -111,10 +116,11 @@ class Durable_sgm_adj(gym.Env):
 
 # env = Durable_sgm_adj(
 #     env_config={
-#         "parameters": {"depreciation": 0.04, "adj_cost": 0.5, "alpha": 0.3},
+#         "parameters": {"depreciation": 0.02, "alpha": 0.33, "adj_cost": 0.5},
 #     },
 # )
 
-# print(env.reset())
-# obs_, reward, done, info = env.step([1])
-# print(obs_, reward, done, info)
+# env.reset()
+# for i in range(100):
+#     obs_, reward, done, info = env.step(np.array([random.uniform(a=-1.0, b=1.0)]))
+#     print(info)

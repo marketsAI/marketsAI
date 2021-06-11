@@ -49,7 +49,7 @@ class Durable_sgm(gym.Env):
 
     def reset(self):
 
-        k_init = np.array([6.66062120761422])
+        #k_init = np.array([6.66062120761422])
         # k_init = np.array(
         #     random.choices(
         #         [0.01, 5, 7, 9, 11, 15],
