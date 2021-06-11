@@ -82,16 +82,14 @@ class Durable_sgm_adj(gym.Env):
         s = (action[0] + 1) / 2 * self.max_saving
         y = max(self.shock.state * k_old ** self.params["alpha"], 0.00001)
 
-        k = min(
-            k_old * (1 - self.params["depreciation"]) + s * y,
-            np.float(self.observation_space[0].high),
-        )
+        k = k_old * (1 - self.params["depreciation"]) + s * y
+        
 
         # NEXT OBS
         self.obs_ = (np.array([k], dtype=np.float32), self.shock.state_idx)
 
         # REWARD
-        rew = max(self.utility_function(max(y * (1 - s) - self.params["adj_cost"] * (s * y / k_old) * k_old, 0.00001)) + 1, -1000)
+        rew = max(self.utility_function(max(y * (1 - s) - self.params["adj_cost"] * ((s * y / k_old) ** 2) * k_old, 0.00001)) + 1, -1000)
 
         # rew = self.utility_function(h) - self.params["adj_cost"] * inv ** 2
 
@@ -117,6 +115,7 @@ class Durable_sgm_adj(gym.Env):
 # env = Durable_sgm_adj(
 #     env_config={
 #         "parameters": {"depreciation": 0.02, "alpha": 0.33, "adj_cost": 0.5},
+#         "eval_mode": True
 #     },
 # )
 

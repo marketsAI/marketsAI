@@ -21,7 +21,7 @@ config_analysis = {
 init()
 
 # checkpoint_path = results.best_checkpoint
-checkpoint_path = "/home/mc5851/ray_results/Durable_sgm_stoch_run_June10_PPO/PPO_Durable_sgm_stoch_e5792_00000_0_2021-06-10_23-12-47/checkpoint_60/checkpoint-60"
+checkpoint_path = "/home/mc5851/ray_results/Durable_sgm_stoch_run_June10_PPO/PPO_Durable_sgm_stoch_e5792_00000_0_2021-06-10_23-12-47/checkpoint_50/checkpoint-50"
 trained_trainer = PPOTrainer(env="Durable_sgm_stoch", config=config_analysis)
 trained_trainer.restore(checkpoint_path)
 
@@ -44,22 +44,22 @@ for i in range(MAX_STEPS):
 
 print(k_list)
 plt.subplot(2, 2, 1)
-plt.plot(shock_list[:100])
+plt.plot(shock_list[:200])
 plt.title("Shock")
 
 plt.subplot(2, 2, 2)
-plt.plot(inv_list[:100])
+plt.plot(inv_list[:200])
 plt.title("Savings Rate")
 
 plt.subplot(2, 2, 3)
-plt.plot(y_list[:100])
+plt.plot(y_list[:200])
 plt.title("Income")
 
 plt.subplot(2, 2, 4)
-plt.plot(k_list[:100])
+plt.plot(k_list[:200])
 plt.title("Capital")
 
-plt.savefig("sgm_stoch_IR_PPO_June11.png")
+plt.savefig("/home/mc5851/marketsAI/marketsai/results/sgm_stoch_IR_PPO_June11.png")
 plt.show()
 
 IRresults = {
@@ -69,6 +69,6 @@ IRresults = {
     "y_list": y_list,
 }
 df_IR = pd.DataFrame(IRresults)
-df_IR.to_csv("sgm_stoch_IR_PPO_June11.csv")
+df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/sgm_stoch_IR_PPO_June11.csv")
 
 shutdown()

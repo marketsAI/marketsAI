@@ -116,7 +116,8 @@ class Durable_sgm_stoch(gym.Env):
 
 # env = Durable_sgm_stoch(
 #     env_config={
-#         "parameters": {"depreciation": 0.02, "alpha": 0.33},
+#         "parameters": {"depreciation": 0.04, "alpha": 0.33},
+#         "eval_mode": True
 #     },
 # )
 

@@ -21,7 +21,7 @@ NUM_CPUS = 18
 NUM_TRIALS = 1
 NUM_ROLLOUT = 1000
 NUM_ENV_PW = 2  # num_env_per_worker
-NUM_GPUS = 1
+NUM_GPUS = 0
 shutdown()
 init(
     num_cpus=NUM_CPUS,
@@ -35,14 +35,14 @@ num_workers = (NUM_CPUS - NUM_TRIALS) // NUM_TRIALS
 register_env("Durable_sgm", Durable_sgm)
 
 # STEP 2: Experiment configuration
-test = False
+test = True
 
-date = "June10_"
+date = "June11_"
 if test == True:
     MAX_STEPS = 64 * 1000
     exp_label = "_test_" + date
 else:
-    MAX_STEPS = 32000 * 1000
+    MAX_STEPS = 16000 * 1000
     exp_label = "_run_" + date
 
 stop = {"timesteps_total": MAX_STEPS}
@@ -62,7 +62,7 @@ training_config = {
     # EXPLORATION
     # "exploration_config": explo_config_lin,
     # EVALUATION
-    "evaluation_interval": 10,
+    "evaluation_interval": 20,
     "evaluation_num_episodes": 10,
     "evaluation_config": {"explore": False, "env_config": {"eval_mode": True}},
     # MODEL CONFIG
@@ -78,7 +78,7 @@ training_config = {
     "train_batch_size": 64000,
     "num_sgd_iter": 32,
     "num_workers": 16,
-    "num_gpus": 1,
+    "num_gpus": 0,
     "grad_clip": 0.5,
     "num_envs_per_worker": 4,
     # "batch_mode": "truncate_episodes",
@@ -124,7 +124,7 @@ analysis = tune.run(
     name=exp_name,
     config=training_config,
     stop=stop,
-    checkpoint_freq=10,
+    checkpoint_freq=20,
     checkpoint_at_end=True,
     callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
     # verbose=verbosity,
@@ -148,7 +148,7 @@ analysis = tune.run(
     name=exp_name,
     config=training_config,
     stop=stop,
-    checkpoint_freq=10,
+    checkpoint_freq=20,
     checkpoint_at_end=True,
     callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
     # verbose=verbosity,
