@@ -112,18 +112,18 @@ class Durable_sgm(gym.Env):
 
 # Manual test for debugging
 
-env = Durable_sgm(
-    env_config={
-        "parameters": {"depreciation": 0.04, "alpha": 0.33, "tfp": 1},
-        "max_saving": 0.5,
-    },
-)
+# env = Durable_sgm(
+#     env_config={
+#         "parameters": {"depreciation": 0.04, "alpha": 0.33, "tfp": 1},
+#         "max_saving": 0.5,
+#     },
+# )
 
-env.reset()
-saving = 0.1425
-action = saving * 2 / env.max_saving - 1
-print(action)
-env.obs_[0] = np.array([3.56], dtype=float)
-for i in range(100):
-    obs_, reward, done, info = env.step(np.array([action]))
-    print(info)
+# env.reset()
+# saving = 0.1425
+# action = saving * 2 / env.max_saving - 1
+# print(action)
+# env.obs_[0] = np.array([3.56], dtype=float)
+# for i in range(100):
+#     obs_, reward, done, info = env.step(np.array([action]))
+#     print(info)

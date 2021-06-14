@@ -114,14 +114,14 @@ class Durable_sgm_stoch(gym.Env):
 
 # Manual test for debugging
 
-# env = Durable_sgm_stoch(
-#     env_config={
-#         "parameters": {"depreciation": 0.04, "alpha": 0.33},
-#         "eval_mode": True
-#     },
-# )
+env = Durable_sgm_stoch(
+    env_config={
+        "parameters": {"depreciation": 0.04, "alpha": 0.33},
+        "eval_mode": True
+    },
+)
 
-# env.reset()
-# for i in range(100):
-#     obs_, reward, done, info = env.step(np.array([random.uniform(a=-1.0, b=1.0)]))
-#     print(info)
+env.reset()
+for i in range(1):
+    obs_, reward, done, info = env.step(np.array([random.uniform(a=-1.0, b=1.0)]))
+    print(obs_, info)

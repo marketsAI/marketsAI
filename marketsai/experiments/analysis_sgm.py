@@ -21,7 +21,7 @@ config_analysis = {
 init()
 
 # checkpoint_path = results.best_checkpoint
-checkpoint_path = "/home/mc5851/ray_results/Durable_sgm_stoch_run_June10_PPO/PPO_Durable_sgm_stoch_e5792_00000_0_2021-06-10_23-12-47/checkpoint_50/checkpoint-50"
+checkpoint_path = "/home/mc5851/ray_results/Durable_sgm_stoch_run_June11_PPO/PPO_Durable_sgm_stoch_bb196_00001_1_2021-06-11_12-04-41/checkpoint_350/checkpoint-350"
 trained_trainer = PPOTrainer(env="Durable_sgm_stoch", config=config_analysis)
 trained_trainer.restore(checkpoint_path)
 
@@ -33,42 +33,51 @@ shock_list = []
 inv_list = []
 y_list = []
 k_list = []
-MAX_STEPS = 1000
+MAX_STEPS = 100
+shock_process = [
+    [1 for i in range(20)]
+    + [0 for i in range(20)]
+    + [1 for i in range(30)]
+    + [0 for i in range(20)]
+    + [1 for i in range(10)]
+]
 for i in range(MAX_STEPS):
     action = trained_trainer.compute_action(obs)
     obs, rew, done, info = env.step(action)
-    shock_list.append(obs[1])
+    #obs[1] = shock_process[i]
+    #env.obs_[1] = shock_process[i]
+    shock_list.append(info["shock"])
     inv_list.append(info["savings_rate"])
     y_list.append(info["income"])
     k_list.append(info["capital_old"])
 
-print(k_list)
+print(k_list[-1])
 plt.subplot(2, 2, 1)
-plt.plot(shock_list[:200])
+plt.plot(shock_list[:100])
 plt.title("Shock")
 
 plt.subplot(2, 2, 2)
-plt.plot(inv_list[:200])
+plt.plot(inv_list[:100])
 plt.title("Savings Rate")
 
 plt.subplot(2, 2, 3)
-plt.plot(y_list[:200])
+plt.plot(y_list[:100])
 plt.title("Income")
 
 plt.subplot(2, 2, 4)
-plt.plot(k_list[:200])
+plt.plot(k_list[:100])
 plt.title("Capital")
 
-plt.savefig("/home/mc5851/marketsAI/marketsai/results/sgm_stoch_IR_PPO_June11.png")
+plt.savefig("/home/mc5851/marketsAI/marketsai/results/sgm_stoch_seedIR_PPO_June11.png")
 plt.show()
 
 IRresults = {
-    "shock": shock_list,
+    #"shock": shock_list,
     "investment": inv_list,
     "durable_stock": k_list,
     "y_list": y_list,
 }
 df_IR = pd.DataFrame(IRresults)
-df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/sgm_stoch_IR_PPO_June11.csv")
+df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/sgm_stoch_seedIR_PPO_June11.csv")
 
 shutdown()

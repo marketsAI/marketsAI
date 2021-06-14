@@ -18,10 +18,10 @@ import logging
 
 # STEP 0: Parallelization options
 NUM_CPUS = 18
-NUM_TRIALS = 1
+NUM_TRIALS = 2
 NUM_ROLLOUT = 1000
 NUM_ENV_PW = 2  # num_env_per_worker
-NUM_GPUS = 0
+NUM_GPUS = 1
 shutdown()
 init(
     num_cpus=NUM_CPUS,
@@ -32,17 +32,17 @@ num_workers = (NUM_CPUS - NUM_TRIALS) // NUM_TRIALS
 
 
 # STEP 1: register environment
-register_env("Durable_sgm", Durable_sgm)
+register_env("Durable_sgm_stoch", Durable_sgm_stoch)
 
 # STEP 2: Experiment configuration
-test = True
+test = False
 
 date = "June11_"
 if test == True:
     MAX_STEPS = 64 * 1000
     exp_label = "_test_" + date
 else:
-    MAX_STEPS = 16000 * 1000
+    MAX_STEPS = 32000 * 1000
     exp_label = "_run_" + date
 
 stop = {"timesteps_total": MAX_STEPS}
@@ -54,7 +54,7 @@ training_config = {
     # "lr": 0.0003,
     # ENVIRONMENT
     "gamma": 0.95,
-    "env": "Durable_sgm",
+    "env": "Durable_sgm_stoch",
     "env_config": {},
     "horizon": 1000,
     # "soft_horizon": True,
@@ -62,8 +62,8 @@ training_config = {
     # EXPLORATION
     # "exploration_config": explo_config_lin,
     # EVALUATION
-    "evaluation_interval": 20,
-    "evaluation_num_episodes": 10,
+    #"evaluation_interval": 20,
+    #"evaluation_num_episodes": 10,
     "evaluation_config": {"explore": False, "env_config": {"eval_mode": True}},
     # MODEL CONFIG
     "framework": "torch",
@@ -77,10 +77,10 @@ training_config = {
     "sgd_minibatch_size": 4000,
     "train_batch_size": 64000,
     "num_sgd_iter": 32,
-    "num_workers": 16,
-    "num_gpus": 0,
+    "num_workers": 8,
+    "num_gpus": 0.5,
     "grad_clip": 0.5,
-    "num_envs_per_worker": 4,
+    "num_envs_per_worker": 8,
     # "batch_mode": "truncate_episodes",
     # "observation_filter": "MeanStdFilter",
     "rollout_fragment_length": NUM_ROLLOUT,
@@ -93,51 +93,29 @@ training_config = {
 checkpoints = []
 experiments = []
 # STEP 3: run experiment
-env_label = "Durable_sgm"
+env_label = "Durable_sgm_stoch"
 exp_name = env_label + exp_label + algo
 analysis = tune.run(
     algo,
     name=exp_name,
     config=training_config,
     stop=stop,
-    checkpoint_freq=20,
+    checkpoint_freq=50,
     checkpoint_at_end=True,
     #callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
     # verbose=verbosity,
     metric="episode_reward_mean",
     mode="max",
-    num_samples=1,
+    num_samples=2,
     # resources_per_trial={"gpu": 0.5},
 )
 
 checkpoints.append(analysis.best_checkpoint)
 experiments.append(exp_name)
+print(exp_name)
+print(analysis.best_checkpoint)
 
 #Stochastic
-register_env("Durable_sgm_stoch", Durable_sgm_stoch)
-training_config["env"] = "Durable_sgm_stoch"
-env_label = "Durable_sgm_stoch"
-exp_name = env_label + exp_label + algo
-
-analysis = tune.run(
-    algo,
-    name=exp_name,
-    config=training_config,
-    stop=stop,
-    checkpoint_freq=20,
-    checkpoint_at_end=True,
-    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
-    # verbose=verbosity,
-    metric="episode_reward_mean",
-    mode="max",
-    num_samples=1,
-    # resources_per_trial={"gpu": 0.5},
-)
-
-checkpoints.append(analysis.best_checkpoint)
-experiments.append(exp_name)
-
-#Adjustment cost
 register_env("Durable_sgm_adj", Durable_sgm_adj)
 training_config["env"] = "Durable_sgm_adj"
 env_label = "Durable_sgm_adj"
@@ -148,21 +126,50 @@ analysis = tune.run(
     name=exp_name,
     config=training_config,
     stop=stop,
-    checkpoint_freq=20,
+    checkpoint_freq=50,
     checkpoint_at_end=True,
     callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
     # verbose=verbosity,
     metric="episode_reward_mean",
     mode="max",
-    num_samples=1,
+    num_samples=2,
     # resources_per_trial={"gpu": 0.5},
 )
 
 checkpoints.append(analysis.best_checkpoint)
 experiments.append(exp_name)
+print(exp_name)
+print(analysis.best_checkpoint)
+
+#Adjustment cost
+register_env("Durable_sgm", Durable_sgm)
+training_config["env"] = "Durable_sgm"
+env_label = "Durable_sgm"
+exp_name = env_label + exp_label + algo
+
+analysis = tune.run(
+    algo,
+    name=exp_name,
+    config=training_config,
+    stop=stop,
+    checkpoint_freq=50,
+    checkpoint_at_end=True,
+    callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
+    # verbose=verbosity,
+    metric="episode_reward_mean",
+    mode="max",
+    num_samples=2,
+    # resources_per_trial={"gpu": 0.5},
+)
+
+checkpoints.append(analysis.best_checkpoint)
+experiments.append(exp_name)
+print(exp_name)
+print(analysis.best_checkpoint)
 
 print("checkpoints", checkpoints)
 print("experiments", experiments)
+
 # if test = False:
 #     df_results = analysis.results_df
 #     df_results.to_csv(exp_name)
