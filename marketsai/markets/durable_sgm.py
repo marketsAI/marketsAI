@@ -23,7 +23,7 @@ class Durable_sgm(gym.Env):
 
         # UNPACK CONFIG
         self.env_config = env_config
-        self.eval_mode = self.env_config.get("eval_mode", True)
+        self.eval_mode = self.env_config.get("eval_mode", False)
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
@@ -61,13 +61,14 @@ class Durable_sgm(gym.Env):
             k_init = np.array([3], dtype=float)
 
         else:
-            k_init = np.array(
-                random.choices(
-                    [3, 5, 6.6, 8, 10],
-                    weights=[0.3, 0.1, 0.3, 0.15, 0.15],
-                ),
-                dtype=float
-            )
+            # k_init = np.array(
+            #     random.choices(
+            #         [3, 5, 6.6, 8, 10],
+            #         weights=[0.3, 0.1, 0.3, 0.15, 0.15],
+            #     ),
+            #     dtype=float
+            # )
+            k_init = np.array([random.uniform(3, 10)])
         
         self.obs_ = k_init
 
@@ -90,7 +91,7 @@ class Durable_sgm(gym.Env):
         self.obs_ = np.array([k], dtype=float)
 
         # REWARD
-        rew = max(self.utility_function(max(y * (1 - s), 0.00001)) + 1, -1000)
+        rew = max(self.utility_function(max(y * (1 - s), 0.00001)) + 1, -100)
 
         # rew = self.utility_function(h) - self.params["adj_cost"] * inv ** 2
 
