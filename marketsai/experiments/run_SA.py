@@ -131,12 +131,10 @@ training_config = {
     "env": "gm",
     "env_config": {},
     "horizon": 256,
-    # "soft_horizon": True,
-    # "no_done_at_end": True,
     # MODEL CONFIG
     "framework": "torch",
-    "lambda": 0.95,
-    "entropy_coeff": tune.grid_search([0, 0.01]),
+    "lambda": tune.choice([0, 0.9, 0.95, 0.99, 1]),
+    "entropy_coeff": 0,
     "kl_coeff": 1,
     # "vf_loss_coeff": 0.5,
     # "vf_clip_param": 100.0,
@@ -145,19 +143,11 @@ training_config = {
     "clip_param": 0.2,
     "clip_actions": True,
     # TRAINING CONFIG
-    # "lr": tune.grid_search([0.0003, 0.00003]),
+    "lr": 0.0005,
     "lr_schedule": tune.grid_search(
         [
-            [
-                [0, 0.0005],
-                [batch_size * 10, 0.00005],
-                [batch_size * 20, 0.000005],
-            ],
-            [
-                [0, 0.0003],
-                [batch_size * 10, 0.00003],
-                [batch_size * 20, 0.000003],
-            ],
+            [[batch_size * 15, 0.0001], [batch_size * 30, 0.00005]],
+            [[batch_size * 20, 0.0001], [batch_size * 40, 0.00005]],
         ]
     ),
     "num_workers": n_workers,
@@ -168,11 +158,14 @@ training_config = {
     "sgd_minibatch_size": batch_size // NUM_MINI_BATCH,
     "num_sgd_iter": NUM_MINI_BATCH,
     "batch_mode": "complete_episodes",
-    # "observation_filter": "MeanStdFilter",
-    # "train_batch_size": NUM_ROLLOUT * num_workers * NUM_ENV_PW,
-    # "num_workers": num_workers,
-    # "num_gpus": NUM_GPUS // NUM_TRIALS,
-    # "num_envs_per_worker": NUM_ENV_PW,
+    # Evaluation
+    "evaluation_interval": 5,
+    "evaluation_num_episodes": 1,
+    "evaluation_config": {
+        # Example: overriding env_config, exploration, etc:
+        "env_config": {"explore": False},
+        # "explore": False
+    },
 }
 
 checkpoints = []
@@ -187,9 +180,9 @@ analysis = tune.run(
     stop=stop,
     checkpoint_freq=20,
     checkpoint_at_end=True,
-    metric="episode_reward_mean",
+    metric="custom_metrics/discounted_rewards_mean",
     mode="max",
-    num_samples=2,
+    num_samples=4,
     # resources_per_trial={"gpu": 0.5},
 )
 

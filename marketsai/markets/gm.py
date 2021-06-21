@@ -23,7 +23,7 @@ class GM(gym.Env):
 
         # UNPACK CONFIG
         self.env_config = env_config
-        self.eval_mode = self.env_config.get("eval_mode", True)
+        self.eval_mode = self.env_config.get("eval_mode", False)
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
@@ -43,6 +43,7 @@ class GM(gym.Env):
         )
 
         self.utility_function = env_config.get("utility_function", CRRA(coeff=2))
+        self.time = None
 
     def reset(self):
 
@@ -55,7 +56,7 @@ class GM(gym.Env):
         # )
 
         if self.eval_mode == True:
-            k_init = np.array([3.0], dtype=float)
+            k_init = np.array([6.0], dtype=float)
 
         else:
             # k_init = np.array(
@@ -65,8 +66,9 @@ class GM(gym.Env):
             #     ),
             #     dtype=float
             # )
-            k_init = np.array([random.uniform(3, 10)])
+            k_init = np.array([random.uniform(6, 14)])
 
+        self.time = 0
         self.obs_ = k_init
 
         return self.obs_
@@ -91,7 +93,12 @@ class GM(gym.Env):
         # rew = self.utility_function(h) - self.params["adj_cost"] * inv ** 2
 
         # DONE FLAGS
-        done = False
+        self.time += 1
+
+        if self.time < 256:
+            done = False
+        else:
+            done = True
 
         # ADDITION INFO
         info = {
@@ -103,6 +110,7 @@ class GM(gym.Env):
         }
 
         # RETURN
+
         return self.obs_, rew, done, info
 
 
