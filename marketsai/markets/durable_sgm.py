@@ -23,7 +23,7 @@ class Durable_sgm(gym.Env):
 
         # UNPACK CONFIG
         self.env_config = env_config
-        self.eval_mode = self.env_config.get("eval_mode", True)
+        self.eval_mode = self.env_config.get("eval_mode", False)
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
@@ -58,15 +58,17 @@ class Durable_sgm(gym.Env):
         # )
 
         if self.eval_mode == True:
-            k_init = np.array([3])
+            k_init = np.array([3], dtype=float)
 
         else:
-            k_init = np.array(
-                random.choices(
-                    [3, 5, 6.6, 8, 10],
-                    weights=[0.3, 0.1, 0.3, 0.15, 0.15],
-                )
-            )
+            # k_init = np.array(
+            #     random.choices(
+            #         [3, 5, 6.6, 8, 10],
+            #         weights=[0.3, 0.1, 0.3, 0.15, 0.15],
+            #     ),
+            #     dtype=float
+            # )
+            k_init = np.array([random.uniform(3, 10)])
         
         self.obs_ = k_init
 
@@ -86,10 +88,10 @@ class Durable_sgm(gym.Env):
     
 
         # NEXT OBS
-        self.obs_ = np.array([k], dtype=np.float32)
+        self.obs_ = np.array([k], dtype=float)
 
         # REWARD
-        rew = max(self.utility_function(max(y * (1 - s), 0.00001)) + 1, -1000)
+        rew = max(self.utility_function(max(y * (1 - s), 0.00001)) + 1, -100)
 
         # rew = self.utility_function(h) - self.params["adj_cost"] * inv ** 2
 
@@ -114,7 +116,7 @@ class Durable_sgm(gym.Env):
 # env = Durable_sgm(
 #     env_config={
 #         "parameters": {"depreciation": 0.04, "alpha": 0.33, "tfp": 1},
-#         "max_saving": 0.2,
+#         "max_saving": 0.5,
 #     },
 # )
 
@@ -122,7 +124,7 @@ class Durable_sgm(gym.Env):
 # saving = 0.1425
 # action = saving * 2 / env.max_saving - 1
 # print(action)
-# env.obs_[0] = np.array([10], dtype=float)
+# env.obs_[0] = np.array([3.56], dtype=float)
 # for i in range(100):
 #     obs_, reward, done, info = env.step(np.array([action]))
 #     print(info)
