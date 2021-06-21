@@ -27,7 +27,7 @@ class Durable_sgm(gym.Env):
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
-            {"depreciation": 0.04, "alpha": 0.33, "tfp": 1},
+            {"depreciation": 0.02, "alpha": 0.33, "tfp": 1},
         )
 
         # WE CREATE SPACES

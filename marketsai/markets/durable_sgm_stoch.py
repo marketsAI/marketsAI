@@ -23,16 +23,16 @@ class Durable_sgm_stoch(gym.Env):
 
         # UNPACK CONFIG
         self.env_config = env_config
-        self.eval_mode = self.env_config.get("eval_mode", True)
+        self.eval_mode = self.env_config.get("eval_mode", False)
         # unpack agents config in centralized lists and dicts.
         self.shock = MarkovChain(
-            values=[0.75, 1.25], transition=[[0.95, 0.05], [0.05, 0.95]]
+            values=[0.75, 1.25], transition=[[0.975, 0.025], [0.05, 0.95]]
         )
 
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
-            {"depreciation": 0.04, "alpha": 0.33},
+            {"depreciation": 0.02, "alpha": 0.33},
         )
 
         # WE CREATE SPACES
@@ -62,12 +62,7 @@ class Durable_sgm_stoch(gym.Env):
             k_init = np.array([3])
             self.obs_ = (k_init, 0)
         else:
-            k_init = np.array(
-                random.choices(
-                    [3, 5, 6.6, 8, 10],
-                    weights=[0.3, 0.1, 0.3, 0.15, 0.15],
-                )
-            )
+            k_init = np.array([random.uniform(3, 10)])
             self.obs_ = (k_init, self.shock.state_idx)
 
         return self.obs_
@@ -114,14 +109,14 @@ class Durable_sgm_stoch(gym.Env):
 
 # Manual test for debugging
 
-env = Durable_sgm_stoch(
-    env_config={
-        "parameters": {"depreciation": 0.04, "alpha": 0.33},
-        "eval_mode": True
-    },
-)
+# env = Durable_sgm_stoch(
+#     env_config={
+#         "parameters": {"depreciation": 0.04, "alpha": 0.33},
+#         "eval_mode": True
+#     },
+# )
 
-env.reset()
-for i in range(1):
-    obs_, reward, done, info = env.step(np.array([random.uniform(a=-1.0, b=1.0)]))
-    print(obs_, info)
+# env.reset()
+# for i in range(1):
+#     obs_, reward, done, info = env.step(np.array([random.uniform(a=-1.0, b=1.0)]))
+#     print(obs_, info)
