@@ -38,3 +38,15 @@ def CRRA(coeff: float = 0.5):
 
 a = CRRA()
 a(2)
+
+import numpy as np
+
+
+def process_rewards(r):
+    """Compute discounted reward from a vector of rewards."""
+    discounted_r = np.zeros_like(r)
+    running_add = 0
+    for t in reversed(range(0, len(r))):
+        running_add = running_add * 0.95 + r[t]
+        discounted_r[t] = running_add
+    return discounted_r[0]

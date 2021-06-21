@@ -16,7 +16,7 @@ planning_data = [
 @jitclass(planning_data)
 class PlanningProblem():
 
-    def __init__(self, γ=2, β=0.95, δ=0.02, α=0.33, A=1):
+    def __init__(self, γ=2, β=0.98, δ=0.02, α=0.33, A=1):
 
         self.γ, self.β = γ, β
         self.δ, self.α, self.A = δ, α, A
@@ -30,7 +30,7 @@ class PlanningProblem():
         '''
         γ = self.γ
 
-        return c ** (1 - γ) / (1 - γ) if γ!= 1 else np.log(c)
+        return c ** (1 - γ) / (1 - γ) + 1 if γ!= 1 else np.log(c)
 
     def u_prime(self, c):
         'Derivative of utility'
@@ -124,7 +124,7 @@ def shooting(pp, c0, k0, T=10):
 # plt.show()
 
 # @njit
-def bisection(pp, c0, k0, T=10, tol=1e-4, max_iter=500, k_ter=0, verbose=True):
+def bisection(pp, c0, k0, T=10, tol=1e-4, max_iter=1000, k_ter=0, verbose=True):
 
     # initial boundaries for guess c0
     c0_upper = pp.f(k0)
@@ -206,6 +206,8 @@ def plot_saving_rate(pp, c0, k0, T_arr, k_ter=0, k_ss=None, s_ss=None):
 
     if s_ss is not None:
         axs[1, 1].hlines(s_ss, 0, np.max(T_arr), linestyle='--')
+    
+    return k_paths[0], c_paths[0]
 
 #Steady state
 ρ = 1 / pp.β - 1
@@ -213,6 +215,35 @@ k_ss = pp.f_prime_inv(ρ+pp.δ)
 
 print(f'steady state for capital is: {k_ss}')
 
+# # steady state of saving rate
+# s_ss = pp.δ * k_ss / pp.f(k_ss)
+# plot_saving_rate(pp, 0.3, k_ss/3, [250, 150, 75, 50], k_ss=k_ss)
+
 # steady state of saving rate
 s_ss = pp.δ * k_ss / pp.f(k_ss)
-plot_saving_rate(pp, 0.3, k_ss/3, [250, 150, 75, 50], k_ss=k_ss)
+print(f'steady state for saving_rate is: {s_ss}')
+
+k_paths, c_paths = plot_saving_rate(pp, 0.3, 3, [512], k_ter=k_ss, k_ss=k_ss, s_ss=s_ss)
+
+#print(k_paths, c_paths)
+c_paths = list(c_paths)
+#c_paths_2 = [1.60322013 for i in range(312)]
+
+#c_paths=c_paths+c_paths_2
+
+print(k_paths)
+
+rewards = [pp.u(c_paths[i]) for i in range(512)]
+episode_reward = np.sum(rewards)
+
+def process_rewards(r):
+    """Compute discounted reward from a vector of rewards."""
+    discounted_r = np.zeros_like(r)
+    running_add = 0
+    for t in reversed(range(0, len(r))):
+        running_add = running_add * 0.98 + r[t]
+        discounted_r[t] = running_add
+    return discounted_r[0]
+
+print(episode_reward)
+print(process_rewards(rewards))
