@@ -23,7 +23,7 @@ class GM(gym.Env):
 
         # UNPACK CONFIG
         self.env_config = env_config
-        self.eval_mode = self.env_config.get("eval_mode", False)
+        self.eval_mode = self.env_config.get("eval_mode", True)
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
@@ -56,7 +56,7 @@ class GM(gym.Env):
         # )
 
         if self.eval_mode == True:
-            k_init = np.array([6.0], dtype=float)
+            k_init = np.array([4.0], dtype=float)
 
         else:
             # k_init = np.array(
@@ -66,7 +66,7 @@ class GM(gym.Env):
             #     ),
             #     dtype=float
             # )
-            k_init = np.array([random.uniform(6, 14)])
+            k_init = np.array([random.uniform(4, 12)])
 
         self.time = 0
         self.obs_ = k_init

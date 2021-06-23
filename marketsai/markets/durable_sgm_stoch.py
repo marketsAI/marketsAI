@@ -32,7 +32,7 @@ class Durable_sgm_stoch(gym.Env):
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
-            {"depreciation": 0.02, "alpha": 0.33},
+            {"depreciation": 0.04, "alpha": 0.33},
         )
 
         # WE CREATE SPACES
@@ -59,10 +59,10 @@ class Durable_sgm_stoch(gym.Env):
     def reset(self):
 
         if self.eval_mode == True:
-            k_init = np.array([3])
+            k_init = np.array([10.0])
             self.obs_ = (k_init, 0)
         else:
-            k_init = np.array([random.uniform(3, 10)])
+            k_init = np.array([random.uniform(6, 14)])
             self.obs_ = (k_init, self.shock.state_idx)
 
         return self.obs_
