@@ -9,7 +9,7 @@ import random
 # import math
 
 
-class Durable_sgm_dep(gym.Env):
+class GM_dep(gym.Env):
     """An gym compatible environment consisting of a durable good consumption and production problem
     The agent chooses how much to produce of a durable good subject to quadratci costs.
 
@@ -103,7 +103,7 @@ class Durable_sgm_dep(gym.Env):
 
 # Manual test for debugging
 
-env = Durable_sgm_dep(
+env = GM_dep(
     env_config={
         "parameters": {"depreciation": 0.02, "alpha": 0.33},
         "gridpoints": 40,

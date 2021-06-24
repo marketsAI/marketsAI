@@ -10,7 +10,7 @@ import random
 # import math
 
 
-class Durable_sgm_stoch(gym.Env):
+class GM_stoch(gym.Env):
     """An gym compatible environment consisting of a durable good consumption and production problem
     The agent chooses how much to produce of a durable good subject to quadratci costs.
 
@@ -59,7 +59,7 @@ class Durable_sgm_stoch(gym.Env):
     def reset(self):
 
         if self.eval_mode == True:
-            k_init = np.array([10.0])
+            k_init = np.array([8.0])
             self.obs_ = (k_init, 0)
         else:
             k_init = np.array([random.uniform(6, 14)])
@@ -109,7 +109,7 @@ class Durable_sgm_stoch(gym.Env):
 
 # Manual test for debugging
 
-# env = Durable_sgm_stoch(
+# env = GM_stoch(
 #     env_config={
 #         "parameters": {"depreciation": 0.04, "alpha": 0.33},
 #         "eval_mode": True
