@@ -11,7 +11,7 @@ import pandas as pd
 import seaborn as sn
 
 # Progress graph
-# progress_path = "/home/mc5851/ray_results/Durable_sgm_run_June21_PPO/PPO_Durable_sgm_509d0_00000_0_2021-06-21_00-22-39/progress.csv"
+# progress_path = "/home/mc5851/ray_results/GM_run_June22_PPO/PPO_gm_b10cc_00000_0_2021-06-22_11-44-12/progress.csv"
 # #print(artifact_uri)
 # progress = pd.read_csv(progress_path)
 # #progress
@@ -23,7 +23,7 @@ import seaborn as sn
 register_env("gm", GM)
 
 config_analysis = {
-    "gamma": 0.99,
+    "gamma": 0.98,
     "env": "gm",
     "horizon": 256,
     "explore": False,
@@ -33,7 +33,7 @@ config_analysis = {
 init()
 
 # checkpoint_path = results.best_checkpoint
-checkpoint_path = "/Users/matiascovarrubias/ray_results/GM_run_June21_PPO/PPO_gm_01e3a_00000_0_entropy_coeff=0,lr_schedule=[[0, 0.0005], [128000, 5e-05], [256000, 5e-06]]_2021-06-21_12-23-26/checkpoint_000100/checkpoint-100"
+checkpoint_path = "/home/mc5851/ray_results/GM_run_June22_PPO/PPO_gm_b10cc_00000_0_2021-06-22_11-44-12/checkpoint_1650/checkpoint-1650"
 trained_trainer = PPOTrainer(env="gm", config=config_analysis)
 trained_trainer.restore(checkpoint_path)
 
@@ -80,8 +80,8 @@ plt.subplot(2, 2, 3)
 plt.plot(k_list)
 plt.title("Capital")
 
-plt.savefig("gm_IR_PPO_June21.png")
-plt.show()
+plt.savefig("/home/mc5851/marketsAI/marketsai/results/gm_IR_PPO_June22_v2.png")
+#plt.show()
 
 IRresults = {
     # "shock": shock_list,
@@ -90,6 +90,6 @@ IRresults = {
     "y_list": y_list,
 }
 df_IR = pd.DataFrame(IRresults)
-df_IR.to_csv("gm_IR_PPO_June21.csv")
+df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/gm_IR_PPO_June22.csv")
 
 shutdown()
