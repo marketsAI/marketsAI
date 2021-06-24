@@ -16,7 +16,7 @@ planning_data = [
 @jitclass(planning_data)
 class PlanningProblem():
 
-    def __init__(self, γ=2, β=0.99, δ=0.04, α=0.33, A=1):
+    def __init__(self, γ=2, β=0.98, δ=0.04, α=0.33, A=1):
 
         self.γ, self.β = γ, β
         self.δ, self.α, self.A = δ, α, A
@@ -223,7 +223,7 @@ print(f'steady state for capital is: {k_ss}')
 s_ss = pp.δ * k_ss / pp.f(k_ss)
 print(f'steady state for saving_rate is: {s_ss}')
 
-k_paths, c_paths = plot_saving_rate(pp, 0.3, 3, [256], k_ter=k_ss, k_ss=k_ss, s_ss=s_ss)
+k_paths, c_paths = plot_saving_rate(pp, 0.1, 4, [256], k_ter=k_ss, k_ss=k_ss, s_ss=s_ss)
 
 #print(k_paths, c_paths)
 c_paths = list(c_paths)
@@ -242,7 +242,7 @@ def process_rewards(r):
     discounted_r = np.zeros_like(r)
     running_add = 0
     for t in reversed(range(0, len(r))):
-        running_add = running_add * 0.99 + r[t]
+        running_add = running_add * 0.98 + r[t]
         discounted_r[t] = running_add
     return discounted_r[0], discounted_r
 
