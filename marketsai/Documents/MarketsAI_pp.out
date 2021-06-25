@@ -1,0 +1,11 @@
+\BOOKMARK [1][-]{section.1}{Single-Agent Reinforcement Learning}{}% 1
+\BOOKMARK [2][-]{subsection.1.1}{An introduction to Reinforcement Learning}{section.1}% 2
+\BOOKMARK [2][-]{subsection.1.2}{Deep Reinforcement Learning}{section.1}% 3
+\BOOKMARK [2][-]{subsection.1.3}{Solving Stochastic Growth Models}{section.1}% 4
+\BOOKMARK [1][-]{section.2}{Multi-Agent Reinforcement Learning}{}% 5
+\BOOKMARK [2][-]{subsection.2.1}{Introduction to multi-agent Reinforcement learning}{section.2}% 6
+\BOOKMARK [2][-]{subsection.2.2}{Market solution of the Stochastic Growth Model}{section.2}% 7
+\BOOKMARK [1][-]{section.3}{Scaling up: Heterogenous Agents}{}% 8
+\BOOKMARK [2][-]{subsection.3.1}{Centralized learning, decentralized execution}{section.3}% 9
+\BOOKMARK [2][-]{subsection.3.2}{Solving the Krussel and Smidt framework}{section.3}% 10
+\BOOKMARK [1][-]{section.4}{Multi-Market Environemnts: The Economy Constructor}{}% 11
