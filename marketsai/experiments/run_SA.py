@@ -47,7 +47,7 @@ register_env("gm", GM)
 
 # STEP 2: Experiment configuration
 test = False
-date = "June23_"
+date = "June24_"
 
 if test == True:
     MAX_STEPS = 40 * batch_size
@@ -124,7 +124,6 @@ class MyCallbacks(DefaultCallbacks):
 
 
 training_config = {
-    # "lr": 0.0003,
     "callbacks": MyCallbacks,
     # ENVIRONMENT
     "gamma": 0.98,
@@ -152,7 +151,7 @@ training_config = {
 
     # EVALUATION
     "evaluation_interval": 10,
-    "evaluation_num_episodes": 2,
+    "evaluation_num_episodes": 1,
     "evaluation_config": {
         "explore": False,
         "env_config": {"eval_mode": True},
@@ -168,6 +167,10 @@ training_config = {
     # # "entropy_coeff_schedule": [[0, 0.01], [5120 * 1000, 0]],
     # "clip_param": 0.2,
     # "clip_actions": True,
+
+    # sac
+    "prioritized_replay": True
+
 }
 
 checkpoints = []
@@ -194,31 +197,31 @@ print(exp_name)
 print(analysis.best_checkpoint)
 
 # Stochastic
-register_env("gm_stoch", GM_stoch)
-training_config["env"] = "gm_stoch"
-env_label = "GM_stoch"
-exp_name = env_label + exp_label + algo
+# register_env("gm_stoch", GM_stoch)
+# training_config["env"] = "gm_stoch"
+# env_label = "GM_stoch"
+# exp_name = env_label + exp_label + algo
 
-analysis = tune.run(
-    algo,
-    name=exp_name,
-    config=training_config,
-    stop=stop,
-    checkpoint_freq=50,
-    checkpoint_at_end=True,
-    metric="episode_reward_mean",
-    # metric="custom_metrics/discounted_rewards_mean",
-    mode="max",
-    num_samples=1,
-)
+# analysis = tune.run(
+#     algo,
+#     name=exp_name,
+#     config=training_config,
+#     stop=stop,
+#     checkpoint_freq=50,
+#     checkpoint_at_end=True,
+#     metric="episode_reward_mean",
+#     # metric="custom_metrics/discounted_rewards_mean",
+#     mode="max",
+#     num_samples=1,
+# )
 
-checkpoints.append(analysis.best_checkpoint)
-experiments.append(exp_name)
-print(exp_name)
-print(analysis.best_checkpoint)
+# checkpoints.append(analysis.best_checkpoint)
+# experiments.append(exp_name)
+# print(exp_name)
+# print(analysis.best_checkpoint)
 
-print("checkpoints", checkpoints)
-print("experiments", experiments)
+# print("checkpoints", checkpoints)
+# print("experiments", experiments)
 
 # Adjustment
 # register_env("gm_adj", gm_adj)
