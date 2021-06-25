@@ -23,7 +23,12 @@ class GM(gym.Env):
 
         # UNPACK CONFIG
         self.env_config = env_config
+
+        # GLOBAL ENV CONFIGS
+        self.horizon = self.env_config.get("horizon", 256)
         self.eval_mode = self.env_config.get("eval_mode", True)
+        self.max_saving = self.env_config.get("max_saving", 0.8)
+
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
@@ -31,7 +36,6 @@ class GM(gym.Env):
         )
 
         # WE CREATE SPACES
-        self.max_saving = self.env_config.get("max_saving", 0.8)
         self.action_space = Box(low=np.array([-1]), high=np.array([1]), shape=(1,))
 
         # self.observation_space = Box(
@@ -47,28 +51,13 @@ class GM(gym.Env):
 
     def reset(self):
 
-        # k_init = np.array([6.66062120761422])
-        # k_init = np.array(
-        #     random.choices(
-        #         [0.01, 5, 7, 9, 11, 15],
-        #         weights=[0.3, 0.15, 0.15, 0.15, 0.15, 0.1],
-        #     )
-        # )
-
         if self.eval_mode == True:
             k_init = np.array([4.0], dtype=float)
 
         else:
-            # k_init = np.array(
-            #     random.choices(
-            #         [3, 5, 6.6, 8, 10],
-            #         weights=[0.3, 0.1, 0.3, 0.15, 0.15],
-            #     ),
-            #     dtype=float
-            # )
             k_init = np.array([random.uniform(4, 12)])
 
-        self.time = 0
+        self.timestep = 0
         self.obs_ = k_init
 
         return self.obs_
@@ -80,27 +69,25 @@ class GM(gym.Env):
 
         # PREPROCESS action and state
         s = (action[0] + 1) / 2 * self.max_saving
+
+        # INTERMEDIATE VARS
         y = max(self.params["tfp"] * k_old ** self.params["alpha"], 0.00001)
 
-        k = k_old * (1 - self.params["depreciation"]) + s * y
-
         # NEXT OBS
+        k = k_old * (1 - self.params["depreciation"]) + s * y
         self.obs_ = np.array([k], dtype=float)
 
         # REWARD
         rew = max(self.utility_function(max(y * (1 - s), 0.00001)) + 1, -100)
 
-        # rew = self.utility_function(h) - self.params["adj_cost"] * inv ** 2
-
         # DONE FLAGS
-        self.time += 1
-
-        if self.time < 256:
+        self.timestep += 1
+        if self.timestep < self.horizon:
             done = False
         else:
             done = True
 
-        # ADDITION INFO
+        # ADDITIONAL INFO
         info = {
             "savings_rate": s,
             "rewards": rew,

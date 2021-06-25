@@ -1,5 +1,5 @@
 # Evaluation
-from marketsai.markets.gm import GM
+from marketsai.economies.single_agent.gm import GM
 
 from ray.rllib.agents.ppo import PPOTrainer
 
@@ -81,7 +81,7 @@ plt.plot(k_list)
 plt.title("Capital")
 
 plt.savefig("/home/mc5851/marketsAI/marketsai/results/gm_IR_PPO_June22_v2.png")
-#plt.show()
+# plt.show()
 
 IRresults = {
     # "shock": shock_list,

@@ -1,11 +1,14 @@
-from marketsai.markets.gm import GM
-from marketsai.markets.gm_stoch import GM_stoch
-#from marketsai.markets.gm_adj import GM_adj
+from marketsai.economies.single_agent.gm import GM
+from marketsai.economies.single_agent.gm_stoch import GM_stoch
+
+# from marketsai.markets.gm_adj import GM_adj
 
 # import ray
 from ray import tune, shutdown, init
 from ray.tune.registry import register_env
 from typing import Dict
+
+# For Callbacks
 from ray.rllib.agents.callbacks import DefaultCallbacks
 from ray.rllib.env import BaseEnv
 from ray.rllib.evaluation import MultiAgentEpisode, RolloutWorker
@@ -19,10 +22,20 @@ import math
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sn
 import logging
 
-# STEP 0: Parallelization options
-NUM_CPUS = 20
+# STEP 0: Global configs
+date = "June25_"
+test = True
+plot_progress = False
+algo = "PPO"
+env_label = "gm"
+register_env(env_label, GM)
+env_horizon = 256
+
+# STEP 1: Parallelization options
+NUM_CPUS = 10
 NUM_TRIALS = 1
 NUM_ROLLOUT = 256 * 2
 NUM_ENV_PW = 1
@@ -31,7 +44,7 @@ NUM_GPUS = 0
 BATCH_ROLLOUT = 1
 NUM_MINI_BATCH = 1
 
-n_workers = (NUM_CPUS-NUM_TRIALS) // NUM_TRIALS
+n_workers = (NUM_CPUS - NUM_TRIALS) // NUM_TRIALS
 batch_size = NUM_ROLLOUT * (max(n_workers, 1)) * NUM_ENV_PW * BATCH_ROLLOUT
 print(n_workers, batch_size)
 shutdown()
@@ -41,28 +54,19 @@ init(
     # logging_level=logging.ERROR,
 )
 
-# STEP 1: register environment
-register_env("gm", GM)
-
-
-# STEP 2: Experiment configuration
-test = False
-date = "June24_"
-
+# STEP 2: Experiment configuratios
 if test == True:
-    MAX_STEPS = 40 * batch_size
-    exp_label = "_test_" + date
+    MAX_STEPS = 100 * batch_size
+    exp_name = env_label + "_test_" + date + algo
 else:
     MAX_STEPS = 5000 * batch_size
-    exp_label = "_run_" + date
+    exp_name = "_run_" + date
 
+CHKPT_FREQ = 100
 stop = {"timesteps_total": MAX_STEPS}
 
-algo = "SAC"
 
 # Callbacks
-
-
 def process_rewards(r):
     """Compute discounted reward from a vector of rewards."""
     discounted_r = np.zeros_like(r)
@@ -123,32 +127,23 @@ class MyCallbacks(DefaultCallbacks):
         episode.custom_metrics["discounted_rewards"] = discounted_rewards
 
 
-training_config = {
+common_config = {
     "callbacks": MyCallbacks,
     # ENVIRONMENT
     "gamma": 0.98,
     "env": "gm",
-    "env_config": {},
-    "horizon": 256,
-
+    "env_config": {"horizon": env_horizon},
+    "horizon": env_horizon,
     # MODEL
     "framework": "torch",
     # "model": tune.grid_search([{"use_lstm": True}, {"use_lstm": False}]),
-
     # TRAINING CONFIG
-    #"lr": 0.00003,
-    #"lr_schedule": [[0, 0.00005], [MAX_STEPS*1/2, 0.00001]],
     "num_workers": n_workers,
-    "create_env_on_driver": True,
+    "create_env_on_driver": False,
     "num_gpus": NUM_GPUS / NUM_TRIALS,
     "num_envs_per_worker": NUM_ENV_PW,
     "rollout_fragment_length": NUM_ROLLOUT,
     "train_batch_size": batch_size,
-    # comment for SAC:
-    #"sgd_minibatch_size": batch_size // NUM_MINI_BATCH,
-    #"num_sgd_iter": NUM_MINI_BATCH,
-    #"batch_mode": "complete_episodes",
-
     # EVALUATION
     "evaluation_interval": 10,
     "evaluation_num_episodes": 1,
@@ -156,34 +151,45 @@ training_config = {
         "explore": False,
         "env_config": {"eval_mode": True},
     },
-
-    # ALGO
-    # ppo
-    # "lambda": 1,
-    # "entropy_coeff": 0,
-    # "kl_coeff": 0.2,
-    # # "vf_loss_coeff": 0.5,
-    # # "vf_clip_param": 100.0,
-    # # "entropy_coeff_schedule": [[0, 0.01], [5120 * 1000, 0]],
-    # "clip_param": 0.2,
-    # "clip_actions": True,
-
-    # sac
-    "prioritized_replay": True
-
 }
 
+ppo_config = {
+    # "lr":0.0003
+    "lr_schedule": [[0, 0.00005], [MAX_STEPS * 1 / 2, 0.00001]],
+    "sgd_minibatch_size": batch_size // NUM_MINI_BATCH,
+    "num_sgd_iter": NUM_MINI_BATCH,
+    "batch_mode": "complete_episodes",
+    "lambda": 1,
+    "entropy_coeff": 0,
+    "kl_coeff": 0.2,
+    # "vf_loss_coeff": 0.5,
+    # "vf_clip_param": 100.0,
+    # "entropy_coeff_schedule": [[0, 0.01], [5120 * 1000, 0]],
+    "clip_param": 0.2,
+    "clip_actions": True,
+}
+
+sac_config = {
+    "prioritized_replay": True,
+}
+
+if algo == "PPO":
+    training_config = {**common_config, **ppo_config}
+elif algo == "SAC":
+    training_config = {**common_config, **sac_config}
+else:
+    training_config = common_config
+
+
+# STEP 3: run experiment
 checkpoints = []
 experiments = []
-# STEP 3: run experiment
-env_label = "GM"
-exp_name = env_label + exp_label + algo
 analysis = tune.run(
     algo,
     name=exp_name,
     config=training_config,
     stop=stop,
-    checkpoint_freq=50,
+    checkpoint_freq=CHKPT_FREQ,
     checkpoint_at_end=True,
     metric="episode_reward_mean",
     mode="max",
@@ -191,58 +197,23 @@ analysis = tune.run(
     # resources_per_trial={"gpu": 0.5},
 )
 
-checkpoints.append(analysis.best_checkpoint)
-experiments.append(exp_name)
-print(exp_name)
-print(analysis.best_checkpoint)
+best_checkpoint = analysis.best_checkpoint
+best_logdir = analysis.best_logdir
+best_progress = analysis.best_dataframe
+evaluation_progress = analysis.best_trial.metric_analysis[
+    "evaluation/custom_metrics/discounted_rewards_mean"
+]
+print(list(best_progress.columns))
 
-# Stochastic
-# register_env("gm_stoch", GM_stoch)
-# training_config["env"] = "gm_stoch"
-# env_label = "GM_stoch"
-# exp_name = env_label + exp_label + algo
+# STEP 4: Plot and evaluate
+# Plot progress
+if plot_progress == True:
+    progress_plot = sn.lineplot(
+        data=best_progress,
+        x="episodes_total",
+        y="custom_metrics/discounted_rewards_mean",
+    )
+    progress_plot = progress_plot.get_figure()
+    progress_plot.savefig("marketsai/results/progress_plots" + exp_name + ".png")
 
-# analysis = tune.run(
-#     algo,
-#     name=exp_name,
-#     config=training_config,
-#     stop=stop,
-#     checkpoint_freq=50,
-#     checkpoint_at_end=True,
-#     metric="episode_reward_mean",
-#     # metric="custom_metrics/discounted_rewards_mean",
-#     mode="max",
-#     num_samples=1,
-# )
-
-# checkpoints.append(analysis.best_checkpoint)
-# experiments.append(exp_name)
-# print(exp_name)
-# print(analysis.best_checkpoint)
-
-# print("checkpoints", checkpoints)
-# print("experiments", experiments)
-
-# Adjustment
-# register_env("gm_adj", gm_adj)
-# training_config["env"] = "gm_adj"
-# env_label = "GM_adj"
-# exp_name = env_label + exp_label + algo
-
-# analysis = tune.run(
-#     algo,
-#     name=exp_name,
-#     config=training_config,
-#     stop=stop,
-#     checkpoint_freq=50,
-#     checkpoint_at_end=True,
-#     # callbacks=[MLflowLoggerCallback(experiment_name=exp_name, save_artifact=True)],
-#     metric="episode_reward_mean",
-#     mode="max",
-#     num_samples=1,
-# )
-
-# checkpoints.append(analysis.best_checkpoint)
-# experiments.append(exp_name)
-# print(exp_name)
-# print(analysis.best_checkpoint)
+# Plot evaluation
