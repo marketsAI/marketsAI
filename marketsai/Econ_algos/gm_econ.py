@@ -223,7 +223,7 @@ print(f'steady state for capital is: {k_ss}')
 s_ss = pp.δ * k_ss / pp.f(k_ss)
 print(f'steady state for saving_rate is: {s_ss}')
 
-k_paths, c_paths = plot_saving_rate(pp, 0.1, 4, [256], k_ter=k_ss, k_ss=k_ss, s_ss=s_ss)
+k_paths, c_paths = plot_saving_rate(pp, 0.1, 5, [256], k_ter=k_ss, k_ss=k_ss, s_ss=s_ss)
 
 #print(k_paths, c_paths)
 c_paths = list(c_paths)
