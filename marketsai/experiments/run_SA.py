@@ -27,7 +27,7 @@ import logging
 
 # STEP 0: Global configs
 date = "June25_"
-test = True
+test = False
 plot_progress = False
 algo = "PPO"
 env_label = "gm"
@@ -35,7 +35,7 @@ register_env(env_label, GM)
 env_horizon = 256
 
 # STEP 1: Parallelization options
-NUM_CPUS = 10
+NUM_CPUS = 36
 NUM_TRIALS = 1
 NUM_ROLLOUT = 256 * 2
 NUM_ENV_PW = 1
@@ -56,13 +56,14 @@ init(
 
 # STEP 2: Experiment configuratios
 if test == True:
-    MAX_STEPS = 100 * batch_size
+    MAX_STEPS = 10 * batch_size
     exp_name = env_label + "_test_" + date + algo
 else:
-    MAX_STEPS = 5000 * batch_size
-    exp_name = "_run_" + date
+    MAX_STEPS = 10000 * batch_size
+    exp_name = env_label + "_run_" + date + algo
 
-CHKPT_FREQ = 100
+CHKPT_FREQ = 200
+
 stop = {"timesteps_total": MAX_STEPS}
 
 
@@ -155,7 +156,7 @@ common_config = {
 
 ppo_config = {
     # "lr":0.0003
-    "lr_schedule": [[0, 0.00005], [MAX_STEPS * 1 / 2, 0.00001]],
+    "lr_schedule": [[0, 0.00003], [MAX_STEPS * 1 / 2, 0.00001]],
     "sgd_minibatch_size": batch_size // NUM_MINI_BATCH,
     "num_sgd_iter": NUM_MINI_BATCH,
     "batch_mode": "complete_episodes",

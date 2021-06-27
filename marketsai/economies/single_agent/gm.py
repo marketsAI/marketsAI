@@ -26,7 +26,7 @@ class GM(gym.Env):
 
         # GLOBAL ENV CONFIGS
         self.horizon = self.env_config.get("horizon", 256)
-        self.eval_mode = self.env_config.get("eval_mode", True)
+        self.eval_mode = self.env_config.get("eval_mode", False)
         self.max_saving = self.env_config.get("max_saving", 0.8)
 
         # UNPACK PARAMETERS
@@ -36,14 +36,14 @@ class GM(gym.Env):
         )
 
         # WE CREATE SPACES
-        self.action_space = Box(low=np.array([-1]), high=np.array([1]), shape=(1,))
+        self.action_space = Box(low=np.array([-1.0]), high=np.array([1.0]), shape=(1,))
 
         # self.observation_space = Box(
         #     low=np.array([0, 0]), high=np.array([2, 2]), shape=(2,), dtype=np.float32
         # )
 
         self.observation_space = Box(
-            low=np.array([0]), high=np.array([float("inf")]), shape=(1,), dtype=float
+            low=np.array([0.0]), high=np.array([float("inf")]), shape=(1,)
         )
 
         self.utility_function = env_config.get("utility_function", CRRA(coeff=2))
@@ -52,7 +52,7 @@ class GM(gym.Env):
     def reset(self):
 
         if self.eval_mode == True:
-            k_init = np.array([4.0], dtype=float)
+            k_init = np.array([5.0], dtype=float)
 
         else:
             k_init = np.array([random.uniform(4, 12)])
