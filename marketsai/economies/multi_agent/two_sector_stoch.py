@@ -1,15 +1,14 @@
 from gym.spaces import Discrete, Box, MultiDiscrete
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
-from marketsai.functions.functions import CES, CRRA
+from marketsai.functions.functions import CES, CRRA, AR_beta_meanrev
 
 # from marketsai.agents.agents import Household, Firm
 import math
 import numpy as np
 from typing import Dict, Tuple, List
-import random
 
 
-class TwoSector_PE(MultiAgentEnv):
+class TwoSector_PE_stoch(MultiAgentEnv):
     """A gym compatible environment of two sector economy.
     THere is a final sector with production function Y=A^F K^\alpha (L^F)^(1-\alpha)
     where Y is production, A^F is a productivity shock, K is capital and L is labor.
@@ -34,9 +33,10 @@ class TwoSector_PE(MultiAgentEnv):
         # 3 info modes: Full, Opaque_stocks, Opaque_prices.
         self.opaque_stocks = env_config.get("opaque_stocks", False)
         self.opaque_prices = env_config.get("opaque_prices", False)
+        self.stochastic = env_config.get("stochastic", True)
         self.agents = ["finalF", "capitalF"]
-        self.n_finalF = env_config.get("n_finalF", 2)
-        self.n_capitalF = env_config.get("n_capitalF", 2)
+        self.n_finalF = env_config.get("n_finalF", 1)
+        self.n_capitalF = env_config.get("n_capitalF", 1)
         self.n_agents = self.n_capitalF + self.n_finalF
         self.max_price = env_config.get("max_price", 2)
         self.max_q = env_config.get("max_q", 2)
@@ -45,14 +45,7 @@ class TwoSector_PE(MultiAgentEnv):
         # Paraterers of the markets
         self.params = env_config.get(
             "parameters",
-            {
-                "depreciation": 0.04,
-                "alphaF": 0.3,
-                "alphaC": 0.3,
-                "gammaK": 1 / self.n_capitalF,
-                "gammaC": 2,
-                "w": 1,
-            },
+            {"depreciation": 0.04, "alphaF": 0.3, "alphaC": 0.3, "gamma": 2, "w": 1},
         )
 
         self.timesteps = 0
@@ -72,17 +65,17 @@ class TwoSector_PE(MultiAgentEnv):
 
         self.action_space = {**self.action_space_finalF, **self.action_space_capitalF}
 
-        # Global Obs: stocks (dim n_capitalF*n_finalF), inventories (dim n_capitalF) and prices (dim n_capitalF),
+        # Global Obs: stocks (dim n_capitalF*n_finalF), inventories (dim n_capitalF), prices (dim n_capitalF) and shock,
         if self.opaque_stocks == False and self.opaque_prices == False:
 
-            n_obs_finalF = self.n_capitalF * self.n_finalF + self.n_capitalF * 2
-            n_obs_capitalF = self.n_capitalF * self.n_finalF + self.n_capitalF * 2
+            n_obs_finalF = self.n_capitalF * self.n_finalF + self.n_capitalF * 2 + 1
+            n_obs_capitalF = self.n_capitalF * self.n_finalF + self.n_capitalF * 2 + 1
 
         if self.opaque_stocks == True and self.opaque_prices == True:
             # obs final: own stocks (dim n_capitalF), inventories (dim n_finalF) and  prices (dim n_capitalF),
-            n_obs_finalF = self.n_capitalF * 3
-            # obs capital: own stocks (dim n_finalF), inventories (dim n_capitalF), own price (dim 1), price stats (dim 2)
-            n_obs_capitalF = self.n_finalF + self.n_capitalF + 1 + 2
+            n_obs_finalF = self.n_capitalF * 3 + 1
+            # obs capital: own stocks (dim n_finalF), inventories (dim n_capitalF), own price (dim 1), price stats (dim 2), and shock
+            n_obs_capitalF = self.n_finalF + self.n_capitalF + 1 + 2 + 1
 
         obs_space_finalF = {
             f"finalF_{i}": Box(
@@ -141,6 +134,7 @@ class TwoSector_PE(MultiAgentEnv):
         ]
         inventories = obs_global[1]
         prices = obs_global[2]
+        shock = obs_global[3]
 
         return stocks_org, inventories, prices
 
@@ -180,46 +174,48 @@ class TwoSector_PE(MultiAgentEnv):
         self.timesteps = 0
         # Stocks is aflatttened list of list where the outter list relflects finalF and inner list reflect capitalF
         # Thus, the stock of finalF i of capital good j is stocks [i*self.n_capitalF+j]
-        stocks = [random.uniform(2, 4) for i in range(self.n_capitalF * self.n_finalF)]
-        inventories = [random.uniform(0.5, 1.5) for i in range(self.n_capitalF)]
-        prices = [random.uniform(0.5, 1.5) for i in range(self.n_capitalF)]
+        stocks = [1 for i in range(self.n_capitalF * self.n_finalF)]
+        inventories = [1 for i in range(self.n_capitalF)]
+        prices = [1 for i in range(self.n_capitalF)]
+        shock = [1]
 
         if self.opaque_stocks == False and self.opaque_prices == False:
             self.obs_finalF = {
-                f"finalF_{i}": np.array(stocks + inventories + prices)
+                f"finalF_{i}": stocks + inventories + prices + shock
                 for i in range(self.n_finalF)
             }
             self.obs_capitalF = {
-                f"capitalF_{j}": np.array(
-                    stocks
-                    + inventories
-                    + [prices[j]]
-                    + [x for i, x in enumerate(prices) if i != j]
-                )
+                f"capitalF_{j}": stocks
+                + inventories
+                + [prices[j]]
+                + [x for i, x in enumerate(prices) if i != j]
+                + shock
                 for j in range(self.n_capitalF)
             }
 
         if self.opaque_stocks == True and self.opaque_prices == True:
             self.obs_finalF = {
-                f"finalF_{i}": np.array(
-                    stocks[i * self.n_capitalF : i * self.n_capitalF + self.n_capitalF]
-                    + inventories
-                    + prices
-                )
+                f"finalF_{i}": stocks[
+                    i * self.n_capitalF : i * self.n_capitalF + self.n_capitalF
+                ]
+                + inventories
+                + prices
+                + shock
                 for i in range(self.n_finalF)
             }
             self.obs_capitalF = {
-                f"capitalF_{j}": np.array(
-                    [stocks[i * self.n_capitalF + j] for i in range(self.n_finalF)]
-                    + inventories
-                    + [prices[j], np.mean(prices), np.std(prices)]
-                )
+                f"capitalF_{j}": [
+                    stocks[i * self.n_capitalF + j] for i in range(self.n_finalF)
+                ]
+                + inventories
+                + [prices[j], np.mean(prices), np.std(prices)]
+                + shock
                 for j in range(self.n_capitalF)
             }
 
-        self.obs_global = [stocks, inventories, prices]
+        self.obs_global = {"global": [stocks, inventories, prices, shock]}
 
-        self.obs_ = {**self.obs_finalF, **self.obs_capitalF}
+        self.obs_ = {**self.obs_finalF, **self.obs_capitalF, **self.obs_global}
         return self.obs_
 
     def step(self, action_dict):
@@ -234,9 +230,13 @@ class TwoSector_PE(MultiAgentEnv):
         ) = self.preprocess_actions(action_dict)
 
         self.obs = self.obs_
-        self.stocks_org, self.inventories, self.prices = self.preprocess_state(
-            self.obs_global
-        )
+
+        (
+            self.stocks_org,
+            self.inventories,
+            self.prices,
+            self.shock,
+        ) = self.preprocess_state(self.obs["global"])
 
         # CREATE INTERMEDIATE VARIABLES
 
@@ -250,8 +250,8 @@ class TwoSector_PE(MultiAgentEnv):
         # profits and expenditures :
 
         expend_f = [
-            self.labor_f[i] * self.params["w"]
-            + np.dot(self.quant_final[i], self.prices)
+            self.labor_c[i] * self.params["w"]
+            + np.dot(self.quant_final[i], np.array(self.prices))
             for i in range(self.n_finalF)
         ]
         expend_c = [self.labor_c[j] * self.params["w"] for j in range(self.n_capitalF)]
@@ -261,6 +261,7 @@ class TwoSector_PE(MultiAgentEnv):
         ]
 
         # production
+        shock_capital = AR_beta_meanrev(coeffs=[0.9, 1, 2])
         y_capital = [
             1
             * ((1 / self.n_capitalF) ** self.params["alphaC"])
@@ -269,12 +270,12 @@ class TwoSector_PE(MultiAgentEnv):
         ]
 
         K = [
-            CES(coeff=self.params["gammaK"])(inputs=self.stocks_org[i])
+            CES(coeff=self.params["gamma"])(inputs=self.stocks_org[i])
             for i in range(self.n_finalF)
         ]
 
         y_final = [
-            1
+            self.shock
             * (K[i] ** self.params["alphaF"])
             * (self.labor_f[i] ** (1 - self.params["alphaF"]))
             for i in range(self.n_finalF)
@@ -285,6 +286,8 @@ class TwoSector_PE(MultiAgentEnv):
         profits = [revenues[j] - expend_c[j] for j in range(self.n_capitalF)]
 
         # OUTPUT1: obs_ - Next period obs
+        shock_ = [AR_beta_meanrev()(input=self.shock)]
+
         inventories_ = [
             y_capital[j] - min(self.excess_dd[j], 0) * (self.params["depreciation"])
             for j in range(self.n_capitalF)
@@ -302,23 +305,22 @@ class TwoSector_PE(MultiAgentEnv):
 
         if self.opaque_stocks == False and self.opaque_prices == False:
             self.obs_finalF = {
-                f"finalF_{i}": np.array(stocks_ + inventories_ + self.prices_)
+                f"finalF_{i}": np.array(stocks_ + inventories_ + self.prices_ + shock_)
                 for i in range(self.n_finalF)
             }
             self.obs_capitalF = {
                 f"capitalF_{j}": np.array(
-                    stocks_
-                    + inventories_
-                    + [self.prices_[j]]
-                    + [x for i, x in enumerate(self.prices_) if i != j]
+                    stocks_ + inventories_ + self.prices_ + shock_
                 )
                 for j in range(self.n_capitalF)
             }
-            self.obs_global = [stocks_, inventories_, self.prices_]
+            self.obs_global = {"global": stocks_ + inventories_ + self.prices_ + shock_}
 
         if self.opaque_stocks == True and self.opaque_prices == True:
             self.obs_finalF = {
-                f"finalF_{i}": np.array(stocks_org_[i] + inventories_ + self.prices_)
+                f"finalF_{i}": np.array(
+                    stocks_org_[i] + inventories_ + self.prices_ + shock_
+                )
                 for i in range(self.n_finalF)
             }
             self.obs_capitalF = {
@@ -329,29 +331,24 @@ class TwoSector_PE(MultiAgentEnv):
                 )
                 for j in range(self.n_capitalF)
             }
-            self.obs_global = [stocks_, inventories_, self.prices_]
+            self.obs_global = {"global": stocks_ + inventories_ + self.prices_}
 
-        self.obs_ = {**self.obs_finalF, **self.obs_capitalF}
+        self.obs_ = {**self.obs_finalF, **self.obs_capitalF, **self.obs_global}
 
         # next stock
 
         # next inventories: production + excess
 
         # OUTPUT2: rew: Reward Dictionary
-        penalty_ind = [0 for i in range(self.n_finalF)]
-        for i in range(self.n_finalF):
-            if c[i] < 0:
-                penalty_ind[i] = 1
-
         self.rew_finalF = {
-            f"finalF_{i}": (c[i] ** self.params["gammaC"]) / (1 - self.params["gammaC"])
+            f"finalF_{i}": (c[i] ** self.params["gamma"]) / (1 - self.params["gamma"])
             + 1
-            - self.penalty * penalty_ind[i]
+            + self.penalty * min(0, c[i])
             for i in range(self.n_finalF)
         }
         self.rew_capitalF = {
-            f"capitalF_{j}": (profits[j] ** self.params["gammaC"])
-            / (1 - self.params["gammaC"])
+            f"capitalF_{j}": (profits[j] ** self.params["gamma"])
+            / (1 - self.params["gamma"])
             + 1
             for j in range(self.n_capitalF)
         }
@@ -383,16 +380,16 @@ env = TwoSector_PE(
     env_config={
         "opaque_stocks": False,
         "opaque_prices": False,
+        "stochastic": True,
         "n_finalF": 2,
         "n_capitalF": 3,
         "penalty": 100,
         "max_p": 2,
-        "parameters": {
+        "parameteres": {
             "depreciation": 0.04,
             "alphaF": 0.3,
             "alphaC": 0.3,
-            "gammaK": 1 / 3,
-            "gammaC": 2,
+            "gamma": 0.5,
             "w": 1,
         },
     }
@@ -401,8 +398,8 @@ env.reset()
 print(
     env.step(
         {
-            "finalF_0": np.array([-0.5, 0.5, -1, 0.5]),
-            "finalF_1": np.array([0.5, 0, -0.7, 0.2]),
+            "finalF_0": np.array([-0.5, 0, -1, 0.5]),
+            "finalF_1": np.array([0.5, 0, -0.7, 0, 2]),
             "capitalF_0": np.array([0.5, 0]),
             "capitalF_1": np.array([0, 0.5]),
             "capitalF_2": np.array([-0.5, 0.5]),

@@ -1,6 +1,7 @@
 import numpy as np
 import random
 from gym.spaces import Discrete, Box, MultiDiscrete
+from scipy.stats import beta
 
 # class CES:
 #     def __init__(self, coeff=0.5):
@@ -66,6 +67,25 @@ class AR:
     def evaluate(self, input):
 
         evaluate = self.coeffs[0] * input + np.random.normal(scale=self.coeffs[1])
+
+        return evaluate
+
+
+class AR_beta_meanrev:
+    def __init__(self, coeffs=[0.9, 1, 3]):
+
+        self.coeffs = coeffs
+
+    def evaluate(self, input):
+
+        evaluate = min(
+            (
+                self.coeffs[0] * (self.coeffs[1] - input)
+                - 0.1
+                + beta.rvs(self.coeffs[2], self.coeffs[2], size=1)[0] * 0.2
+            ),
+            0,
+        )
 
         return evaluate
 

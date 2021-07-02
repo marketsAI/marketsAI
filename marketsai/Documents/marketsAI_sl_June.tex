@@ -5,27 +5,18 @@
 %\documentclass[compress]{beamer} % notesonly
 
 \documentclass[serif,9pt]{beamer}
-%\documentclass[handout,9pt]{beamer} %use this to print 4 slides per page AND bibliography
-%\usepackage{pgfpages}
-%\pgfpagesuselayout{2 on 1}[letterpaper,border shrink=5mm]
-%\documentclass[serif,notes]{beamer} %slides and notes interspersed
-%\usepackage{pxfonts} % Or palatino or mathpazo
+
 \usepackage{palatino}
-%\usepackage{eulervm}
-%\documentclass[handout]{beamer}
 \usepackage{beamerthemesplit}
 \usepackage{epsfig}
-%\usepackage{pstricks,pst-plot}
 \usepackage{mathpazo}
 \usepackage{soul}
-%\usepackage{epstopdf}
 \usepackage{setspace}
 \usepackage{hyperref}
 \usepackage{graphicx}
 \graphicspath{{Figures/}}
 \usepackage{amsmath,amssymb}
 \usepackage{spot}
-%\usepackage[usenames,dvipsnames]{color}
 \usepackage{tikz}
 \usepackage{wasysym}
 \usepackage{subcaption}
@@ -34,8 +25,6 @@
 \usepackage[outdir=./]{epstopdf}
 \newcommand{\rectangle}{\fboxsep0pt\fbox{\rule{1em}{0pt}\rule{0pt}{1ex}}}
 
-
-% The following packages are from the file Tables.tex
 \usepackage{float,graphicx}
 \usepackage[justification=centering]{caption}
 \usepackage{amsmath}
@@ -47,58 +36,9 @@
 \newcommand{\tlap}[1]{\raisebox{0pt}{#1}}
 \newcommand{\myitem}[1]{\tlap{\rlap{\parbox[t]{\linewidth}{\item {\vspace{-2.2ex} \strut#1\strut}}}}}
 
-%\usepackage[absolute,overlay]{textpos}
-%\setlength{\TPHorizModule}{1mm}
-%\setlength{\TPVertModule}{1mm}
-
-%\usepackage{multirow}
-% The following packages are from the file Tables.tex
-%\usepackage{float,graphicx}
-%\usepackage[justification=centering]{caption}
-%\usepackage{amsmath}
-%\usepackage{amssymb}
-%\usepackage{geometry}
-%\usepackage{color}
-%\usepackage{subcaption}
-%\usepackage{caption}
-%\usepackage{hhline}
-%\usepackage{arydshln}
-
-
-%\usetheme{Antibes}
-%\usetheme{Warsaw}
-%\usetheme{Montpellier}
-%\usetheme{Singapore}
-%\usetheme{Szeged}
-%\usetheme{Madrid}
-%\usetheme{Darmstadt}
-%\usetheme{Frankfurt}
-%\usetheme{Berkeley}
 \usetheme{CambridgeUS}
 \usecolortheme{dolphin}
 
-%If you use CabridgeUS theme, uncomment the lines below but above the ******* to control footnote, AND SET DATE BELOW
-%\setbeamertemplate{footline}
-%        {
-%      \leavevmode%
-%      \hbox{%
-%      \begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,center]{author in head/foot}%
-%        \usebeamerfont{author in head/foot}\insertshortauthor%~~(\insertshortinstitute)
-%      \end{beamercolorbox}%
-%      \begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,center]{title in head/foot}%
-%        \usebeamerfont{title in head/foot}\insertshorttitle
-%      \end{beamercolorbox}%
-%      \begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,right]{date in head/foot}%
-%        \usebeamerfont{date in head/foot}\insertshortdate %\hspace*{2em}
-%      \end{beamercolorbox}}%
-%      \vskip0pt%
-%    }
-%END CAMBRIDGE US THEME MODIFICATIONS***********************************************************************************************
-
-%\setbeameroption{show only notes}
-
-%\usepackage{etoolbox}
-%\patchcmd{\quote}{\rightmargin}{\leftmargin 1em \rightmargin}{}{}
 \newenvironment{myquote}{\list{} {\leftmargin=0.0in\rightmargin=0.3in \scriptsize \itshape }{}\item[]}{\endlist}
 
 \newtheorem{prop}{Proposition}
@@ -164,14 +104,9 @@
 \renewcommand<>{\sout}[1]{\alt#2{\beameroriginal{\sout}{#1}}{#1}}
 \def\DPbar{\overline{DP}}
 
-%\newrgbcolor{LG}{0.91 0.91 0.91}
-%\newrgbcolor{DB}{0.00 0.00 0.6}
-%\newrgbcolor{DR}{0.503 0 0}
-%\newrgbcolor{OR}{1.00 0.35 0.00}
-%\newrgbcolor{dgreen}{0.00 .50 .00}
+
 \newtheorem{result}[theorem]{Result}
 
-%\definecolor{green}{RGB}{0 100 0}
 \definecolor{green}{RGB}{0 200 0}
 \definecolor{purple}{RGB}{138 	43 	226 	}
 \definecolor{limegreen}{RGB}{50 205 50}
@@ -180,29 +115,18 @@
 \usetikzlibrary{shapes}
 \usetikzlibrary{fadings}
 
-%% For rectangles %% lines below for blue rectangles
-%\tikzfading[name=spotfade2,
-%% inner color=transparent!100,
-% %outer color=transparent!90]
-% inner color=transparent!200,
-% outer color=transparent!80]
-%\definecolor{colorspot}{RGB}{0 	255  255}
-
-% For rectangles %% lines below for yellow rectangles
 \tikzfading[name=spotfade2,
 inner color=transparent!100,
 outer color=transparent!20]
 \definecolor{colorspot}{RGB}{    255  255 0}
 
 
-% For the remaining spotlights
+
 \tikzfading[name=spotfade,
 inner color=transparent!100,
 outer color=transparent!80]
 
-\setspotlightstyle{ball color=cyan,fill=cyan, path fading=spotfade, draw=cyan, thick }%
-%,fill opacity=0.1
-
+\setspotlightstyle{ball color=cyan,fill=cyan, path fading=spotfade, draw=cyan, thick }
 
 \title{\textbf{MarketsAI}}
 \subtitle{A Deep Reinforcement Learning Approach to Simulate High-Dimentional and Imperefect Information Economies}
@@ -210,7 +134,6 @@ outer color=transparent!80]
 {Matias Covarrubias}
 \institute[NYU]{NYU}
 
-%\date[December 2011]{}
 \date[]{}
 
 \setbeamertemplate{navigation symbols}{}
@@ -365,7 +288,7 @@ We formalize an economy as a a Partially Observed Markov Game. In each period:\m
 	
 	
 	\begin{align*}
-	V_t\left(k_t\right) = &\max_{s_t} U(C_t) + \E_t M_{t,t+1}V_{t+1}(k_{t+1}) \qquad \text{s.t.}\\
+	V_t\left(k_t\right) = &\max_{s_t} U(C_t) + \beta \E_t V_{t+1}(k_{t+1}) \qquad \text{s.t.}\\
 	&\qquad
 	c_t = y_t(1-s_t) \\
 	&\qquad
