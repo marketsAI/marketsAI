@@ -26,7 +26,7 @@ import seaborn as sn
 import logging
 
 # STEP 0: Global configs
-date = "June25_"
+date = "June28_"
 test = False
 plot_progress = False
 algo = "PPO"
@@ -35,9 +35,9 @@ register_env(env_label, GM)
 env_horizon = 256
 
 # STEP 1: Parallelization options
-NUM_CPUS = 36
+NUM_CPUS = 48
 NUM_TRIALS = 1
-NUM_ROLLOUT = 256 * 2
+NUM_ROLLOUT = 256 * 1
 NUM_ENV_PW = 1
 # num_env_per_worker
 NUM_GPUS = 0
@@ -59,10 +59,10 @@ if test == True:
     MAX_STEPS = 10 * batch_size
     exp_name = env_label + "_test_" + date + algo
 else:
-    MAX_STEPS = 10000 * batch_size
+    MAX_STEPS = 20000 * batch_size
     exp_name = env_label + "_run_" + date + algo
 
-CHKPT_FREQ = 200
+CHKPT_FREQ = 500
 
 stop = {"timesteps_total": MAX_STEPS}
 
