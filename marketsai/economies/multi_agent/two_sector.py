@@ -180,9 +180,14 @@ class TwoSector_PE(MultiAgentEnv):
         self.timesteps = 0
         # Stocks is aflatttened list of list where the outter list relflects finalF and inner list reflect capitalF
         # Thus, the stock of finalF i of capital good j is stocks [i*self.n_capitalF+j]
-        stocks = [random.uniform(2, 4) for i in range(self.n_capitalF * self.n_finalF)]
-        inventories = [random.uniform(0.5, 1.5) for i in range(self.n_capitalF)]
-        prices = [random.uniform(0.5, 1.5) for i in range(self.n_capitalF)]
+        stocks = [
+            random.uniform(4, 10) / self.n_finalF
+            for i in range(self.n_capitalF * self.n_finalF)
+        ]
+        inventories = [
+            random.uniform(0.1, 0.7) / self.n_capitalF for i in range(self.n_capitalF)
+        ]
+        prices = [random.uniform(0.2, 2) for i in range(self.n_capitalF)]
 
         if self.opaque_stocks == False and self.opaque_prices == False:
             self.obs_finalF = {
@@ -350,10 +355,7 @@ class TwoSector_PE(MultiAgentEnv):
             for i in range(self.n_finalF)
         }
         self.rew_capitalF = {
-            f"capitalF_{j}": (profits[j] ** self.params["gammaC"])
-            / (1 - self.params["gammaC"])
-            + 1
-            for j in range(self.n_capitalF)
+            f"capitalF_{j}": profits[j] for j in range(self.n_capitalF)
         }
         self.rew = {**self.rew_finalF, **self.rew_capitalF}
         # reward capitalF (price * quant - w*labor_s)
@@ -365,7 +367,9 @@ class TwoSector_PE(MultiAgentEnv):
 
         # OUTPUT4: info - Info dictionary.
         # put excess of each seller.
-        info_finalF = {f"finalF_{i}": {} for i in range(self.n_finalF)}
+        info_finalF = {
+            f"finalF_{i}": {"penalty": penalty_ind[i]} for i in range(self.n_finalF)
+        }
         info_capitalF = {
             f"capitalF_{j}": {"excess_dd": self.excess_dd[j]}
             for j in range(self.n_capitalF)
@@ -379,33 +383,33 @@ class TwoSector_PE(MultiAgentEnv):
         return self.obs_, self.rew, done, info
 
 
-env = TwoSector_PE(
-    env_config={
-        "opaque_stocks": False,
-        "opaque_prices": False,
-        "n_finalF": 2,
-        "n_capitalF": 3,
-        "penalty": 100,
-        "max_p": 2,
-        "parameters": {
-            "depreciation": 0.04,
-            "alphaF": 0.3,
-            "alphaC": 0.3,
-            "gammaK": 1 / 3,
-            "gammaC": 2,
-            "w": 1,
-        },
-    }
-)
-env.reset()
-print(
-    env.step(
-        {
-            "finalF_0": np.array([-0.5, 0.5, -1, 0.5]),
-            "finalF_1": np.array([0.5, 0, -0.7, 0.2]),
-            "capitalF_0": np.array([0.5, 0]),
-            "capitalF_1": np.array([0, 0.5]),
-            "capitalF_2": np.array([-0.5, 0.5]),
-        }
-    )
-)
+# env = TwoSector_PE(
+#     env_config={
+#         "opaque_stocks": False,
+#         "opaque_prices": False,
+#         "n_finalF": 2,
+#         "n_capitalF": 3,
+#         "penalty": 100,
+#         "max_p": 2,
+#         "parameters": {
+#             "depreciation": 0.04,
+#             "alphaF": 0.3,
+#             "alphaC": 0.3,
+#             "gammaK": 1 / 3,
+#             "gammaC": 2,
+#             "w": 1,
+#         },
+#     }
+# )
+# env.reset()
+# print(
+#     env.step(
+#         {
+#             "finalF_0": np.array([-0.5, 0.5, -1, 0.5]),
+#             "finalF_1": np.array([0.5, 0, -0.7, 0.2]),
+#             "capitalF_0": np.array([0.5, 0]),
+#             "capitalF_1": np.array([0, 0.5]),
+#             "capitalF_2": np.array([-0.5, 0.5]),
+#         }
+#     )
+# )

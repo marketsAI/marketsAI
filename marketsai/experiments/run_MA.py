@@ -27,16 +27,16 @@ import seaborn as sn
 import logging
 
 # STEP 0: Global configs
-date = "July2_"
+date = "July5_"
 test = False
-plot_progress = False
+plot_progress = True
 algo = "PPO"
 env_label = "two_sector_pe_2and2"
 register_env(env_label, TwoSector_PE)
 env_horizon = 256
 
 # STEP 1: Parallelization options
-NUM_CPUS = 48
+NUM_CPUS = 8
 NUM_TRIALS = 1
 NUM_ROLLOUT = 256 * 1
 NUM_ENV_PW = 1
@@ -96,7 +96,11 @@ class MyCallbacks(DefaultCallbacks):
             "ERROR: `on_episode_start()` callback should be called right "
             "after env reset!"
         )
-        episode.user_data["rewards"] = []
+        episode.user_data["rewardsF"] = []
+        episode.user_data["rewardsC"] = []
+        episode.user_data["penalty"] = []
+        episode.user_data["excess_dd"] = []
+        episode.user_data["penalty"] = []
 
     def on_episode_step(
         self,
@@ -112,8 +116,14 @@ class MyCallbacks(DefaultCallbacks):
         #     "ERROR: `on_episode_step()` callback should not be called right " \
         #     "after env reset!"
         if episode.length > 1:
-            rewards = episode.prev_reward_for()
-            episode.user_data["rewards"].append(rewards)
+            rewardsF = episode.prev_reward_for("finalF_0")
+            rewardsC = episode.prev_reward_for("capitalF_0")
+            penalty = episode.last_info_for("finalF_0")["penalty"]
+            excess_dd = episode.last_info_for("capitalF_0")["excess_dd"]
+            episode.user_data["rewardsF"].append(rewardsF)
+            episode.user_data["rewardsC"].append(rewardsC)
+            episode.user_data["penalty"].append(penalty)
+            episode.user_data["excess_dd"].append(excess_dd)
 
     def on_episode_end(
         self,
@@ -125,8 +135,12 @@ class MyCallbacks(DefaultCallbacks):
         env_index: int,
         **kwargs
     ):
-        discounted_rewards = process_rewards(episode.user_data["rewards"])
-        episode.custom_metrics["discounted_rewards"] = discounted_rewards
+        discounted_rewardsF = process_rewards(episode.user_data["rewardsF"])
+        discounted_rewardsC = process_rewards(episode.user_data["rewardsC"])
+        episode.custom_metrics["discounted_rewardsF"] = discounted_rewardsF
+        episode.custom_metrics["discounted_rewardsC"] = discounted_rewardsC
+        episode.custom_metrics["penalty"] = np.mean(episode.user_data["penalty"])
+        episode.custom_metrics["excess_dd"] = np.mean(episode.user_data["excess_dd"])
 
 
 env_config = {
@@ -135,14 +149,16 @@ env_config = {
     "n_finalF": 2,
     "n_capitalF": 2,
     "penalty": 100,
-    "max_p": 2,
+    "max_p": 3,
+    "max_q": 2,
+    "max_l": 3,
     "parameters": {
         "depreciation": 0.04,
         "alphaF": 0.3,
         "alphaC": 0.3,
         "gammaK": 1 / 3,
         "gammaC": 2,
-        "w": 1,
+        "w": 1.3,
     },
 }
 env = TwoSector_PE(env_config=env_config)
@@ -229,7 +245,7 @@ analysis = tune.run(
     stop=stop,
     checkpoint_freq=CHKPT_FREQ,
     checkpoint_at_end=True,
-    metric="episode_reward_mean",
+    metric="custom_metrics/discounted_rewardsC_mean",
     mode="max",
     num_samples=1,
     # resources_per_trial={"gpu": 0.5},
@@ -238,20 +254,42 @@ analysis = tune.run(
 best_checkpoint = analysis.best_checkpoint
 best_logdir = analysis.best_logdir
 best_progress = analysis.best_dataframe
-evaluation_progress = analysis.best_trial.metric_analysis[
-    "evaluation/custom_metrics/discounted_rewards_mean"
-]
-print(list(best_progress.columns))
+# print(list(best_progress.columns))
 
 # STEP 4: Plot and evaluate
 # Plot progress
 if plot_progress == True:
-    progress_plot = sn.lineplot(
+    progress_plotC = sn.lineplot(
         data=best_progress,
         x="episodes_total",
-        y="custom_metrics/discounted_rewards_mean",
+        y="custom_metrics/discounted_rewardsC_mean",
     )
-    progress_plot = progress_plot.get_figure()
-    progress_plot.savefig("marketsai/results/progress_plots" + exp_name + ".png")
+    progress_plotC = progress_plotC.get_figure()
+    progress_plotC.savefig("marketsai/results/progress_plot_C_" + exp_name + ".png")
+
+    progress_plotF = sn.lineplot(
+        data=best_progress,
+        x="episodes_total",
+        y="custom_metrics/discounted_rewardsC_mean",
+    )
+    progress_plotF = progress_plotF.get_figure()
+    progress_plotF.savefig("marketsai/results/progress_plot_F_" + exp_name + ".png")
+
+    penalty_plot = sn.lineplot(
+        data=best_progress,
+        x="episodes_total",
+        y="custom_metrics/penalty_mean",
+    )
+    penalty_plot = penalty_plot.get_figure()
+    penalty_plot.savefig("marketsai/results/excess_dd_plot_F_" + exp_name + ".png")
+
+    excess_dd_plot = sn.lineplot(
+        data=best_progress,
+        x="episodes_total",
+        y="custom_metrics/excess_dd_mean",
+    )
+    excess_dd_plot = excess_dd_plot.get_figure()
+    excess_dd_plot.savefig("marketsai/results/penalty_plot_F_" + exp_name + ".png")
+
 
 # Plot evaluation
