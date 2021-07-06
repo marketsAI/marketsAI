@@ -376,33 +376,33 @@ class TwoSector_PE_stoch(MultiAgentEnv):
         return self.obs_, self.rew, done, info
 
 
-env = TwoSector_PE(
-    env_config={
-        "opaque_stocks": False,
-        "opaque_prices": False,
-        "stochastic": True,
-        "n_finalF": 2,
-        "n_capitalF": 3,
-        "penalty": 100,
-        "max_p": 2,
-        "parameteres": {
-            "depreciation": 0.04,
-            "alphaF": 0.3,
-            "alphaC": 0.3,
-            "gamma": 0.5,
-            "w": 1,
-        },
-    }
-)
-env.reset()
-print(
-    env.step(
-        {
-            "finalF_0": np.array([-0.5, 0, -1, 0.5]),
-            "finalF_1": np.array([0.5, 0, -0.7, 0, 2]),
-            "capitalF_0": np.array([0.5, 0]),
-            "capitalF_1": np.array([0, 0.5]),
-            "capitalF_2": np.array([-0.5, 0.5]),
-        }
-    )
-)
+# env = TwoSector_PE(
+#     env_config={
+#         "opaque_stocks": False,
+#         "opaque_prices": False,
+#         "stochastic": True,
+#         "n_finalF": 2,
+#         "n_capitalF": 3,
+#         "penalty": 100,
+#         "max_p": 2,
+#         "parameteres": {
+#             "depreciation": 0.04,
+#             "alphaF": 0.3,
+#             "alphaC": 0.3,
+#             "gamma": 0.5,
+#             "w": 1,
+#         },
+#     }
+# )
+# env.reset()
+# print(
+#     env.step(
+#         {
+#             "finalF_0": np.array([-0.5, 0, -1, 0.5]),
+#             "finalF_1": np.array([0.5, 0, -0.7, 0, 2]),
+#             "capitalF_0": np.array([0.5, 0]),
+#             "capitalF_1": np.array([0, 0.5]),
+#             "capitalF_2": np.array([-0.5, 0.5]),
+#         }
+#     )
+# )
