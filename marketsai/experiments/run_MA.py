@@ -28,7 +28,7 @@ import logging
 
 # STEP 0: Global configs
 date = "July6_"
-test = False
+test = True
 plot_progress = True
 algo = "PPO"
 env_label = "two_sector_pe"
@@ -43,8 +43,8 @@ n_capitalF = 2
 gamma_algo = 0.98
 
 # STEP 1: Parallelization options
-NUM_CPUS = 6
-NUM_TRIALS = 1
+NUM_CPUS = 8
+NUM_TRIALS = 8
 NUM_ROLLOUT = env_horizon * 1
 NUM_ENV_PW = 1
 # num_env_per_worker
@@ -131,7 +131,7 @@ class MyCallbacks(DefaultCallbacks):
             episode.user_data["rewardsF"].append(rewardsF)
             episode.user_data["rewardsC"].append(rewardsC)
             episode.user_data["penalty"].append(penalty)
-            episode.user_data["quantity"].append(penalty)
+            episode.user_data["quantity"].append(quantity)
             episode.user_data["excess_dd"].append(excess_dd)
 
     def on_episode_end(
@@ -176,9 +176,8 @@ env_config_0 = {
 }
 
 env_configs = [env_config_0]
-for i in range(1, 8):
+for i in range(1, 15):
     env_configs.append(env_config_0.copy())
-    env_configs[i]["w"] = np.random.choice([0.5, 1, 1.5, 2])
     env_configs[i]["parameteres"] = (
         {
             "depreciation": np.random.choice([0.02, 0.04, 0.06, 0.08]),
@@ -186,18 +185,21 @@ for i in range(1, 8):
             "alphaC": 0.3,
             "gammaK": 1 / n_capitalF,
             "gammaF": 2,
-            "w": 1.3,
+            "w": np.random.choice([0.5, 1, 1.5, 2]),
         },
     )
-    env_configs[i]["stock_init"] = 2
-    env_configs[i]["stock_init"] = 2
+    env_configs[i]["penalty_fix"] = np.random.choice([1, 5, 10, 50])
+    env_configs[i]["penalty_var"] = np.random.choice([0, 0.1, 1, 10])
+    env_configs[i]["stock_init"] = np.random.choice([1, 4, 6, 8])
+    env_configs[i]["max_q"] = np.random.choice([0.1, 0.5, 1, 3])
+
 env = TwoSector_PE(env_config=env_config_0)
 common_config = {
     "callbacks": MyCallbacks,
     # ENVIRONMENT
     "gamma": gamma_algo,
     "env": env_label,
-    "env_config": env_config_0,
+    "env_config": tune.grid_search(env_configs),
     "horizon": env_horizon,
     # MODEL
     "framework": "torch",
