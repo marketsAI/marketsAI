@@ -31,14 +31,15 @@ date = "July6_"
 test = False
 plot_progress = True
 algo = "PPO"
-env_label = "two_sector_pe_2and2"
+env_label = "two_sector_pe"
+exp_label = "native_2ag"
 register_env(env_label, TwoSector_PE)
-env_horizon = 256
+env_horizon = 512
 
 # STEP 1: Parallelization options
-NUM_CPUS = 48
+NUM_CPUS = 9
 NUM_TRIALS = 1
-NUM_ROLLOUT = 256 * 1
+NUM_ROLLOUT = env_horizon * 1
 NUM_ENV_PW = 1
 # num_env_per_worker
 NUM_GPUS = 0
@@ -58,10 +59,10 @@ init(
 # STEP 2: Experiment configuratios
 if test == True:
     MAX_STEPS = 10 * batch_size
-    exp_name = env_label + "_test_" + date + algo
+    exp_name = exp_label + env_label + "_test_" + date + algo
 else:
-    MAX_STEPS = 400 * batch_size
-    exp_name = env_label + "_run_" + date + algo
+    MAX_STEPS = 1000 * batch_size
+    exp_name = exp_label + env_label + "_run_" + date + algo
 
 CHKPT_FREQ = 200
 
@@ -148,16 +149,16 @@ env_config = {
     "opaque_prices": False,
     "n_finalF": 2,
     "n_capitalF": 2,
-    "penalty": 1,
-    "max_p": 3,
-    "max_q": 2,
-    "max_l": 3,
+    "penalty": 10,
+    "max_p": 2,
+    "max_q": 1,
+    "max_l": 1,
     "parameters": {
         "depreciation": 0.04,
         "alphaF": 0.3,
         "alphaC": 0.3,
-        "gammaK": 1 / 3,
-        "gammaC": 2,
+        "gammaK": 1 / 2,
+        "gammaF": 2,
         "w": 1.3,
     },
 }
@@ -291,163 +292,163 @@ if plot_progress == True:
     excess_dd_plot = excess_dd_plot.get_figure()
     excess_dd_plot.savefig("marketsai/results/penalty_plot_" + exp_name + ".png")
 
+print(best_checkpoint)
 
 # 2nd experiment
 
-env_label = "two_sector_pe_2and10"
-register_env(env_label, TwoSector_PE)
-if test == True:
-    MAX_STEPS = 10 * batch_size
-    exp_name = env_label + "_test_" + date + algo
-else:
-    MAX_STEPS = 400 * batch_size
-    exp_name = env_label + "_run_" + date + algo
+# env_label = "two_sector_pe_2and10"
+# register_env(env_label, TwoSector_PE)
+# if test == True:
+#     MAX_STEPS = 10 * batch_size
+#     exp_name = env_label + "_test_" + date + algo
+# else:
+#     MAX_STEPS = 400 * batch_size
+#     exp_name = env_label + "_run_" + date + algo
 
-env_config = {
-    "opaque_stocks": False,
-    "opaque_prices": False,
-    "n_finalF": 10,
-    "n_capitalF": 2,
-    "penalty": 1,
-    "max_p": 3,
-    "max_q": 2,
-    "max_l": 2,
-    "parameters": {
-        "depreciation": 0.04,
-        "alphaF": 0.3,
-        "alphaC": 0.3,
-        "gammaK": 1 / 3,
-        "gammaC": 2,
-        "w": 1.3,
-    },
-}
-env = TwoSector_PE(env_config=env_config)
-common_config = {
-    "callbacks": MyCallbacks,
-    # ENVIRONMENT
-    "gamma": 0.98,
-    "env": env_label,
-    "env_config": env_config,
-    "horizon": env_horizon,
-    # MODEL
-    "framework": "torch",
-    # "model": tune.grid_search([{"use_lstm": True}, {"use_lstm": False}]),
-    # TRAINING CONFIG
-    "num_workers": n_workers,
-    "create_env_on_driver": False,
-    "num_gpus": NUM_GPUS / NUM_TRIALS,
-    "num_envs_per_worker": NUM_ENV_PW,
-    "rollout_fragment_length": NUM_ROLLOUT,
-    "train_batch_size": batch_size,
-    # EVALUATION
-    "evaluation_interval": 10,
-    "evaluation_num_episodes": 1,
-    "evaluation_config": {
-        "explore": False,
-        "env_config": env_config,
-    },
-    # MULTIAGENT
-    "multiagent": {
-        "policies": {
-            "capitalF": (
-                None,
-                env.observation_space["capitalF_0"],
-                env.action_space["capitalF_0"],
-                {},
-            ),
-            "finalF": (
-                None,
-                env.observation_space["finalF_0"],
-                env.action_space["finalF_0"],
-                {},
-            ),
-        },
-        "policy_mapping_fn": (lambda agent_id: agent_id.split("_")[0]),
-        "replay_mode": "independent",  # you can change to "lockstep".
-    },
-}
+# env_config = {
+#     "opaque_stocks": False,
+#     "opaque_prices": False,
+#     "n_finalF": 10,
+#     "n_capitalF": 2,
+#     "penalty": 1,
+#     "max_p": 3,
+#     "max_q": 2,
+#     "max_l": 2,
+#     "parameters": {
+#         "depreciation": 0.04,
+#         "alphaF": 0.3,
+#         "alphaC": 0.3,
+#         "gammaK": 1 / 3,
+#         "gammaC": 2,
+#         "w": 1.3,
+#     },
+# }
+# env = TwoSector_PE(env_config=env_config)
+# common_config = {
+#     "callbacks": MyCallbacks,
+#     # ENVIRONMENT
+#     "gamma": 0.98,
+#     "env": env_label,
+#     "env_config": env_config,
+#     "horizon": env_horizon,
+#     # MODEL
+#     "framework": "torch",
+#     # "model": tune.grid_search([{"use_lstm": True}, {"use_lstm": False}]),
+#     # TRAINING CONFIG
+#     "num_workers": n_workers,
+#     "create_env_on_driver": False,
+#     "num_gpus": NUM_GPUS / NUM_TRIALS,
+#     "num_envs_per_worker": NUM_ENV_PW,
+#     "rollout_fragment_length": NUM_ROLLOUT,
+#     "train_batch_size": batch_size,
+#     # EVALUATION
+#     "evaluation_interval": 10,
+#     "evaluation_num_episodes": 1,
+#     "evaluation_config": {
+#         "explore": False,
+#         "env_config": env_config,
+#     },
+#     # MULTIAGENT
+#     "multiagent": {
+#         "policies": {
+#             "capitalF": (
+#                 None,
+#                 env.observation_space["capitalF_0"],
+#                 env.action_space["capitalF_0"],
+#                 {},
+#             ),
+#             "finalF": (
+#                 None,
+#                 env.observation_space["finalF_0"],
+#                 env.action_space["finalF_0"],
+#                 {},
+#             ),
+#         },
+#         "policy_mapping_fn": (lambda agent_id: agent_id.split("_")[0]),
+#         "replay_mode": "independent",  # you can change to "lockstep".
+#     },
+# }
 
-ppo_config = {
-    # "lr":0.0003
-    "lr_schedule": [[0, 0.00003], [MAX_STEPS * 1 / 2, 0.00001]],
-    "sgd_minibatch_size": batch_size // NUM_MINI_BATCH,
-    "num_sgd_iter": NUM_MINI_BATCH,
-    "batch_mode": "complete_episodes",
-    "lambda": 1,
-    "entropy_coeff": 0,
-    "kl_coeff": 0.2,
-    # "vf_loss_coeff": 0.5,
-    # "vf_clip_param": 100.0,
-    # "entropy_coeff_schedule": [[0, 0.01], [5120 * 1000, 0]],
-    "clip_param": 0.2,
-    "clip_actions": True,
-}
+# ppo_config = {
+#     # "lr":0.0003
+#     "lr_schedule": [[0, 0.00003], [MAX_STEPS * 1 / 2, 0.00001]],
+#     "sgd_minibatch_size": batch_size // NUM_MINI_BATCH,
+#     "num_sgd_iter": NUM_MINI_BATCH,
+#     "batch_mode": "complete_episodes",
+#     "lambda": 1,
+#     "entropy_coeff": 0,
+#     "kl_coeff": 0.2,
+#     # "vf_loss_coeff": 0.5,
+#     # "vf_clip_param": 100.0,
+#     # "entropy_coeff_schedule": [[0, 0.01], [5120 * 1000, 0]],
+#     "clip_param": 0.2,
+#     "clip_actions": True,
+# }
 
-sac_config = {
-    "prioritized_replay": True,
-}
+# sac_config = {
+#     "prioritized_replay": True,
+# }
 
-if algo == "PPO":
-    training_config = {**common_config, **ppo_config}
-elif algo == "SAC":
-    training_config = {**common_config, **sac_config}
-else:
-    training_config = common_config
+# if algo == "PPO":
+#     training_config = {**common_config, **ppo_config}
+# elif algo == "SAC":
+#     training_config = {**common_config, **sac_config}
+# else:
+#     training_config = common_config
 
 
-# STEP 3: run experiment
-checkpoints = []
-experiments = []
-analysis = tune.run(
-    algo,
-    name=exp_name,
-    config=training_config,
-    stop=stop,
-    checkpoint_freq=CHKPT_FREQ,
-    checkpoint_at_end=True,
-    metric="episode_reward_mean",
-    mode="max",
-    num_samples=1,
-    # resources_per_trial={"gpu": 0.5},
-)
+# # STEP 3: run experiment
+# checkpoints = []
+# experiments = []
+# analysis = tune.run(
+#     algo,
+#     name=exp_name,
+#     config=training_config,
+#     stop=stop,
+#     checkpoint_freq=CHKPT_FREQ,
+#     checkpoint_at_end=True,
+#     metric="episode_reward_mean",
+#     mode="max",
+#     num_samples=1,
+#     # resources_per_trial={"gpu": 0.5},
+# )
 
-best_checkpoint = analysis.best_checkpoint
-best_logdir = analysis.best_logdir
-best_progress = analysis.best_dataframe
-# print(list(best_progress.columns))
+# best_checkpoint = analysis.best_checkpoint
+# best_logdir = analysis.best_logdir
+# best_progress = analysis.best_dataframe
+# # print(list(best_progress.columns))
 
-# STEP 4: Plot and evaluate
-# Plot progress
-if plot_progress == True:
-    progress_plotC = sn.lineplot(
-        data=best_progress,
-        x="episodes_total",
-        y="custom_metrics/discounted_rewardsC_mean",
-    )
-    progress_plotC = progress_plotC.get_figure()
-    progress_plotC.savefig("marketsai/results/progress_plot_C_" + exp_name + ".png")
+# # STEP 4: Plot and evaluate
+# # Plot progress
+# if plot_progress == True:
+#     progress_plotC = sn.lineplot(
+#         data=best_progress,
+#         x="episodes_total",
+#         y="custom_metrics/discounted_rewardsC_mean",
+#     )
+#     progress_plotC = progress_plotC.get_figure()
+#     progress_plotC.savefig("marketsai/results/progress_plot_C_" + exp_name + ".png")
 
-    progress_plotF = sn.lineplot(
-        data=best_progress,
-        x="episodes_total",
-        y="custom_metrics/discounted_rewardsF_mean",
-    )
-    progress_plotF = progress_plotF.get_figure()
-    progress_plotF.savefig("marketsai/results/progress_plot_F_" + exp_name + ".png")
+#     progress_plotF = sn.lineplot(
+#         data=best_progress,
+#         x="episodes_total",
+#         y="custom_metrics/discounted_rewardsF_mean",
+#     )
+#     progress_plotF = progress_plotF.get_figure()
+#     progress_plotF.savefig("marketsai/results/progress_plot_F_" + exp_name + ".png")
 
-    penalty_plot = sn.lineplot(
-        data=best_progress,
-        x="episodes_total",
-        y="custom_metrics/penalty_mean",
-    )
-    penalty_plot = penalty_plot.get_figure()
-    penalty_plot.savefig("marketsai/results/excess_dd_plot_" + exp_name + ".png")
+#     penalty_plot = sn.lineplot(
+#         data=best_progress,
+#         x="episodes_total",
+#         y="custom_metrics/penalty_mean",
+#     )
+#     penalty_plot = penalty_plot.get_figure()
+#     penalty_plot.savefig("marketsai/results/excess_dd_plot_" + exp_name + ".png")
 
-    excess_dd_plot = sn.lineplot(
-        data=best_progress,
-        x="episodes_total",
-        y="custom_metrics/excess_dd_mean",
-    )
-    excess_dd_plot = excess_dd_plot.get_figure()
-    excess_dd_plot.savefig("marketsai/results/penalty_plot_" + exp_name + ".png")
-
+#     excess_dd_plot = sn.lineplot(
+#         data=best_progress,
+#         x="episodes_total",
+#         y="custom_metrics/excess_dd_mean",
+#     )
+#     excess_dd_plot = excess_dd_plot.get_figure()
+#     excess_dd_plot.savefig("marketsai/results/penalty_plot_" + exp_name + ".png")

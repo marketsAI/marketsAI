@@ -41,7 +41,7 @@ class TwoSector_PE(MultiAgentEnv):
         self.max_price = env_config.get("max_price", 2)
         self.max_q = env_config.get("max_q", 2)
         self.max_l = env_config.get("max_l", 2)
-        self.penalty = env_config.get("penalty", 1)
+        self.penalty = env_config.get("penalty", 10)
         # Paraterers of the markets
         self.params = env_config.get(
             "parameters",
@@ -50,7 +50,7 @@ class TwoSector_PE(MultiAgentEnv):
                 "alphaF": 0.3,
                 "alphaC": 0.3,
                 "gammaK": 1 / self.n_capitalF,
-                "gammaC": 2,
+                "gammaF": 2,
                 "w": 1,
             },
         )
@@ -64,7 +64,7 @@ class TwoSector_PE(MultiAgentEnv):
             f"finalF_{i}": Box(low=-1, high=1, shape=(self.n_capitalF + 1,))
             for i in range(self.n_finalF)
         }
-        # actions of capitalF: price and labor
+        # actions of capitalF: labor and price
         self.action_space_capitalF = {
             f"capitalF_{i}": Box(low=-1, high=1, shape=(2,))
             for i in range(self.n_capitalF)
@@ -129,7 +129,7 @@ class TwoSector_PE(MultiAgentEnv):
                 labor_f.append(((value[-1] + 1) / 2) * self.max_l)
             if key.split("_")[0] == "capitalF":
                 labor_c.append(((value[0] + 1) / 2) * self.max_l)
-                next_prices.append(((value[1] + 1) / 2) * self.max_price)
+                next_prices.append(0.001 + ((value[1] + 1) / 2) * self.max_price)
 
         return quant_f, labor_f, labor_c, next_prices
 
@@ -180,14 +180,18 @@ class TwoSector_PE(MultiAgentEnv):
         self.timesteps = 0
         # Stocks is aflatttened list of list where the outter list relflects finalF and inner list reflect capitalF
         # Thus, the stock of finalF i of capital good j is stocks [i*self.n_capitalF+j]
-        stocks = [
-            random.uniform(4, 10) / self.n_finalF
-            for i in range(self.n_capitalF * self.n_finalF)
-        ]
-        inventories = [
-            random.uniform(0.1, 0.7) / self.n_capitalF for i in range(self.n_capitalF)
-        ]
-        prices = [random.uniform(0.2, 2) for i in range(self.n_capitalF)]
+        # stocks = [
+        #     random.uniform(4, 10) / self.n_finalF
+        #     for i in range(self.n_capitalF * self.n_finalF)
+        # ]
+        # inventories = [
+        #     random.uniform(0.1, 0.7) / self.n_capitalF for i in range(self.n_capitalF)
+        # ]
+        # prices = [random.uniform(0.2, 2) for i in range(self.n_capitalF)]
+
+        stocks = [2 / self.n_finalF for i in range(self.n_capitalF * self.n_finalF)]
+        inventories = [0.8 for i in range(self.n_capitalF)]
+        prices = [1.17 for i in range(self.n_capitalF)]
 
         if self.opaque_stocks == False and self.opaque_prices == False:
             self.obs_finalF = {
@@ -349,8 +353,7 @@ class TwoSector_PE(MultiAgentEnv):
                 penalty_ind[i] = 1
 
         self.rew_finalF = {
-            f"finalF_{i}": (c[i] ** self.params["gammaC"]) / (1 - self.params["gammaC"])
-            + 1
+            f"finalF_{i}": np.log(max(c[i], 0.00001))
             - penalty_ind[i] * (self.penalty - 0.1 * c[i])
             for i in range(self.n_finalF)
         }
@@ -368,7 +371,8 @@ class TwoSector_PE(MultiAgentEnv):
         # OUTPUT4: info - Info dictionary.
         # put excess of each seller.
         info_finalF = {
-            f"finalF_{i}": {"penalty": penalty_ind[i]} for i in range(self.n_finalF)
+            f"finalF_{i}": {"penalty": penalty_ind[i], "stock": stocks_org_[i]}
+            for i in range(self.n_finalF)
         }
         info_capitalF = {
             f"capitalF_{j}": {"excess_dd": self.excess_dd[j]}

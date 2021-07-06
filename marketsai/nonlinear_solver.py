@@ -5,8 +5,8 @@ from scipy.optimize import fsolve
 
 alphaF = 0.3
 delta = 0.04
-betaF = 0.98
-betaC = 0.98
+betaF = 0.96
+betaC = 0.96
 alphaC = 0.3
 eta = 1
 phi = 1
