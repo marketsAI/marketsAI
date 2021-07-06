@@ -41,7 +41,7 @@ class TwoSector_PE(MultiAgentEnv):
         self.max_price = env_config.get("max_price", 2)
         self.max_q = env_config.get("max_q", 2)
         self.max_l = env_config.get("max_l", 2)
-        self.penalty = env_config.get("penalty", 100)
+        self.penalty = env_config.get("penalty", 1)
         # Paraterers of the markets
         self.params = env_config.get(
             "parameters",
@@ -351,7 +351,7 @@ class TwoSector_PE(MultiAgentEnv):
         self.rew_finalF = {
             f"finalF_{i}": (c[i] ** self.params["gammaC"]) / (1 - self.params["gammaC"])
             + 1
-            - self.penalty * penalty_ind[i]
+            - penalty_ind[i] * (self.penalty - 0.1 * c[i])
             for i in range(self.n_finalF)
         }
         self.rew_capitalF = {
