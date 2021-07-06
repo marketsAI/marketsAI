@@ -28,7 +28,7 @@ import logging
 
 # STEP 0: Global configs
 date = "July6_"
-test = True
+test = False
 plot_progress = True
 algo = "PPO"
 env_label = "two_sector_pe"
@@ -37,13 +37,13 @@ register_env(env_label, TwoSector_PE)
 
 # Hiperparameteres
 
-env_horizon = 256
+env_horizon = 512
 n_finalF = 2
 n_capitalF = 2
 gamma_algo = 0.98
 
 # STEP 1: Parallelization options
-NUM_CPUS = 9
+NUM_CPUS = 6
 NUM_TRIALS = 1
 NUM_ROLLOUT = env_horizon * 1
 NUM_ENV_PW = 1
@@ -153,7 +153,7 @@ class MyCallbacks(DefaultCallbacks):
         episode.custom_metrics["excess_dd"] = np.mean(episode.user_data["excess_dd"])
 
 
-env_config = {
+env_config_0 = {
     "horizon": env_horizon,
     "opaque_stocks": False,
     "opaque_prices": False,
@@ -161,12 +161,12 @@ env_config = {
     "n_capitalF": n_capitalF,
     "penalty_fix": 100,
     "penalty_var": 0,
-    "max_p": 2,
+    "max_p": 1.5,
     "max_q": 1,
     "max_lf": 1,
     "stock_init": 4,
     "parameters": {
-        "depreciation": 0.04,
+        "depreciation": 0.06,
         "alphaF": 0.3,
         "alphaC": 0.3,
         "gammaK": 1 / n_capitalF,
@@ -175,13 +175,29 @@ env_config = {
     },
 }
 
-env = TwoSector_PE(env_config=env_config)
+env_configs = [env_config_0]
+for i in range(1, 8):
+    env_configs.append(env_config_0.copy())
+    env_configs[i]["w"] = np.random.choice([0.5, 1, 1.5, 2])
+    env_configs[i]["parameteres"] = (
+        {
+            "depreciation": np.random.choice([0.02, 0.04, 0.06, 0.08]),
+            "alphaF": 0.3,
+            "alphaC": 0.3,
+            "gammaK": 1 / n_capitalF,
+            "gammaF": 2,
+            "w": 1.3,
+        },
+    )
+    env_configs[i]["stock_init"] = 2
+    env_configs[i]["stock_init"] = 2
+env = TwoSector_PE(env_config=env_config_0)
 common_config = {
     "callbacks": MyCallbacks,
     # ENVIRONMENT
     "gamma": gamma_algo,
     "env": env_label,
-    "env_config": env_config,
+    "env_config": env_config_0,
     "horizon": env_horizon,
     # MODEL
     "framework": "torch",
@@ -198,7 +214,7 @@ common_config = {
     "evaluation_num_episodes": 1,
     "evaluation_config": {
         "explore": False,
-        "env_config": env_config,
+        "env_config": env_config_0,
     },
     # MULTIAGENT
     "multiagent": {
