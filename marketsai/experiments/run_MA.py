@@ -28,13 +28,19 @@ import logging
 
 # STEP 0: Global configs
 date = "July6_"
-test = False
+test = True
 plot_progress = True
 algo = "PPO"
 env_label = "two_sector_pe"
 exp_label = "native_2ag"
 register_env(env_label, TwoSector_PE)
-env_horizon = 512
+
+# Hiperparameteres
+
+env_horizon = 256
+n_finalF = 2
+n_capitalF = 2
+gamma_algo = 0.98
 
 # STEP 1: Parallelization options
 NUM_CPUS = 9
@@ -75,7 +81,7 @@ def process_rewards(r):
     discounted_r = np.zeros_like(r)
     running_add = 0
     for t in reversed(range(0, len(r))):
-        running_add = running_add * 0.98 + r[t]
+        running_add = running_add * gamma_algo + r[t]
         discounted_r[t] = running_add
     return discounted_r[0]
 
@@ -101,7 +107,7 @@ class MyCallbacks(DefaultCallbacks):
         episode.user_data["rewardsC"] = []
         episode.user_data["penalty"] = []
         episode.user_data["excess_dd"] = []
-        episode.user_data["penalty"] = []
+        episode.user_data["quantity"] = []
 
     def on_episode_step(
         self,
@@ -120,10 +126,12 @@ class MyCallbacks(DefaultCallbacks):
             rewardsF = episode.prev_reward_for("finalF_0")
             rewardsC = episode.prev_reward_for("capitalF_0")
             penalty = episode.last_info_for("finalF_0")["penalty"]
+            quantity = episode.last_info_for("finalF_0")["quantity"]
             excess_dd = episode.last_info_for("capitalF_0")["excess_dd"]
             episode.user_data["rewardsF"].append(rewardsF)
             episode.user_data["rewardsC"].append(rewardsC)
             episode.user_data["penalty"].append(penalty)
+            episode.user_data["quantity"].append(penalty)
             episode.user_data["excess_dd"].append(excess_dd)
 
     def on_episode_end(
@@ -141,32 +149,37 @@ class MyCallbacks(DefaultCallbacks):
         episode.custom_metrics["discounted_rewardsF"] = discounted_rewardsF
         episode.custom_metrics["discounted_rewardsC"] = discounted_rewardsC
         episode.custom_metrics["penalty"] = np.mean(episode.user_data["penalty"])
+        episode.custom_metrics["quantity"] = np.mean(episode.user_data["quantity"])
         episode.custom_metrics["excess_dd"] = np.mean(episode.user_data["excess_dd"])
 
 
 env_config = {
+    "horizon": env_horizon,
     "opaque_stocks": False,
     "opaque_prices": False,
-    "n_finalF": 2,
-    "n_capitalF": 2,
-    "penalty": 10,
+    "n_finalF": n_finalF,
+    "n_capitalF": n_capitalF,
+    "penalty_fix": 100,
+    "penalty_var": 0,
     "max_p": 2,
     "max_q": 1,
-    "max_l": 1,
+    "max_lf": 1,
+    "stock_init": 4,
     "parameters": {
         "depreciation": 0.04,
         "alphaF": 0.3,
         "alphaC": 0.3,
-        "gammaK": 1 / 2,
+        "gammaK": 1 / n_capitalF,
         "gammaF": 2,
         "w": 1.3,
     },
 }
+
 env = TwoSector_PE(env_config=env_config)
 common_config = {
     "callbacks": MyCallbacks,
     # ENVIRONMENT
-    "gamma": 0.98,
+    "gamma": gamma_algo,
     "env": env_label,
     "env_config": env_config,
     "horizon": env_horizon,

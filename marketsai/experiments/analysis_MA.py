@@ -79,7 +79,7 @@ trainer_config = {
 init()
 
 # checkpoint_path = results.best_checkpoint
-checkpoint_path = "/Users/matiascovarrubias/ray_results/native_2agtwo_sector_pe_run_July6_PPO/PPO_two_sector_pe_089b4_00000_0_2021-07-06_11-51-31/checkpoint_000400/checkpoint-400"
+checkpoint_path = "/Users/matiascovarrubias/ray_results/native_2agtwo_sector_pe_run_July6_PPO/PPO_two_sector_pe_bb5b8_00000_0_2021-07-06_13-00-57/checkpoint_001000/checkpoint-1000"
 # checkpoint_path = "Macintosh HD/Users/matiascovarrubias"
 trained_trainer = PPOTrainer(env="two_sector_pe", config=trainer_config)
 trained_trainer.restore(checkpoint_path)
@@ -92,14 +92,14 @@ obs = env.reset()
 inv_list = []
 y_list = []
 k_list = []
-MAX_STEPS = 512
-shock_process = [
-    [1 for i in range(20)]
-    + [0 for i in range(20)]
-    + [1 for i in range(30)]
-    + [0 for i in range(20)]
-    + [1 for i in range(10)]
-]
+MAX_STEPS = 100
+# shock_process = [
+#     [1 for i in range(20)]
+#     + [0 for i in range(20)]
+#     + [1 for i in range(30)]
+#     + [0 for i in range(20)]
+#     + [1 for i in range(10)]
+# ]
 for i in range(MAX_STEPS):
     action = {}
     for i in range(env.n_finalF):

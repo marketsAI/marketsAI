@@ -32,6 +32,7 @@ class TwoSector_PE(MultiAgentEnv):
 
         # UNPACK CONFIG
         # 3 info modes: Full, Opaque_stocks, Opaque_prices.
+        self.horizon = env_config.get("horizon", 256)
         self.opaque_stocks = env_config.get("opaque_stocks", False)
         self.opaque_prices = env_config.get("opaque_prices", False)
         self.agents = ["finalF", "capitalF"]
@@ -40,8 +41,11 @@ class TwoSector_PE(MultiAgentEnv):
         self.n_agents = self.n_capitalF + self.n_finalF
         self.max_price = env_config.get("max_price", 2)
         self.max_q = env_config.get("max_q", 2)
-        self.max_l = env_config.get("max_l", 2)
-        self.penalty = env_config.get("penalty", 10)
+        self.max_lf = env_config.get("max_lf", 2)
+        self.max_lc = env_config.get("max_lc", 2)
+        self.stock_init = env_config.get("stock_init", 4)
+        self.penalty_fix = env_config.get("penalty_fix", 100)
+        self.penalty_var = env_config.get("penalty_var", 0)
         # Paraterers of the markets
         self.params = env_config.get(
             "parameters",
@@ -51,7 +55,7 @@ class TwoSector_PE(MultiAgentEnv):
                 "alphaC": 0.3,
                 "gammaK": 1 / self.n_capitalF,
                 "gammaF": 2,
-                "w": 1,
+                "w": 1.3,
             },
         )
 
@@ -122,14 +126,14 @@ class TwoSector_PE(MultiAgentEnv):
             if key.split("_")[0] == "finalF":
                 quant_f.append(
                     [
-                        ((value[:-1][i] + 1) / 2) * self.max_q
+                        (0.0001 + (value[:-1][i] + 1) / 2) * self.max_q
                         for i in range(self.n_capitalF)
                     ]
                 )
-                labor_f.append(((value[-1] + 1) / 2) * self.max_l)
+                labor_f.append(0.0001 + ((value[-1] + 1) / 2) * self.max_lf)
             if key.split("_")[0] == "capitalF":
-                labor_c.append(((value[0] + 1) / 2) * self.max_l)
-                next_prices.append(0.001 + ((value[1] + 1) / 2) * self.max_price)
+                labor_c.append(0.0001 + ((value[0] + 1) / 2) * self.max_lc)
+                next_prices.append(0.0001 + ((value[1] + 1) / 2) * self.max_price)
 
         return quant_f, labor_f, labor_c, next_prices
 
@@ -189,9 +193,12 @@ class TwoSector_PE(MultiAgentEnv):
         # ]
         # prices = [random.uniform(0.2, 2) for i in range(self.n_capitalF)]
 
-        stocks = [2 / self.n_finalF for i in range(self.n_capitalF * self.n_finalF)]
-        inventories = [0.8 for i in range(self.n_capitalF)]
-        prices = [1.17 for i in range(self.n_capitalF)]
+        stocks = [
+            self.stock_init / self.n_finalF
+            for i in range(self.n_capitalF * self.n_finalF)
+        ]
+        inventories = [random.uniform(0.1, 0.5) for i in range(self.n_capitalF)]
+        prices = [random.uniform(0.1, 1) for i in range(self.n_capitalF)]
 
         if self.opaque_stocks == False and self.opaque_prices == False:
             self.obs_finalF = {
@@ -354,7 +361,7 @@ class TwoSector_PE(MultiAgentEnv):
 
         self.rew_finalF = {
             f"finalF_{i}": np.log(max(c[i], 0.00001))
-            - penalty_ind[i] * (self.penalty - 0.1 * c[i])
+            - penalty_ind[i] * (self.penalty_fix - self.penalty_var * c[i])
             for i in range(self.n_finalF)
         }
         self.rew_capitalF = {
@@ -366,12 +373,19 @@ class TwoSector_PE(MultiAgentEnv):
         # reward finalF (U(y-wl-price*K))
 
         # OUTPUT3: done: False since its an infinite game
-        done = {"__all__": False}
+        if self.timesteps <= self.horizon:
+            done = {"__all__": False}
+        else:
+            done = {"__all__": True}
 
         # OUTPUT4: info - Info dictionary.
         # put excess of each seller.
         info_finalF = {
-            f"finalF_{i}": {"penalty": penalty_ind[i], "stock": stocks_org_[i]}
+            f"finalF_{i}": {
+                "penalty": penalty_ind[i],
+                "stocks": stocks_org_[i],
+                "quantity": self.quant_final[i][0],
+            }
             for i in range(self.n_finalF)
         }
         info_capitalF = {
