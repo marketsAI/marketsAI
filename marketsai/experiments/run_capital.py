@@ -32,7 +32,7 @@ test = False
 plot_progress = False
 algo = "PPO"
 env_label = "capital_raw"
-exp_label = "1f_1c"
+exp_label = "server_1f_1c"
 register_env(env_label, Capital_raw)
 
 # Hiperparameteres
@@ -43,13 +43,13 @@ n_capitalF = 1
 gamma_algo = 0.98
 
 # STEP 1: Parallelization options
-NUM_CPUS = 9
+NUM_CPUS = 48
 NUM_TRIALS = 1
 NUM_ROLLOUT = env_horizon * 1
 NUM_ENV_PW = 1
 # num_env_per_worker
 NUM_GPUS = 0
-BATCH_ROLLOUT = 2
+BATCH_ROLLOUT = 1
 NUM_MINI_BATCH = 1
 
 n_workers = (NUM_CPUS - NUM_TRIALS) // NUM_TRIALS
@@ -67,7 +67,7 @@ if test == True:
     MAX_STEPS = 10 * batch_size
     exp_name = exp_label + env_label + "_test_" + date + algo
 else:
-    MAX_STEPS = 400 * batch_size
+    MAX_STEPS = 2000 * batch_size
     exp_name = exp_label + env_label + "_run_" + date + algo
 
 CHKPT_FREQ = 200
@@ -105,6 +105,7 @@ class MyCallbacks(DefaultCallbacks):
         )
         episode.user_data["rewardsF"] = []
         episode.user_data["rewardsC"] = []
+        episode.user_data["rewardsTOT"] = []
         episode.user_data["penalty_bgt"] = []
         episode.user_data["excess_dd"] = []
         episode.user_data["quantity"] = []
@@ -125,11 +126,13 @@ class MyCallbacks(DefaultCallbacks):
         if episode.length > 1:
             rewardsF = episode.prev_reward_for("finalF_0")
             rewardsC = episode.prev_reward_for("capitalF_0")
+            rewardsTOT = rewardsF + rewardsC
             penalty_bgt = episode.last_info_for("finalF_0")["penalty_bgt"]
             quantity = episode.last_info_for("finalF_0")["quantity"]
             excess_dd = episode.last_info_for("capitalF_0")["excess_dd"]
             episode.user_data["rewardsF"].append(rewardsF)
             episode.user_data["rewardsC"].append(rewardsC)
+            episode.user_data["rewardsTOT"].append(rewardsTOT)
             episode.user_data["penalty_bgt"].append(penalty_bgt)
             episode.user_data["quantity"].append(quantity)
             episode.user_data["excess_dd"].append(excess_dd)
@@ -146,8 +149,10 @@ class MyCallbacks(DefaultCallbacks):
     ):
         discounted_rewardsF = process_rewards(episode.user_data["rewardsF"])
         discounted_rewardsC = process_rewards(episode.user_data["rewardsC"])
+        discounted_rewardsTOT = process_rewards(episode.user_data["rewardsTOT"])
         episode.custom_metrics["discounted_rewardsF"] = discounted_rewardsF
         episode.custom_metrics["discounted_rewardsC"] = discounted_rewardsC
+        episode.custom_metrics["discounted_rewardsTOT"] = discounted_rewardsTOT
         episode.custom_metrics["penalty_bgt"] = np.mean(
             episode.user_data["penalty_bgt"]
         )
