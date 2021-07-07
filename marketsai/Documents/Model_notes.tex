@@ -105,7 +105,7 @@ left=0.75in,right=0.75in,paperheight=11.0in,textheight=9.5in,centering]{geometry
 
 \begin{document}
 
-\title{Template for economy construction}
+\title{Using Reinforcement Learning to solve economies.}
 
 \author{Matias Covarrubias}
 
@@ -122,7 +122,184 @@ left=0.75in,right=0.75in,paperheight=11.0in,textheight=9.5in,centering]{geometry
 
 
 \newpage
-\section{Economic preliminaries}
+
+\section{Growth model}
+
+\subsection{Planner Solution}
+
+\begin{itemize}
+	\item A representative household chooses how much to consume and how much to invest in order to maximize $\sum_{t=0}^{\infty} \beta^t u(c_t)$.\medskip
+	
+	\item The final good is produced using capital$K$ according to the production function $Y=K^{\alpha}$. The agent needs to decide how much of that product to consume and how much to use for production of new capital goods. \medskip
+	
+	\item \textbf{Adjustment costs:} In order to produce $I_t$ new capital goods the representative agent needs to sacrifice $\frac{1}{2} I^2_t$ final goods.  \medskip
+	
+	\item We express the problem in terms of choosing the saving rate $s$ such that consumption is $C_t=(1-s_t)Y_t$ and investment is defined by the equation $\frac{1}{2} I_t^2 = s_t Y_t$. Thus: \medskip
+	
+	$$I_t = \sqrt{2 s_t Y_t}$$
+	
+	\item The recursive formulation of the problem is:
+	
+	
+	\begin{align*}
+	V_t\left(K_t\right) = &\max_{s_t,K_{t+1}} U(C_t) + \beta \E_t V_{t+1}(k_{t+1}) \qquad \text{s.t.}\\
+	&\qquad
+	C_t = Y_t(1-s_t)\\
+	&\qquad
+	Y_t = K_t^\alpha\\
+	&\qquad
+	K_{t+1} \leq (1-\delta) K_t + \sqrt{2 s_t Y_t}
+	\end{align*}
+	
+	where $U(C_t)$ is the utility of consumption. Since we have a convex adjustment cost and decreasing returns to scale, we can use linear utility function $U(C) =C$  \medskip
+	
+	\item The lagrangian of the problem for firm $i$ is:
+	
+	\begin{align*}
+	\mathcal{L}_{t} &= \E_t \sum_{r=0}^{\infty}\beta^r \left( (1-s_{t+r}) K_{t+r}^\alpha  +   Q_{t+r} \left[(1-\delta) K_{t+r} + \sqrt{2 s_{t+r} K^\alpha_{t+r}}-K_{t+r+1}\right]\right)
+	\end{align*}
+	
+	\item The first order conditions are:
+	\begin{align}
+	& \left[s_{t}\right] && Q_t = \sqrt{2s_t K^\alpha_t} = I_t \\
+	& \left[K_{t+1}\right] && Q_t =\beta (1-s_{t+1}) \alpha K^{\alpha-1}_{t+1} + \beta Q_{t+1} \left[(1-\delta) + \frac{s_{t+1} \alpha K_{t+1}^{\alpha-1}}{\sqrt{2 s_{t+1} K^\alpha_{t+1}}} \right]  
+	\end{align}
+	
+%		\item The first order conditions are:
+%	\begin{align}
+%	& \left[s_{t}\right] && Q_t = \frac{\sqrt{2s_t K^\alpha_t}}{(1-s_t) K^\alpha_t} \\
+%	& \left[K_{t+1}\right] && Q_t = \frac{\beta \alpha}{K_{t+1}} +\beta Q_{t+1} \left[(1-\delta) + \frac{s_{t+1} \alpha K_{t+1}^{\alpha-1}}{\sqrt{2 s_{t+1} K^\alpha_{t+1}}} \right]  
+%	\end{align}
+%	
+	\subsection{Steady State}
+	
+	\item In the steady state, we have that $\sqrt{2 s K^\alpha} = \delta K$ and so $s K^{\alpha-1} =\delta^2 K/2$ .
+	
+	\item By replacing the first F.O.C. in the second F.O. an, getting rid of time subscript we get
+	
+	\begin{align} \sqrt{2 s K^\alpha}& = \beta \alpha K^{\alpha-1}  - \beta \alpha s K^{\alpha-1} +\beta \sqrt{2 s K^\alpha} (1-\delta) + \beta \alpha s  K^{\alpha-1}
+	\end{align}
+	
+	\item Collecting terms and replacing $\sqrt{2 s K^\alpha} = \delta K$ we get:
+	
+	\begin{align} \delta K & = \beta \alpha K^{\alpha-1} +\beta \delta K (1-\delta) 
+	\end{align}
+	
+	\item Finally, solving for $K$ we get:
+	
+		\begin{align}  K & = \left[\frac{\beta \alpha}{\delta[1-\beta(1-\delta)]} \right]^\frac{1}{2-\alpha}
+	\end{align}
+	
+	
+	\subsection{Market Solution}
+	
+	\begin{itemize}
+		\item Now we have agents, the final good agent, which purchases capital goods and consume the final good, and the capital good firm, which produces the capital good subject to a quadratic cost. 
+	\end{itemize}
+	
+	\subsubsection{Final Good firm (superscript $f$)}
+	
+	\begin{itemize}
+		
+		\item The production function is:
+		
+		$$Y_i = Z^f_{i,t} \left( \sum_{j=1}^{N^c } K^{1/N^c}_{i,j}\right)^{\alpha^f}$$
+		
+		where $Z_{i,t}$ is the TFP shock and follows a stochastic process $Z^f_{i,t+1} \sim \mathcal{P}(Z^f_{i,t})$. 
+		
+		\item Profits in each period are
+		
+		$$\pi^f_{i,t}=p^c_{i,t} Y_{i,t}-\sum_{j=1}^{N^c} p^k_{j,t} I_{i,j,t}$$
+		
+		\item The firm is risk-adverse and it maximizes the discounted sum of utility over profits $U(\pi_t) = \frac{\pi^{1-\gamma^f}}{1-\gamma^f}$.
+		
+		\item The problem of producers is:
+		
+		\begin{align*}
+		\mathcal{V}_{t}^{f}\left(\{K_{i,j,t}\}_j,\,Z_t^f\right)&=\max_{\{K_{i,j,t+1},\, I_{i,j,t}\}_j,  L^f_{i,t}}\,\,
+		\frac{\left(\pi_{i,t}^f\right)^{1-\gamma^f}}{1-\gamma^f}+\beta_f E_{t}\mathcal{V}^f_{t+1}(\{K_{i,jt+1}\}_j,\,Z_{t+1}^f)\quad\text{{s.t.}}\\
+		&K_{i,j,t+1} \leq(1-\delta)K_{i,j,t}+I_{i,j,t} \quad \text{for} \quad j \in [1,...,N^c]
+		\end{align*}
+		
+		\item The lagrangian of the problem for firm $i$ is:
+		\begin{align*}
+		\mathcal{L}_{i,t} &= \E_t \sum_{r=0}^{\infty}\beta^r_f \left(\frac{\left(\pi_{i,t+r}^f\right)^{1-\gamma^f}}{1-\gamma^f} +
+		\sum_{j=1}^{N^c} \left(Q_{i,j,t+r} [(1-\delta)K_{i,j,t+r}+I_{i,j,t+r} -K_{i,j,t+r+1}]\right) \right)
+		\end{align*}ß
+		
+		\item The first order conditions are:
+		\begin{align}
+		& \left[K_{i,j,t+1}\right]
+		&&
+		Q_{i,j,t} =\beta_f \E_t \left[\left(\pi_{i,t+1}^f\right)^{-\gamma^f} p^c_{i,t+1} \frac{\alpha^F}{N^f} \frac{Y_{i,t+1}}{K_{i,k,t+1}} +Q_{i,j,t+1} (1-\delta) \right]
+		\\
+		& \left[ I^f_{i,j,t} \right]
+		&&
+		Q_{i,j,t} = \left(\pi_{i,t}^f\right)^{-\gamma^f} p^k_{j,t}
+		\end{align}
+		
+		
+		
+		\item This sector adds the following equations to the system of equations that describe the economy:
+		
+		\begin{align}
+		Y_i & = Z^f_{i,t} \left( \sum_{j=1}^{N^c } K^{1/N^c}_{i,j}\right)^{\alpha^f} \\
+		\mathcal{M}_{i,t} & = \E_t \left[ \beta_f \left(\frac{\pi_{i,t+1}}{\pi_{i,t}}\right)^{-\gamma^f} \right] \\
+		K_{i,j,t+1} & = (1-\delta) K_{i,j,t} + I^f_{i,j,t} \\
+		p^k_{j,t} & =\E_t  \left[\mathcal{M}_{i,t} \left( p^c_{i,t} \frac{\alpha^F}{N^f} \frac{Y_{i,t+1}}{K_{i,j,t+1}} +  p^k_{j,t+1} (1-\delta) \right) \right] \\
+		Z^f_{i,t+1} & \sim \mathcal{P}(Z^f_{i,t})
+		\end{align}
+		
+	\end{itemize}
+	
+	\subsubsection{Capital good firms (superscript $c$)}
+	
+	
+	\begin{itemize}
+		
+		\item Capital good firms maximize the discounted sum of profits. Profits in each period are
+		
+		$$\pi^c_{j,t}=p^k_{j,t} I^c_{j,t}-\frac{1}{2} \left(I^c_{j,t}\right)^2  $$
+		
+		
+		\item The lagrangian of the problem for firm $j$ is:
+		\begin{align*}
+		\mathcal{L}_{j,t} &= \E_t \sum_{r=0}^{\infty}\beta^r_f \left(
+		p^k_{j,t+r} I^c_{j,t+r}-\frac{1}{2} I^2_{j,t+r} \right)
+		\end{align*}
+		
+		\item The first order conditions is:
+		\begin{align}
+		& \left[i_{j,t}\right]&& p^K_{t} = I_{j,t}
+		\end{align}
+		
+		
+		\item  For $N^f=1$, $N^c=1$, The steady state is:
+		
+		\begin{align*}
+		Y & =  	K^{\alpha^f}  \\
+		I & = \delta K\\
+		I & = p^k \\  
+		p^k & =\frac{\beta_f}{1-(1-\delta)\beta_f}  \alpha^f K^{\alpha^f-1}  \\ 
+		\end{align*}
+		
+		\item Solution:
+		
+		\begin{align*}
+		Y & =  	K^{\alpha^f}  \\
+		I & = \delta K\\
+		I & = p^k \\  
+		K & =\left(\frac{ \beta_f}{1-(1-\delta)\beta_f}  \frac{\alpha^f}{\delta} \right)^{\frac{1}{2-\alpha^f}}  
+		\end{align*}
+		
+	\end{itemize}
+	
+	
+
+\end{itemize}
+
+
+\section{Two sector model}
 
 \begin{itemize}
 	\item This document describes a two sector economy with $N^f$ final good firms and $N^c$ capital goods firms. \medskip
@@ -136,7 +313,6 @@ left=0.75in,right=0.75in,paperheight=11.0in,textheight=9.5in,centering]{geometry
 	\item We then write the economy in strategic game form, which makes it suitable for learning based optimization. \medskip
 \end{itemize}
 
-\section{Equilibrium model}
 
 \subsection{Structure of the economy}
 
@@ -183,7 +359,7 @@ $$\pi^f_{i,t}=p^c_{i,t} Y_{i,t}-w_{t}  L^f_{i,t}-\sum_{j=1}^{N^c} p^k_{j,t} I_{i
 \begin{align*}
 \mathcal{L}_{i,t} &= \E_t \sum_{r=0}^{\infty}\beta^r_f \left(\frac{\left(\pi_{i,t+r}^f\right)^{1-\gamma^f}}{1-\gamma^f} +
 \sum_{j=1}^{N^c} \left(Q_{i,j,t+r} [(1-\delta)K_{i,j,t+r}+I_{i,j,t+r} -K_{i,j,t+r+1}]\right) \right)
-\end{align*}ß
+\end{align*}
 
 \item The first order conditions are:
 \begin{align}

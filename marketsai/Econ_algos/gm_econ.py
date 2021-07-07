@@ -232,7 +232,7 @@ c_paths = list(c_paths)
 #c_paths=c_paths+c_paths_2
 
 
-
+investment=[pp.f(k_paths[i])-c_paths[i] for i in range(256)]
 rewards = [pp.u(c_paths[i]) for i in range(256)]
 episode_reward = np.sum(rewards)
 
@@ -246,6 +246,6 @@ def process_rewards(r):
         discounted_r[t] = running_add
     return discounted_r[0], discounted_r
 
-print 
-print(episode_reward)
-print(process_rewards(rewards))
+print(investment) 
+#print(episode_reward)
+#print(process_rewards(rewards))

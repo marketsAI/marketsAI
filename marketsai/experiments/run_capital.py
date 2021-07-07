@@ -1,4 +1,4 @@
-from marketsai.economies.multi_agent.two_sector import TwoSector_PE
+from marketsai.economies.multi_agent.capital_raw import Capital_raw
 
 # from marketsai.economies.multi_agent.two_sector_stoch import TwoSector_PE_stoch
 
@@ -27,13 +27,13 @@ import seaborn as sn
 import logging
 
 # STEP 0: Global configs
-date = "July6_"
+date = "July7_"
 test = False
-plot_progress = True
+plot_progress = False
 algo = "PPO"
-env_label = "two_sector_pe"
-exp_label = "native_2ag"
-register_env(env_label, TwoSector_PE)
+env_label = "capital_raw"
+exp_label = "1f_1c"
+register_env(env_label, Capital_raw)
 
 # Hiperparameteres
 
@@ -43,7 +43,7 @@ n_capitalF = 1
 gamma_algo = 0.98
 
 # STEP 1: Parallelization options
-NUM_CPUS = 12
+NUM_CPUS = 9
 NUM_TRIALS = 1
 NUM_ROLLOUT = env_horizon * 1
 NUM_ENV_PW = 1
@@ -67,7 +67,7 @@ if test == True:
     MAX_STEPS = 10 * batch_size
     exp_name = exp_label + env_label + "_test_" + date + algo
 else:
-    MAX_STEPS = 10000 * batch_size
+    MAX_STEPS = 400 * batch_size
     exp_name = exp_label + env_label + "_run_" + date + algo
 
 CHKPT_FREQ = 200
@@ -105,7 +105,7 @@ class MyCallbacks(DefaultCallbacks):
         )
         episode.user_data["rewardsF"] = []
         episode.user_data["rewardsC"] = []
-        episode.user_data["penalty"] = []
+        episode.user_data["penalty_bgt"] = []
         episode.user_data["excess_dd"] = []
         episode.user_data["quantity"] = []
 
@@ -125,12 +125,12 @@ class MyCallbacks(DefaultCallbacks):
         if episode.length > 1:
             rewardsF = episode.prev_reward_for("finalF_0")
             rewardsC = episode.prev_reward_for("capitalF_0")
-            penalty = episode.last_info_for("finalF_0")["penalty"]
+            penalty_bgt = episode.last_info_for("finalF_0")["penalty_bgt"]
             quantity = episode.last_info_for("finalF_0")["quantity"]
             excess_dd = episode.last_info_for("capitalF_0")["excess_dd"]
             episode.user_data["rewardsF"].append(rewardsF)
             episode.user_data["rewardsC"].append(rewardsC)
-            episode.user_data["penalty"].append(penalty)
+            episode.user_data["penalty_bgt"].append(penalty_bgt)
             episode.user_data["quantity"].append(quantity)
             episode.user_data["excess_dd"].append(excess_dd)
 
@@ -148,7 +148,9 @@ class MyCallbacks(DefaultCallbacks):
         discounted_rewardsC = process_rewards(episode.user_data["rewardsC"])
         episode.custom_metrics["discounted_rewardsF"] = discounted_rewardsF
         episode.custom_metrics["discounted_rewardsC"] = discounted_rewardsC
-        episode.custom_metrics["penalty"] = np.mean(episode.user_data["penalty"])
+        episode.custom_metrics["penalty_bgt"] = np.mean(
+            episode.user_data["penalty_bgt"]
+        )
         episode.custom_metrics["quantity"] = np.mean(episode.user_data["quantity"])
         episode.custom_metrics["excess_dd"] = np.mean(episode.user_data["excess_dd"])
 
@@ -162,40 +164,34 @@ env_config_0 = {
     "penalty_bgt_fix": 1,
     "penalty_bgt_var": 0,
     "penalty_exss": 0.1,
-    "max_price": 1.5,
+    "max_price": 1,
     "max_q": 1,
-    "max_lf": 1,
-    "max_lc": 0.5,
-    "stock_init": 5,
+    "stock_init": 10,
     "parameters": {
         "depreciation": 0.04,
-        "alphaF": 0.3,
-        "alphaC": 0.3,
+        "alpha": 0.3,
         "gammaK": 1 / n_capitalF,
-        "gammaF": 2,
-        "w": 1,
     },
 }
 
-env_configs = [env_config_0]
-for i in range(1, 15):
-    env_configs.append(env_config_0.copy())
-    env_configs[i]["parameteres"] = (
-        {
-            "depreciation": np.random.choice([0.02, 0.04, 0.06, 0.08]),
-            "alphaF": 0.3,
-            "alphaC": 0.3,
-            "gammaK": 1 / n_capitalF,
-            "gammaF": 2,
-            "w": np.random.choice([0.5, 1, 1.5, 2]),
-        },
-    )
-    env_configs[i]["penalty_fix"] = np.random.choice([1, 5, 10, 50])
-    env_configs[i]["penalty_var"] = np.random.choice([0, 0.1, 1, 10])
-    env_configs[i]["stock_init"] = np.random.choice([1, 4, 6, 8])
-    env_configs[i]["max_q"] = np.random.choice([0.1, 0.5, 1, 3])
+# For environment hyperparameter tuning
+# env_configs = [env_config_0]
+# for i in range(1, 15):
+#     env_configs.append(env_config_0.copy())
+#     env_configs[i]["parameteres"] = (
+#         {
+#             "depreciation": np.random.choice([0.02, 0.04, 0.06, 0.08]),
+#             "alphaF": 0.3,
+#             "alphaC": 0.3,
+#             "gammaK": 1 / n_capitalF,
+#         },
+#     )
+#     env_configs[i]["penalty_bgt_fix"] = np.random.choice([1, 5, 10, 50])
+#     env_configs[i]["penalty_bgt_var"] = np.random.choice([0, 0.1, 1, 10])
+#     env_configs[i]["stock_init"] = np.random.choice([1, 4, 6, 8])
+#     env_configs[i]["max_q"] = np.random.choice([0.1, 0.5, 1, 3])
 
-env = TwoSector_PE(env_config=env_config_0)
+env = Capital_raw(env_config=env_config_0)
 common_config = {
     "callbacks": MyCallbacks,
     # ENVIRONMENT
@@ -313,7 +309,7 @@ if plot_progress == True:
     penalty_plot = sn.lineplot(
         data=best_progress,
         x="episodes_total",
-        y="custom_metrics/penalty_mean",
+        y="custom_metrics/penalty_bgt_mean",
     )
     penalty_plot = penalty_plot.get_figure()
     penalty_plot.savefig("marketsai/results/excess_dd_plot_" + exp_name + ".png")
