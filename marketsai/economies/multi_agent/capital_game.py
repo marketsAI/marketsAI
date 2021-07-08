@@ -39,7 +39,6 @@ class Capital_game(MultiAgentEnv):
         self.n_finalF = env_config.get("n_finalF", 2)
         self.n_capitalF = env_config.get("n_capitalF", 2)
         self.n_agents = self.n_capitalF + self.n_finalF
-        self.max_price = env_config.get("max_price", 1)
         self.max_q = env_config.get("max_q", 1)
         self.stock_init = env_config.get("stock_init", 10)
         self.penalty_bgt_fix = env_config.get("penalty_bgt_fix", 1)
@@ -64,9 +63,9 @@ class Capital_game(MultiAgentEnv):
             f"finalF_{i}": Box(low=-1, high=1, shape=(self.n_capitalF,))
             for i in range(self.n_finalF)
         }
-        # actions of capitalF: quantity and price
+        # actions of capitalF: quantity
         self.action_space_capitalF = {
-            f"capitalF_{i}": Box(low=-1, high=1, shape=(2,))
+            f"capitalF_{i}": Box(low=-1, high=1, shape=(1,))
             for i in range(self.n_capitalF)
         }
 
@@ -75,14 +74,14 @@ class Capital_game(MultiAgentEnv):
         # Global Obs: stocks (dim n_capitalF*n_finalF), inventories (dim n_capitalF) and prices (dim n_capitalF),
         if self.opaque_stocks == False and self.opaque_prices == False:
 
-            n_obs_finalF = self.n_capitalF * self.n_finalF + self.n_capitalF * 2
-            n_obs_capitalF = self.n_capitalF * self.n_finalF + self.n_capitalF * 2
+            n_obs_finalF = self.n_capitalF * self.n_finalF + self.n_capitalF
+            n_obs_capitalF = self.n_capitalF * self.n_finalF + self.n_capitalF
 
         if self.opaque_stocks == True and self.opaque_prices == True:
             # obs final: own stocks (dim n_capitalF), inventories (dim n_finalF) and  prices (dim n_capitalF),
-            n_obs_finalF = self.n_capitalF * 3
+            n_obs_finalF = self.n_capitalF * 2
             # obs capital: own stocks (dim n_finalF), inventories (dim n_capitalF), own price (dim 1), price stats (dim 2)
-            n_obs_capitalF = self.n_finalF + self.n_capitalF + 1 + 2
+            n_obs_capitalF = self.n_finalF + self.n_capitalF
 
         obs_space_finalF = {
             f"finalF_{i}": Box(
@@ -110,12 +109,40 @@ class Capital_game(MultiAgentEnv):
         # agent_roles_2 = {i: "capital" for i in range(self.n_finalF, self.n_agents)}
 
     # AUXILIARY FUNCTIONS
+    def allocate_game(self, quant_fiscal: List[list], inventories: list) -> List[list]:
+        """Function that allocates inveotires according to quantities demanded.
+        quant_d is a List of list where the outer list collects finalFs
+        and inner list collects quanttities demanded for each capital good.
+        The output has the same dims as quant_d"""
+        quant_fiscal_reshaped = [[] for j in range(self.n_capitalF)]
+        for i in range(self.n_finalF):
+            for j in range(self.n_capitalF):
+                quant_fiscal_reshaped[j].append(quant_fiscal[i][j])
+
+        quant_final = [[] for i in range(self.n_finalF)]
+        prices = []
+        for j in range(self.n_capitalF):
+            for i in range(self.n_finalF):
+                quant_final[i].append(
+                    (quant_fiscal_reshaped[j][i] / np.sum(quant_fiscal_reshaped[j]))
+                    * inventories[j]
+                )
+            prices.append(
+                np.sum(quant_fiscal_reshaped[j]) / max(inventories[j], 0.0001)
+            )
+
+        quant_final_reshaped = [[] for j in range(self.n_capitalF)]
+        for i in range(self.n_finalF):
+            for j in range(self.n_capitalF):
+                quant_final_reshaped[j].append(quant_final[i][j])
+
+        return quant_final, quant_final_reshaped, quant_fiscal_reshaped, prices
+
     def preprocess_actions(self, action_dict: Dict) -> Tuple:
         quant_f_fiscal = (
             []
         )  # list of list, outer list represent finalF and iner list represet capitalF
         quant_c_pib = []
-        next_prices = []
 
         for key, value in action_dict.items():
             if key.split("_")[0] == "finalF":
@@ -127,9 +154,8 @@ class Capital_game(MultiAgentEnv):
                 )
             if key.split("_")[0] == "capitalF":
                 quant_c_pib.append(((value[0] + 1) / 2) * self.max_q)
-                next_prices.append(max((value[1] + 1) / 2 * self.max_price, 0.1))
 
-        return quant_f_fiscal, quant_c_pib, next_prices
+        return quant_f_fiscal, quant_c_pib
 
     def preprocess_state(self, obs_global: Dict) -> Tuple:
         stocks = obs_global[0]
@@ -138,41 +164,8 @@ class Capital_game(MultiAgentEnv):
             for i in range(self.n_finalF)
         ]
         inventories = obs_global[1]
-        prices = obs_global[2]
 
-        return stocks_org, inventories, prices
-
-    def allocate_prorate(self, quant_f: List[list], inventories: list) -> List[list]:
-        """Function that allocates inveotires according to quantities demanded.
-        quant_d is a List of list where the outer list collects finalFs
-        and inner list collects quanttities demanded for each capital good.
-        The output has the same dims as quant_d"""
-        quant_f_reshaped = [[] for j in range(self.n_capitalF)]
-        for i in range(self.n_finalF):
-            for j in range(self.n_capitalF):
-                quant_f_reshaped[j].append(quant_f[i][j])
-
-        quant_final = [[] for i in range(self.n_finalF)]
-        excess_dd = []
-        for j in range(self.n_capitalF):
-            excess_dd.append(np.sum(quant_f_reshaped[j]) - inventories[j])
-            if excess_dd[j] > 0:
-                for i in range(self.n_finalF):
-                    quant_final[i].append(
-                        (quant_f_reshaped[j][i] / np.sum(quant_f_reshaped[j]))
-                        * inventories[j]
-                    )
-
-            else:
-                for i in range(self.n_finalF):
-                    quant_final[i].append(quant_f[i][j])
-
-        quant_final_reshaped = [[] for j in range(self.n_capitalF)]
-        for i in range(self.n_finalF):
-            for j in range(self.n_capitalF):
-                quant_final_reshaped[j].append(quant_final[i][j])
-
-        return quant_final, quant_final_reshaped, excess_dd
+        return stocks_org, inventories
 
     def reset(self):
         self.timesteps = 0
@@ -192,20 +185,14 @@ class Capital_game(MultiAgentEnv):
             for i in range(self.n_capitalF * self.n_finalF)
         ]
         inventories = [0.6 for i in range(self.n_capitalF)]
-        prices = [0.6 for i in range(self.n_capitalF)]
 
         if self.opaque_stocks == False and self.opaque_prices == False:
             self.obs_finalF = {
-                f"finalF_{i}": np.array(stocks + inventories + prices)
+                f"finalF_{i}": np.array(stocks + inventories)
                 for i in range(self.n_finalF)
             }
             self.obs_capitalF = {
-                f"capitalF_{j}": np.array(
-                    stocks
-                    + inventories
-                    + [prices[j]]
-                    + [x for i, x in enumerate(prices) if i != j]
-                )
+                f"capitalF_{j}": np.array(stocks + inventories)
                 for j in range(self.n_capitalF)
             }
 
@@ -227,7 +214,7 @@ class Capital_game(MultiAgentEnv):
         #         for j in range(self.n_capitalF)
         #     }
 
-        self.obs_global = [stocks, inventories, prices]
+        self.obs_global = [stocks, inventories]
 
         self.obs_ = {**self.obs_finalF, **self.obs_capitalF}
         return self.obs_
@@ -237,9 +224,7 @@ class Capital_game(MultiAgentEnv):
         # PREPROCESS ACTION AND SPACE
 
         self.obs = self.obs_
-        self.stocks_org, self.inventories, self.prices = self.preprocess_state(
-            self.obs_global
-        )
+        self.stocks_org, self.inventories = self.preprocess_state(self.obs_global)
 
         K = [
             CES(coeff=self.params["gammaK"])(inputs=self.stocks_org[i])
@@ -250,21 +235,13 @@ class Capital_game(MultiAgentEnv):
         (
             self.quant_f_fiscal,
             self.quant_c_pib,
-            self.prices_,
         ) = self.preprocess_actions(action_dict)
 
         pib = np.sum(y_final)
 
         self.quant_c = [
-            self.quant_c_pib[j] * pib / self.n_capitalF for j in range(self.n_capitalF)
-        ]
-
-        self.quant_f = [
-            [
-                self.quant_f_fiscal[i][j] * y_final[i] / self.prices[j]
-                for j in range(self.n_capitalF)
-            ]
-            for i in range(self.n_finalF)
+            self.quant_c_pib[j] * np.sqrt(2 * pib / self.n_capitalF)
+            for j in range(self.n_capitalF)
         ]
 
         # CREATE INTERMEDIATE VARIABLES
@@ -273,31 +250,25 @@ class Capital_game(MultiAgentEnv):
         (
             self.quant_final,
             self.quant_final_reshaped,
-            self.excess_dd,
-        ) = self.allocate_prorate(quant_f=self.quant_f, inventories=self.inventories)
+            quant_fiscal_reshaped,
+            self.prices,
+        ) = self.allocate_game(
+            quant_fiscal=self.quant_f_fiscal, inventories=self.inventories
+        )
 
         # profits and expenditures
 
         # final
-        expend_f = [
-            np.dot(self.quant_final[i], self.prices) for i in range(self.n_finalF)
-        ]
+        expend_f = [np.sum(self.quant_f_fiscal[i]) for i in range(self.n_finalF)]
         c = [y_final[i] - expend_f[i] for i in range(self.n_finalF)]
 
         # capital
-        revenue_c = [
-            self.prices[j] * np.sum(self.quant_final_reshaped[j])
-            for j in range(self.n_capitalF)
-        ]
+        revenue_c = [np.sum(quant_fiscal_reshaped[j]) for j in range(self.n_capitalF)]
         expend_c = [(1 / 2) * self.quant_c[j] ** 2 for j in range(self.n_capitalF)]
         profits = [revenue_c[j] - expend_c[j] for j in range(self.n_capitalF)]
 
         # OUTPUT1: obs_ - Next period obs
-        inventories_ = [
-            self.quant_c[j]
-            - min(self.excess_dd[j], 0) * (1 - self.params["depreciation"])
-            for j in range(self.n_capitalF)
-        ]
+        inventories_ = [self.quant_c[j] for j in range(self.n_capitalF)]
 
         stocks_org_ = [
             [
@@ -311,16 +282,11 @@ class Capital_game(MultiAgentEnv):
 
         if self.opaque_stocks == False and self.opaque_prices == False:
             self.obs_finalF = {
-                f"finalF_{i}": np.array(stocks_ + inventories_ + self.prices_)
+                f"finalF_{i}": np.array(stocks_ + inventories_)
                 for i in range(self.n_finalF)
             }
             self.obs_capitalF = {
-                f"capitalF_{j}": np.array(
-                    stocks_
-                    + inventories_
-                    + [self.prices_[j]]
-                    + [x for i, x in enumerate(self.prices_) if i != j]
-                )
+                f"capitalF_{j}": np.array(stocks_ + inventories_)
                 for j in range(self.n_capitalF)
             }
 
@@ -338,7 +304,7 @@ class Capital_game(MultiAgentEnv):
         #         for j in range(self.n_capitalF)
         #     }
 
-        self.obs_global = [stocks_, inventories_, self.prices_]
+        self.obs_global = [stocks_, inventories_]
 
         self.obs_ = {**self.obs_finalF, **self.obs_capitalF}
 
@@ -354,20 +320,9 @@ class Capital_game(MultiAgentEnv):
             if c[i] < 0:
                 penalty_bgt_ind[i] = 1
 
-        penalty_exss_ind = [0 for i in range(self.n_finalF)]
-        excess_dd_perfinal = [0 for i in range(self.n_finalF)]
-
-        for i in range(self.n_finalF):
-            excess_dd_perfinal[i] = np.sum(self.quant_f[i]) - np.sum(
-                self.quant_final[i]
-            )
-            if excess_dd_perfinal[i] > 0:
-                penalty_exss_ind[i] = 1
-
         self.rew_finalF = {
             f"finalF_{i}": c[i]
             - penalty_bgt_ind[i] * (self.penalty_bgt_fix - self.penalty_bgt_var * c[i])
-            - penalty_exss_ind[i] * min(excess_dd_perfinal[i], 10) * self.penalty_exss
             for i in range(self.n_finalF)
         }
 
@@ -399,10 +354,8 @@ class Capital_game(MultiAgentEnv):
         }
         info_capitalF = {
             f"capitalF_{j}": {
-                "excess_dd": self.excess_dd[j],
                 "production": self.quant_c[j],
-                "price_old": self.prices[j],
-                "price_new": self.prices_[j],
+                "price": self.prices[j],
             }
             for j in range(self.n_capitalF)
         }
@@ -414,19 +367,17 @@ class Capital_game(MultiAgentEnv):
         return self.obs_, self.rew, done, info
 
 
-env = Capital_raw(
+env = Capital_game(
     env_config={
         "horizon": 256,
         "opaque_stocks": False,
         "opaque_prices": False,
         "n_finalF": 1,
         "n_capitalF": 1,
-        "max_price": 1,
         "max_q": 1,
         "stock_init": 10,
         "penalty_bgt_fix": 1,
         "penalty_bgt_var": 0,
-        "penalty_exss": 0.1,
         "parameters": {
             "depreciation": 0.04,
             "alpha": 0.3,
@@ -435,22 +386,39 @@ env = Capital_raw(
     },
 )
 
-# env.reset()
-# for i in range(10):
-#     obs, rew, done, info = env.step(
-#         {
-#             "finalF_0": np.array([np.random.uniform(-1, 1)]),
-#             "capitalF_0": np.array(
-#                 [np.random.uniform(-1, 1), np.random.uniform(-1, 1)]
-#             ),
-#         }
-#     )
+env.reset()
+obs, rew, done, info = env.step(
+    {
+        "finalF_0": np.array([0]),
+        "capitalF_0": np.array([0]),
+    }
+)
+obs, rew, done, info = env.step(
+    {
+        "finalF_0": np.array([0]),
+        "capitalF_0": np.array([0]),
+    }
+)
+print("rew_final", rew["finalF_0"])
+print("rew_capital", rew["capitalF_0"])
+
+print("obs_final:", obs["finalF_0"])
+
+print("info_final", info["finalF_0"])
+print("info_capital", info["capitalF_0"])
+
+# for i in range(1000):
+#     action_dict = {
+#         "finalF_0": np.array([np.random.uniform(-1, 1)]),
+#         "capitalF_0": np.array([np.random.uniform(-1, 1)]),
+#     }
+#     print(action_dict)
+#     obs, rew, done, info = env.step(action_dict)
 
 #     print("rew_final", rew["finalF_0"])
 #     print("rew_capital", rew["capitalF_0"])
 
 #     print("obs_final:", obs["finalF_0"])
-#     print("obs_capital:", obs["capitalF_0"])
 
 #     print("info_final", info["finalF_0"])
 #     print("info_capital", info["capitalF_0"])
