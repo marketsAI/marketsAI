@@ -67,7 +67,7 @@ if test == True:
     MAX_STEPS = 10 * batch_size
     exp_name = exp_label + env_label + "_test_" + date + algo
 else:
-    MAX_STEPS = 2000 * batch_size
+    MAX_STEPS = 10000 * batch_size
     exp_name = exp_label + env_label + "_run_" + date + algo
 
 CHKPT_FREQ = 200

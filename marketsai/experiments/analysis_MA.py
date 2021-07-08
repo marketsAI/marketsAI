@@ -78,6 +78,7 @@ trainer_config = {
 
 init()
 
+#/home/mc5851/ray_results/server_2f_2c_capital_game_test_July8_PPO/PPO_capital_game_de69d_00000_0_2021-07-08_09-24-48/checkpoint_10/checkpoint-10
 # checkpoint_path = results.best_checkpoint
 checkpoint_path = "/Users/matiascovarrubias/ray_results/native_2agtwo_sector_pe_run_July6_PPO/PPO_two_sector_pe_bb5b8_00000_0_2021-07-06_13-00-57/checkpoint_001000/checkpoint-1000"
 # checkpoint_path = "Macintosh HD/Users/matiascovarrubias"
