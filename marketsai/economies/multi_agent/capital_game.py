@@ -109,7 +109,7 @@ class Capital_game(MultiAgentEnv):
         # agent_roles_2 = {i: "capital" for i in range(self.n_finalF, self.n_agents)}
 
     # AUXILIARY FUNCTIONS
-    def allocate_game(self, quant_fiscal: List[list], inventories: list) -> List[list]:
+    def allocate_game(self, quant_f: List[list], inventories: list) -> List[list]:
         """Function that allocates inveotires according to quantities demanded.
         quant_d is a List of list where the outer list collects finalFs
         and inner list collects quanttities demanded for each capital good.
@@ -117,7 +117,7 @@ class Capital_game(MultiAgentEnv):
         quant_fiscal_reshaped = [[] for j in range(self.n_capitalF)]
         for i in range(self.n_finalF):
             for j in range(self.n_capitalF):
-                quant_fiscal_reshaped[j].append(quant_fiscal[i][j])
+                quant_fiscal_reshaped[j].append(quant_f[i][j])
 
         quant_final = [[] for i in range(self.n_finalF)]
         prices = []
@@ -243,6 +243,10 @@ class Capital_game(MultiAgentEnv):
             self.quant_c_pib[j] * np.sqrt(2 * pib / self.n_capitalF)
             for j in range(self.n_capitalF)
         ]
+        self.quant_f = [
+            [self.quant_f_fiscal[i][j] * pib for j in range(self.n_capitalF)]
+            for i in range(self.n_capitalF)
+        ]
 
         # CREATE INTERMEDIATE VARIABLES
 
@@ -252,14 +256,12 @@ class Capital_game(MultiAgentEnv):
             self.quant_final_reshaped,
             quant_fiscal_reshaped,
             self.prices,
-        ) = self.allocate_game(
-            quant_fiscal=self.quant_f_fiscal, inventories=self.inventories
-        )
+        ) = self.allocate_game(quant_f=self.quant_f, inventories=self.inventories)
 
         # profits and expenditures
 
         # final
-        expend_f = [np.sum(self.quant_f_fiscal[i]) for i in range(self.n_finalF)]
+        expend_f = [np.sum(self.quant_f[i]) for i in range(self.n_finalF)]
         c = [y_final[i] - expend_f[i] for i in range(self.n_finalF)]
 
         # capital
@@ -374,7 +376,7 @@ env = Capital_game(
         "opaque_prices": False,
         "n_finalF": 1,
         "n_capitalF": 1,
-        "max_q": 1,
+        "max_q": 0.3,
         "stock_init": 10,
         "penalty_bgt_fix": 1,
         "penalty_bgt_var": 0,
@@ -387,12 +389,21 @@ env = Capital_game(
 )
 
 env.reset()
+print("obs:", env.obs_["finalF_0"])
 obs, rew, done, info = env.step(
     {
-        "finalF_0": np.array([0]),
-        "capitalF_0": np.array([0]),
+        "finalF_0": np.array([1]),
+        "capitalF_0": np.array([1]),
     }
 )
+print("rew_final", rew["finalF_0"])
+print("rew_capital", rew["capitalF_0"])
+
+print("obs_final:", obs["finalF_0"])
+
+print("info_final", info["finalF_0"])
+print("info_capital", info["capitalF_0"])
+
 obs, rew, done, info = env.step(
     {
         "finalF_0": np.array([0]),
@@ -407,7 +418,7 @@ print("obs_final:", obs["finalF_0"])
 print("info_final", info["finalF_0"])
 print("info_capital", info["capitalF_0"])
 
-# for i in range(1000):
+# for i in range(100):
 #     action_dict = {
 #         "finalF_0": np.array([np.random.uniform(-1, 1)]),
 #         "capitalF_0": np.array([np.random.uniform(-1, 1)]),
