@@ -148,12 +148,12 @@ class Capital_game(MultiAgentEnv):
             if key.split("_")[0] == "finalF":
                 quant_f_fiscal.append(
                     [
-                        max((value[j] + 1) / 2 * self.max_q, 0.001)
+                        max((value[j] + 1) / 2 * 0.5, 0.1)
                         for j in range(self.n_capitalF)
                     ]
                 )
             if key.split("_")[0] == "capitalF":
-                quant_c_pib.append(((value[0] + 1) / 2) * self.max_q)
+                quant_c_pib.append(max((value[0] + 1) / 2 * 0.3, 0.1))
 
         return quant_f_fiscal, quant_c_pib
 
