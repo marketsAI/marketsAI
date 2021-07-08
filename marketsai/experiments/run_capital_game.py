@@ -27,12 +27,12 @@ import seaborn as sn
 import logging
 
 # STEP 0: Global configs
-date = "July7_"
-test = True
+date = "July8_"
+test = False
 plot_progress = False
 algo = "PPO"
 env_label = "capital_game"
-exp_label = "native_1f_1c_"
+exp_label = "server_2f_2c_"
 register_env(env_label, Capital_game)
 
 # Hiperparameteres
@@ -43,7 +43,7 @@ n_capitalF = 1
 gamma_algo = 0.98
 
 # STEP 1: Parallelization options
-NUM_CPUS = 13
+NUM_CPUS = 48
 NUM_TRIALS = 1
 NUM_ROLLOUT = env_horizon * 1
 NUM_ENV_PW = 1
@@ -67,7 +67,7 @@ if test == True:
     MAX_STEPS = 10 * batch_size
     exp_name = exp_label + env_label + "_test_" + date + algo
 else:
-    MAX_STEPS = 4000 * batch_size
+    MAX_STEPS = 1000 * batch_size
     exp_name = exp_label + env_label + "_run_" + date + algo
 
 CHKPT_FREQ = 200
@@ -160,8 +160,8 @@ env_config_0 = {
     "horizon": 256,
     "opaque_stocks": False,
     "opaque_prices": False,
-    "n_finalF": 2,
-    "n_capitalF": 2,
+    "n_finalF": n_finalF,
+    "n_capitalF": n_capitalF,
     "max_q_f": 0.3,
     "max_q_c": 0.3,
     "stock_init": 20,
