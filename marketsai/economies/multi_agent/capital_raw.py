@@ -191,7 +191,7 @@ class Capital_raw(MultiAgentEnv):
             self.stock_init / self.n_finalF
             for i in range(self.n_capitalF * self.n_finalF)
         ]
-        inventories = [0.6 for i in range(self.n_capitalF)]
+        inventories = [0.3 for i in range(self.n_capitalF)]
         prices = [0.6 for i in range(self.n_capitalF)]
 
         if self.opaque_stocks == False and self.opaque_prices == False:
@@ -256,7 +256,7 @@ class Capital_raw(MultiAgentEnv):
         pib = np.sum(y_final)
 
         self.quant_c = [
-            self.quant_c_pib[j] * pib / self.n_capitalF for j in range(self.n_capitalF)
+            self.quant_c_pib[j] * (np.sqrt(2*pib / self.n_capitalF)) for j in range(self.n_capitalF)
         ]
 
         self.quant_f = [
@@ -372,7 +372,7 @@ class Capital_raw(MultiAgentEnv):
         }
 
         self.rew_capitalF = {
-            f"capitalF_{j}": profits[j] for j in range(self.n_capitalF)
+            f"capitalF_{j}": profits[j] + 0.2 * min(self.excess_dd[j], 0) for j in range(self.n_capitalF)
         }
         self.rew = {**self.rew_finalF, **self.rew_capitalF}
         # reward capitalF (price * quant - w*labor_s)

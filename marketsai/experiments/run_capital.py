@@ -170,7 +170,7 @@ env_config_0 = {
     "penalty_bgt_var": 0,
     "penalty_exss": 0.1,
     "max_price": 1,
-    "max_q": 1,
+    "max_q": 0.6,
     "stock_init": 10,
     "parameters": {
         "depreciation": 0.04,
