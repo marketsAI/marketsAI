@@ -40,7 +40,8 @@ class Capital_raw(MultiAgentEnv):
         self.n_capitalF = env_config.get("n_capitalF", 2)
         self.n_agents = self.n_capitalF + self.n_finalF
         self.max_price = env_config.get("max_price", 1)
-        self.max_q = env_config.get("max_q", 1)
+        self.max_q_c = env_config.get("max_q_c", 0.4)
+        self.max_q_f = env_config.get("max_q_f", 0.6)
         self.stock_init = env_config.get("stock_init", 10)
         self.penalty_bgt_fix = env_config.get("penalty_bgt_fix", 1)
         self.penalty_bgt_var = env_config.get("penalty_bgt_var", 0)
@@ -121,12 +122,12 @@ class Capital_raw(MultiAgentEnv):
             if key.split("_")[0] == "finalF":
                 quant_f_fiscal.append(
                     [
-                        max((value[j] + 1) / 2 * self.max_q, 0.001)
+                        max((value[j] + 1) / 2 * self.max_q_f, 0.001)
                         for j in range(self.n_capitalF)
                     ]
                 )
             if key.split("_")[0] == "capitalF":
-                quant_c_pib.append(((value[0] + 1) / 2) * self.max_q)
+                quant_c_pib.append(((value[0] + 1) / 2) * self.max_q_c)
                 next_prices.append(max((value[1] + 1) / 2 * self.max_price, 0.1))
 
         return quant_f_fiscal, quant_c_pib, next_prices
@@ -256,7 +257,8 @@ class Capital_raw(MultiAgentEnv):
         pib = np.sum(y_final)
 
         self.quant_c = [
-            self.quant_c_pib[j] * (np.sqrt(2*pib / self.n_capitalF)) for j in range(self.n_capitalF)
+            self.quant_c_pib[j] * (np.sqrt(2 * pib / self.n_capitalF))
+            for j in range(self.n_capitalF)
         ]
 
         self.quant_f = [
@@ -372,7 +374,8 @@ class Capital_raw(MultiAgentEnv):
         }
 
         self.rew_capitalF = {
-            f"capitalF_{j}": profits[j] + 0.2 * min(self.excess_dd[j], 0) for j in range(self.n_capitalF)
+            f"capitalF_{j}": profits[j] + 0.2 * min(self.excess_dd[j], 0)
+            for j in range(self.n_capitalF)
         }
         self.rew = {**self.rew_finalF, **self.rew_capitalF}
         # reward capitalF (price * quant - w*labor_s)
