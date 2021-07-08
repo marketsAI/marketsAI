@@ -39,7 +39,8 @@ class Capital_game(MultiAgentEnv):
         self.n_finalF = env_config.get("n_finalF", 2)
         self.n_capitalF = env_config.get("n_capitalF", 2)
         self.n_agents = self.n_capitalF + self.n_finalF
-        self.max_q = env_config.get("max_q", 1)
+        self.max_q_f = env_config.get("max_q_f", 0.3)
+        self.max_q_c = env_config.get("max_q_c", 0.3)
         self.stock_init = env_config.get("stock_init", 10)
         self.penalty_bgt_fix = env_config.get("penalty_bgt_fix", 1)
         self.penalty_bgt_var = env_config.get("penalty_bgt_var", 0)
@@ -148,12 +149,12 @@ class Capital_game(MultiAgentEnv):
             if key.split("_")[0] == "finalF":
                 quant_f_fiscal.append(
                     [
-                        max((value[j] + 1) / 2 * 0.5, 0.1)
+                        max((value[j] + 1) / 2 * self.max_q_f, 0.1)
                         for j in range(self.n_capitalF)
                     ]
                 )
             if key.split("_")[0] == "capitalF":
-                quant_c_pib.append(max((value[0] + 1) / 2 * 0.3, 0.1))
+                quant_c_pib.append(max((value[0] + 1) / 2 * self.max_q_c, 0.1))
 
         return quant_f_fiscal, quant_c_pib
 
@@ -244,7 +245,7 @@ class Capital_game(MultiAgentEnv):
             for j in range(self.n_capitalF)
         ]
         self.quant_f = [
-            [self.quant_f_fiscal[i][j] * pib for j in range(self.n_capitalF)]
+            [self.quant_f_fiscal[i][j] * y_final[i] for j in range(self.n_capitalF)]
             for i in range(self.n_capitalF)
         ]
 
@@ -280,15 +281,34 @@ class Capital_game(MultiAgentEnv):
             ]
             for i in range(self.n_finalF)
         ]
+
         stocks_ = [item for sublist in stocks_org_ for item in sublist]
+
+        stock_org_perfirm = [[] for i in range(self.n_finalF)]
+        stocks_perfirm = [[] for i in range(self.n_finalF)]
+
+        for i in range(self.n_capitalF):
+            stock_org_perfirm[i] = [stocks_org_[i]] + [
+                x for z, x in enumerate(stocks_org_) if z != i
+            ]
+            stocks_perfirm[i] = [
+                item for sublist in stock_org_perfirm[i] for item in sublist
+            ]
+
+        inventories_perfirm = [[] for j in range(self.n_capitalF)]
+
+        for j in range(self.n_capitalF):
+            inventories_perfirm[j] = [inventories_[j]] + [
+                x for z, x in enumerate(inventories_) if z != j
+            ]
 
         if self.opaque_stocks == False and self.opaque_prices == False:
             self.obs_finalF = {
-                f"finalF_{i}": np.array(stocks_ + inventories_)
+                f"finalF_{i}": np.array(stocks_perfirm[i] + inventories_)
                 for i in range(self.n_finalF)
             }
             self.obs_capitalF = {
-                f"capitalF_{j}": np.array(stocks_ + inventories_)
+                f"capitalF_{j}": np.array(stocks_ + inventories_perfirm[j])
                 for j in range(self.n_capitalF)
             }
 
@@ -374,10 +394,11 @@ env = Capital_game(
         "horizon": 256,
         "opaque_stocks": False,
         "opaque_prices": False,
-        "n_finalF": 1,
-        "n_capitalF": 1,
-        "max_q": 0.3,
-        "stock_init": 10,
+        "n_finalF": 2,
+        "n_capitalF": 2,
+        "max_q_f": 0.3,
+        "max_q_c": 0.3,
+        "stock_init": 20,
         "penalty_bgt_fix": 1,
         "penalty_bgt_var": 0,
         "parameters": {
@@ -392,8 +413,10 @@ env.reset()
 print("obs:", env.obs_["finalF_0"])
 obs, rew, done, info = env.step(
     {
-        "finalF_0": np.array([1]),
-        "capitalF_0": np.array([1]),
+        "finalF_0": np.array([1, 0]),
+        "finalF_1": np.array([0, 1]),
+        "capitalF_0": np.array([0]),
+        "capitalF_1": np.array([0]),
     }
 )
 print("rew_final", rew["finalF_0"])
@@ -406,8 +429,10 @@ print("info_capital", info["capitalF_0"])
 
 obs, rew, done, info = env.step(
     {
-        "finalF_0": np.array([0]),
-        "capitalF_0": np.array([0]),
+        "finalF_0": np.array([1, 0]),
+        "finalF_1": np.array([0, 1]),
+        "capitalF_0": np.array([1]),
+        "capitalF_1": np.array([1]),
     }
 )
 print("rew_final", rew["finalF_0"])
@@ -415,7 +440,7 @@ print("rew_capital", rew["capitalF_0"])
 
 print("obs_final:", obs["finalF_0"])
 
-print("info_final", info["finalF_0"])
+print("info_final", info["finalF_0"], info["finalF_1"])
 print("info_capital", info["capitalF_0"])
 
 # for i in range(100):
