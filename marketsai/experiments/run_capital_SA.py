@@ -31,12 +31,12 @@ test = False
 plot_progress = False
 algo = "PPO"
 env_label = "capital_planner"
-exp_label = "server_2hh_1c_"
+exp_label = "server_5hh_1c_"
 register_env(env_label, Capital_planner)
 
 # Macro parameters
 env_horizon = 1000
-n_hh = 2
+n_hh = 5
 n_capital = 1
 beta = 0.98
 CHKPT_FREQ = 100
