@@ -26,7 +26,7 @@ import seaborn as sn
 import logging
 
 # STEP 0: Global configs
-date = "July12_"
+date = "July15_"
 test = False
 plot_progress = False
 algo = "PPO"
@@ -39,7 +39,7 @@ env_horizon = 1000
 n_hh = 1
 n_capital = 1
 beta = 0.98
-
+CHKPT_FREQ = 50
 # STEP 1: Parallelization options
 NUM_CPUS = 9
 NUM_TRIALS = 1
@@ -68,7 +68,6 @@ else:
     MAX_STEPS = 200 * batch_size
     exp_name = exp_label + env_label + "_run_" + date + algo
 
-CHKPT_FREQ = 50
 
 stop = {"timesteps_total": MAX_STEPS}
 
