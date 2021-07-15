@@ -26,7 +26,7 @@ def CRRA(coeff: float = 0.5):
 
 def CES(coeff: float = 0.5):
     def evaluate(inputs: list) -> float:
-        output = 0
+        output = 1
         if isinstance(inputs, list):
             n_inputs = len(inputs)
             for i in range(n_inputs):

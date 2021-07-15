@@ -1,0 +1,381 @@
+\documentclass[11pt]{article}
+\makeatletter
+\def\amsbb{\use@mathgroup \M@U \symAMSb}
+\makeatother
+
+%\usepackage[shortlabels]{enumerate}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{natbib}
+\usepackage{enumerate}
+%\usepackage{appendix}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{fullpage}
+\usepackage[colorlinks=true,linkcolor=blue, citecolor=blue, hyperfootnotes=false]{hyperref}
+%\usepackage[pdftex]{graphicx}
+%\usepackage[dvips]{graphicx,color}
+\usepackage{graphicx}
+\usepackage[caption=false]{subfig}
+\usepackage{multicol}
+\usepackage{bbm}
+\usepackage{setspace}
+%\usepackage[dvipsnames]{color}
+\onehalfspacing
+\usepackage{rotating}
+\usepackage{lscape}
+\usepackage{etoolbox}
+\usepackage{float}
+\usepackage{multirow}
+\usepackage{parskip}
+\usepackage[paperwidth=8.5in,
+left=0.75in,right=0.75in,paperheight=11.0in,textheight=9.5in,centering]{geometry}
+%\usepackage{lipsum}% just to generate text for the example
+\BeforeBeginEnvironment{equation}{\begin{singlespace}}
+	\AfterEndEnvironment{equation}{\end{singlespace}\noindent\ignorespaces}
+\BeforeBeginEnvironment{align}{\begin{singlespace}}
+	\AfterEndEnvironment{align}{\end{singlespace}\noindent\ignorespaces}
+\newenvironment{proof}[1][Proof]{\noindent\textbf{#1.} }{\ \rule{0.5em}{0.5em}}
+
+
+\DeclareMathOperator*{\Max}{Max}
+\DeclareMathOperator*{\Min}{Min}
+\DeclareMathOperator*{\argmax}{argmax}
+\def\wl{\par \vspace{\baselineskip}}
+
+%------------------- NEW COMMANDS -------------------------- %
+\newcommand{\dD}{\partial \mathbb{D}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\D}{\mathbb{D}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\A}{\mathcal{A}}
+\newcommand{\K}{\mathbb{K}}
+\renewcommand{\P}{\mathbb{P}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Ou}{\mathcal{O}}
+\newcommand{\cl}{\operatorname{cl}}
+\newcommand{\ran}{\operatorname{ran}}
+\newcommand{\norm}[1]{\| #1 \|}
+\newcommand{\inner}[1]{\left< #1 \right>}
+\newcommand{\blf}{ {[\,\cdot\, , \,\cdot\,]} }
+\newcommand{\h}{\mathcal{H}}
+\newcommand{\M}{\mathcal{M}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\V}{\mathcal{V}}
+\newcommand{\La}{\mathcal{L}}
+\newcommand{\W}{\mathcal{W}}
+\newcommand{\T}{\mathbb{T}}
+\newcommand{\dom}{\mathcal{D}}
+\newcommand{\pc}{\perp_C}
+\newcommand{\vecspan}{\operatorname{span}}
+\newcommand{\interior}{\operatorname{int}}
+\newcommand{\lcm}{\operatorname{lcm}}
+\newcommand{\tr}{\operatorname{tr}}
+\newcommand{\divides}{|}
+\newcommand{\claim}{Claim: }
+\newcommand{\epsi}{\varepsilon}
+\newcommand{\tmu}{\tilde{\mu}}
+\newcommand{\wt}[1]{\widetilde{#1}}
+\newcommand{\wb}[1]{\overline{#1}}
+\newcommand{\wh}[1]{\widehat{#1}}
+\newcommand{\pare}[1]{\left( #1 \right)}
+\newcommand{\p}[1]{\left( #1 \right)}
+
+
+%---------------------- Theory -----------------------------%
+\newtheorem{hip}{Hypothesis}
+\newtheorem{defin}{Def}
+\newtheorem{theorem}{Theorem}
+\newtheorem{prop}{Proposition}
+\newtheorem{conjec}{Conjecture}
+%\newtheorem*{ans}{Answer}
+%\newtheorem*{Exercise}{Exercise}
+\newtheorem{lem}{Lemma}
+
+%---------------------- Graph -----------------------------%
+\usepackage{graphicx}%,showframe}
+\usepackage{float}
+%\usepackage[]{subfig}
+%\usepackage[font=small,labelfont=sc,position=top]{caption}
+%\usepackage[]{mcode} %Matlab Code
+
+
+\numberwithin{equation}{section}
+
+\begin{document}
+
+\title{Using Reinforcement Learning to solve economies.}
+
+\author{Matias Covarrubias}
+
+\medskip
+
+\date{\today}
+
+\thispagestyle{empty}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\newpage
+
+\section{Baseline framework}
+
+\begin{itemize}
+	\item $N^h$ households indexed by $i$ choose how much to consume and how much to invest in order to maximize $\sum_{t=0}^{\infty} \beta^t U(C_{i,t})$.\medskip
+	
+	\item The final good is produced using $N^c$ capital goods indexed by $j$ according to technology $$Y_{i,t}=Z^h_{i,t} \left(\Pi_{j=1}^{N^c} K_{i,j,t}^{1/N^c} \right)^{\alpha} = Z^h_{i,t} \Pi_{j=1}^{N^c} K_{i,j,t}^{\alpha/N^c}$$  where total factor productivity $Z^h_{i,t}$ follows the stochastic process $Z^h_{i,t+1} \sim \mathcal P(Z^h_{i,t})$. \medskip
+	
+	\item The agent allocates $Y_{i,t}$ between consumption and investment in new capital goods. The evolution of the stock of capital is 
+	
+	$$K_{i,j,t+1} = (1-\delta) K_{i,j,t} + I^h_{i,j,t}$$ 
+	
+	where $I^h_{i,j,t}$ represents investment in capital good $j$ by household $i$ in period $t$\footnote{The superscript $h$ is added because we will consider both planner and market solutions to the problem, and in the latter it is useful to keep track of the agent that is choosing the variable $I$.}. 
+	
+	\item \textbf{Adjustment costs:} The cost in term of the final good of  producing $I^h_{j,t}$ new units of capital good $j$  is $\frac{\phi}{2} \left(I^h_{j,t}\right)^2$.  \medskip
+	
+	\item In order to frame the problem, we define the saving rate $s_{j,t}$ as the expenditure on new capital goods $j$ in terms of the final good. Thus, consumption is 
+	
+	$$C_{i,t}=(1-\sum_{j=1}^{N^c} s_{i,j,t})Y_{i,t}$$ 
+	
+	\item We will consider both a competitive market's formulation and a planner's formulation of the problem: 
+	
+	\begin{itemize}
+			\item First, we assume that there is a market for investment goods and we introduce capital good firms that pay the adjustment cost and sell the investment good at price $p^k_{j,t}$. Thus, from the point of view of the household, investment is $I^h_{i,j,t} = s_{i,j,t}/p^k_{j,t}$.   \medskip
+				
+		\item Second, in order to formulate the planner's problem, we assume that all the resources that are committed by households for investment on capital good $j$ are actually employed in production, and then total production of capital good $j$ is distributed among housholds according to their contribution. In this case, total production is defined implicitly by:
+		
+		$$\sum_{i=1}^{N^h} s_{i,j,t} Y_{i,t} = \frac{\phi}{2} I_{j,t}^2 \quad \text{for } j \in [1,...,N^h]$$
+		
+		Solving for $I_{j,t}$ we get:
+		
+		$$I_{j,t} =  \sqrt{\frac{2}{\phi} \sum_{i=1}^{N^h} s_{i,j,t} Y_{i,t}}$$
+		
+		We can then distribute it among households according to
+		
+		$$I_{i,j,t} = \frac{s_{i,j,t}Y_{i,t}}{ \sum_{i=1}^{N^h} s_{i,j,t} Y_{i,t}}  I_{j,t} =   \frac{s_{i,j,t}Y_{i,t}}{\sqrt{\frac{\phi}{2} \sum_{i=1}^{N^h} s_{i,j,t} Y_{i,t}}}$$
+	
+	\end{itemize}  
+\end{itemize}
+
+	\subsection{Competitive Market's Formulation}
+
+\begin{itemize}
+	\item Now we have two types of agents.  The household purchases capital goods and consume the final good.  The capital good firm, which produces the capital good subject to a quadratic cost. 
+\end{itemize}
+
+\subsubsection{Household}
+\begin{itemize}
+	
+	\item The recursive formulation of the problem for household $i$ is:
+	
+	
+	\begin{align*}
+	V_i \left(\{K_{i,j,t}\}_{i,j}\right) = &\max_{\{s_{i,j,t},K_{i,j,t+1}\}_{j}}  U(C_{i,t}) + \beta \E_t V_i(\{K_{i,j,t+1}\}_{i,j}) \qquad \text{s.t.}\\
+	&\qquad
+	C_{i,t} = (1-\sum_{j=1}^{N^c} s_{i,j,t})Y_{i,t} \\
+	&\qquad
+	Y_{i,t}=Z^h_{i,t} \Pi_{j=1}^{N^c} K_{i,j,t}^{\alpha/N^c}\\
+	&\qquad
+	K_{i,j,t+1} \leq (1-\delta) K_{i,j,t} + \frac{s_{i,j,t} Y_{i,t}}{p^k_{j,t}}  \quad \text{for } j \in [1,...,N^c] 
+	\end{align*}
+	
+	
+	\item The lagrangian of the problem is: 
+	
+	\begin{align*}
+	\mathcal{L}_{t} &= \E_t \sum_{r=0}^{\infty}\beta^r  \left( U\left( (1-\sum_{j=1}^{N^c} s_{i,j,t+r})Z^h_{i,t+r}\Pi_{j=1}^{N^c} K_{i,j,t+r}^{\alpha/N^c}  \right) + \right. \\
+	& 	\left. \sum_{j=1}^{N^c}  Q_{i,j,t+r} \left[(1-\delta) K_{i,j,t+r} +\frac{s_{i,j,t+r}Z^h_{i,t+r} \Pi_{j=1}^{N^c} K_{i,j,t+r}^{\alpha/N^c}}{p^k_{j,t+r}} -K_{i,j,t+r+1}\right] \right)
+	\end{align*}
+	
+	{\color{red} To do: 
+		\begin{itemize}
+			\item Rewrite FOCs for market
+	\end{itemize}}
+	\item The first order conditions are:
+	
+	\begin{align*}
+	& \left[s_{i,j,t}\right] && Q_{i,j,t}  =p^k_{j,t} U'(C_{i,t}) \\
+	& \left[K_{i,j,t+1}\right] && Q_{i,j,t} = \beta \E_t \left(U'(C_{i,t+1}) (1-\sum_{j=1}^{N^c} s_{i,j,t+1}) \frac{\alpha}{N^c} \frac{Y_{i,t+1}}{K_{i,j,t+1}} \right. \\
+	& && \left. \quad  \qquad + Q_{i,j,t+1} \left[ (1-\delta) + \frac{s_{i,j,t+1}}{p_{j,t+1}^K}  \frac{\alpha}{N^c} \frac{Y_{i,t+1}}{K_{i,j,t+1}} \right]  \right)
+	\end{align*}
+	
+	\item Combining both F.O.C.s we ge the inverse demand:
+	
+	\begin{align}
+	p^k_{j,t}  & =   \E_t \left( \beta \frac{U'(C_{i,t+1})}{U'(C_{i,t})} \left[ (1-\sum_{j=1}^{N^c} s_{i,j,t+1} + s_{i,j,t+1}) \frac{\alpha}{N^c} \frac{Y_{i,t+1}}{K_{i,j,t+1}} + p^k_{j,t+1} (1-\delta)  \right]  \right)
+	\end{align}
+	
+\end{itemize}
+
+\subsubsection{Capital good firms (superscript $c$)}
+
+
+\begin{itemize}
+	
+	\item Capital good firms maximize the discounted sum of profits. Profits in each period are
+	
+	$$\pi^c_{j,t}=p^k_{j,t} I^c_{j,t}-\frac{\phi}{2} \left(I^c_{j,t}\right)^2  $$
+	
+	
+	\item The lagrangian of the problem for firm $j$ is:
+	\begin{align*}
+	\mathcal{L}_{j,t} &= \E_t \sum_{r=0}^{\infty}\beta^r_f \left(
+	p^k_{j,t+r} I^c_{j,t+r}-\frac{\phi}{2} \left(I^c_{j,t+r}\right)^2 \right)
+	\end{align*}
+	
+	\item The first order conditions is:
+	\begin{align}
+	& \left[I^c_{j,t}\right]&& p^k_{j,t} = \phi I^c_{j,t}
+	\end{align}
+	
+	\end{itemize}
+	\subsubsection{Market clearing and equilibrium definition}
+	
+	\begin{itemize}
+		\item Given that $I^h_{i,j,s} = s_{i,j,t} Y_{i,t} /p^k_{j,t}$, we can write the market clearing condition as:
+		
+		$$ \sum_{i=1}^{N^h} \frac{ s_{i,j,t} Y_{i,t} }{p^k_{j,t}} = I^c_{j,t} \quad \text{for } j \in [1,...,N^c]$$
+		
+		\item \textbf{Equilibrium:} A competitive equilibrium is a sequence of prices $\{p^k_{j,t}\}_{j,t}$ and allocations $\{s_{i,j,t}, I^c_{j,t} \}_{i,j,t}$ such that:
+		
+		\begin{itemize}
+			\item Given prices, household maximize the intertemporal utility of consumption and capital good firms maximize intertemporal profits.
+			
+			\item Market for capital goods $j \in [1,...,N^c]$ clear.
+		\end{itemize}
+
+	\end{itemize}
+	\subsubsection{System of Equations}
+	
+	\begin{itemize}
+
+
+	\item The system of equations is:
+	
+	\begin{align*}
+		p^k_{j,t}  & =   \E_t \left( \beta \frac{U'(C_{i,t+1})}{U'(C_{i,t})} \left[ (1-\sum_{j=1}^{N^c} s_{i,j,t+1} + s_{i,j,t+1}) \frac{\alpha}{N^c} \frac{Y_{i,t+1}}{K_{i,j,t+1}} + p^k_{j,t+1} (1-\delta)  \right]  \right) \quad \text{for } i,j \\
+		 p^k_{j,t} & = \phi I^c_{j,t} \quad \text{for } j\\
+		I_{j,t}^c & = \sum_{i=1}^{N^h} \frac{ s_{i,j,t} Y_{i,t} }{p^k_{j,t}}  \quad \text{for } j\\
+		K_{i,j,t+1} & = (1-\delta) K_{i,j,t} + \frac{s_{i,j,t} Y_{i,t}}{p^k_{j,t}} \quad \text{for } i,j
+	\end{align*}
+	
+	\item We want to reduce this system to $N^h*N^c$ equations that only depend on $\{s_{i,j,t}, s_{i,j,t+1}\}_{i,j}$. We start by replacing the market clearing condition in the supply curve:
+	
+	\begin{align*}
+	p^k_{j,t} & = \sqrt{\phi \sum_{i=1}^{N^h}  s_{i,j,t} Y_{i,t}}
+	\end{align*}
+	
+	\item We now replace this expression for $p^k_{j,t}$ in the transition law for capital $K_{i,j,t+1}$ :
+	
+	\begin{align}
+	K_{i,j,t+1} & = (1-\delta) K_{i,j,t} + \frac{s_{i,j,t} Y_{i,t}}{ \sqrt{\phi \sum_{i=1}^{N^h}  s_{i,j,t} Y_{i,t}}} \\
+	\end{align}
+	
+	\item Finally, we can replace these expressions for $p^k_{j,t}$ and $K_{i,j,t+1}$ in the inverse demand function. Notice that $Y_{i,t+1}$ depends on the set of $\{K_{i,j,t+1}\}_j$ and $C_{i,t+1}$ is a known function of the set $\{s_{i,j,t+1}, K_{i,j,t+1}\}_j$, so we get $N^c*N^h$ differential equations whose only unknowns are $\{s_{i,j,t}, s_{i,j,t+1}\}_{i,j}$.
+	
+	\subsection{Deterministic Steady state}
+
+	\item In the deterministic steady state, we assume that $Z^h_{i}=1$,  $\forall i \in [1,...,N^h]$. Then, all households have a symmetric problem and all capital goods are equivalent. Consequently, we can drop subscripts $i$ and $j$ on all variables. The steady state equations become:
+	
+	\begin{align*}
+	Y & =  	K^{\alpha}  \\
+	p^k & = \sqrt{\phi N^h s Y}\\
+	\delta K & = \frac{sY}{ \sqrt{\phi N^h s Y}}\\
+	p^k & =\frac{\beta}{1-(1-\delta)\beta} \left[(1-(N^c-1) s)\frac{\alpha}{N^c} K^{\alpha-1}\right]  
+	\end{align*}
+	
+	\item The solution is: 
+	
+	\begin{align*}
+	K & =\left[\phi \delta  N^h N^c \left( \frac{1-\beta*(1-\delta)}{\alpha \beta} + \frac{\delta(N^c-1)}{N^c} \right) \right]^{\frac{1}{\alpha-2} } 
+	\end{align*}
+	 	
+	\item  For $N^f=1$, $N^c=1$, The steady state is:
+	
+	\begin{align*}
+	K & =\left(\frac{ \beta_f}{1-(1-\delta)\beta_f}  \frac{\alpha^f}{\phi \delta} \right)^{\frac{1}{2-\alpha^f}}  
+	\end{align*}
+	
+\end{itemize}
+\subsection{Planner's Formulation}
+
+\begin{itemize}
+	
+	\item The recursive formulation of the problem is:
+	
+	
+	\begin{align*}
+	V\left(\{K_{i,j,t}\}_{i,j}\right) = &\max_{\{s_{i,j,t},K_{i,j,t+1}\}_{i,j}} \sum_{i=1}^{N^h} U(C_{i,t}) + \beta \E_t V(\{K_{i,j,t+1}\}_{i,j}) \qquad \text{s.t.}\\
+	&\qquad
+	C_{i,t} = (1-\sum_{j=1}^{N^c} s_{i,j,t})Y_{i,t} \quad \text{for } i \in [1,...,N^h]\\
+	&\qquad
+	Y_{i,t}=Z^h_{i,t} \Pi_{j=1}^{N^c} K_{i,j,t}^{\alpha/N^c}  \quad \text{for } i \in [1,...,N^h]\\
+	&\qquad
+	K_{i,j,t+1} \leq (1-\delta) K_{i,j,t} + \sqrt{\frac{2}{\phi} s_{i,j,t} Y_{i,t}}  \quad \text{for } i \in [1,...,N^h] \text{ and } j \in [1,...,N^c]
+	\end{align*}
+	
+	
+	\item The lagrangian of the problem is: 
+	
+	\begin{align*}
+	\mathcal{L}_{t} &= \E_t \sum_{r=0}^{\infty}\beta^r  \left( \sum_{i=1}^{N^h} U\left( (1-\sum_{j=1}^{N^c} s_{i,j,t+r})Z^h_{i,t+r} \Pi_{j=1}^{N^c} K_{i,j,t+r}^{\alpha/N^c}  \right) + \right. \\
+& 	\left. \sum_{i=1}^{N^h} \sum_{j=1}^{N^c}  Q_{i,j,t+r} \left[(1-\delta) K_{i,j,t+r} + \sqrt{\frac{2}{\phi} s_{i,j,t+r} Z^h_{i,t+r} \Pi_{j=1}^{N^c} K_{i,j,t+r}^{\alpha/N^c}}-K_{i,j,t+r+1}\right] \right)
+	\end{align*}
+	
+	\item The first order conditions are:
+	\begin{align*}
+	& \left[s_{i,j,t}\right] && Q_{i,j,t} =  \phi \sqrt{\frac{2}{\phi} s_{i,j,t} Y_{i,t}} \frac{\partial U(C_{i,t})}{\partial C_{i,t}} =\phi I_t U'(C_{i,t}) \\
+	& \left[K_{i,j,t+1}\right] && Q_{i,j,t} = \beta \E_t \left[  \frac{\partial U(C_{i,t})}{\partial C_{i,t}}  (1-\sum_{j=1}^{N^c} s_{i,j,t+1}) \frac{\alpha}{N^c} \frac{Y_{i,t+1}}{K_{i,j,t+1}} \right. \\
+	  &   &&  \left. \quad  \qquad   +   Q_{i,j,t+1} \left( (1-\delta) + \left(\frac{2}{\phi} s_{i,j,t+1} Y_{i,t+1} \right)^{-1/2}  
+	\frac{s_{i,j,t+1}}{\phi} \frac{\alpha}{N^c} \frac{Y_{i,t+1}}{K_{i,j,t+1}} \right)  \right]
+	\end{align*}
+	
+	{\color{red} To do: 
+		\begin{itemize}
+			\item Change proble to overal cost.  b
+			\item Simplify FOC for $K$. you can use x/sqrt(x) o nthe right side and qrite in terms of investment.
+			\item Calculate steady state system of equations. 
+			\item Order the rest of the doc.
+			\item Why do we need the planner for? Just as an analog for the program?
+		\end{itemize}}
+	
+%		\item The first order conditions are:
+%	\begin{align}
+%	& \left[s_{t}\right] && Q_t = \frac{\sqrt{2s_t K^\alpha_t}}{(1-s_t) K^\alpha_t} \\
+%	& \left[K_{t+1}\right] && Q_t = \frac{\beta \alpha}{K_{t+1}} +\beta Q_{t+1} \left[(1-\delta) + \frac{s_{t+1} \alpha K_{t+1}^{\alpha-1}}{\sqrt{2 s_{t+1} K^\alpha_{t+1}}} \right]  
+%	\end{align}
+%	
+\end{itemize}
+	\subsection{Steady State}
+	\begin{itemize}	
+	\item In the steady state, we have that $\sqrt{2 s K^\alpha} = \delta K$ and so $s K^{\alpha-1} =\delta^2 K/2$ .
+	
+	\item By replacing the first F.O.C. in the second F.O. an, getting rid of time subscript we get
+	
+	\begin{align} \sqrt{2 s K^\alpha}& = \beta \alpha K^{\alpha-1}  - \beta \alpha s K^{\alpha-1} +\beta \sqrt{2 s K^\alpha} (1-\delta) + \beta \alpha s  K^{\alpha-1}
+	\end{align}
+	
+	\item Collecting terms and replacing $\sqrt{2 s K^\alpha} = \delta K$ we get:
+	
+	\begin{align} \delta K & = \beta \alpha K^{\alpha-1} +\beta \delta K (1-\delta) 
+	\end{align}
+	
+	\item Finally, solving for $K$ we get:
+	
+		\begin{align}  K & = \left[\frac{\beta \alpha}{\delta[1-\beta(1-\delta)]} \right]^\frac{1}{2-\alpha}
+	\end{align}
+	
+	\end{itemize}
+	
+
+	
+
+
+
+
+\end{document}

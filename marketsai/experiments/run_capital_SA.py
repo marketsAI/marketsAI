@@ -1,4 +1,4 @@
-from marketsai.economies.single_agent.capital_sa import Capital_sa
+from marketsai.economies.single_agent.capital_sa import Capital_planner
 
 
 # from marketsai.markets.gm_adj import GM_adj
@@ -26,18 +26,24 @@ import seaborn as sn
 import logging
 
 # STEP 0: Global configs
-date = "July8_"
-test = True
+date = "July12_"
+test = False
 plot_progress = False
 algo = "PPO"
-env_label = "capital_sa"
-register_env(env_label, Capital_sa)
-env_horizon = 256
+env_label = "capital_planner"
+exp_label = "native_1hh_1c_"
+register_env(env_label, Capital_planner)
+
+# Macro parameters
+env_horizon = 1000
+n_hh = 1
+n_capital = 1
+beta = 0.98
 
 # STEP 1: Parallelization options
 NUM_CPUS = 9
 NUM_TRIALS = 1
-NUM_ROLLOUT = 256 * 1
+NUM_ROLLOUT = env_horizon * 1
 NUM_ENV_PW = 1
 # num_env_per_worker
 NUM_GPUS = 0
@@ -57,12 +63,12 @@ init(
 # STEP 2: Experiment configuratios
 if test == True:
     MAX_STEPS = 10 * batch_size
-    exp_name = env_label + "_test_" + date + algo
+    exp_name = exp_label + env_label + "_test_" + date + algo
 else:
-    MAX_STEPS = 20000 * batch_size
-    exp_name = env_label + "_run_" + date + algo
+    MAX_STEPS = 200 * batch_size
+    exp_name = exp_label + env_label + "_run_" + date + algo
 
-CHKPT_FREQ = 500
+CHKPT_FREQ = 50
 
 stop = {"timesteps_total": MAX_STEPS}
 
@@ -73,7 +79,7 @@ def process_rewards(r):
     discounted_r = np.zeros_like(r)
     running_add = 0
     for t in reversed(range(0, len(r))):
-        running_add = running_add * 0.98 + r[t]
+        running_add = running_add * beta + r[t]
         discounted_r[t] = running_add
     return discounted_r[0]
 
@@ -96,6 +102,7 @@ class MyCallbacks(DefaultCallbacks):
             "after env reset!"
         )
         episode.user_data["rewards"] = []
+        episode.user_data["bgt_penalty"] = []
 
     def on_episode_step(
         self,
@@ -112,7 +119,9 @@ class MyCallbacks(DefaultCallbacks):
         #     "after env reset!"
         if episode.length > 1:
             rewards = episode.prev_reward_for()
+            bgt_penalty = episode.last_info_for()["bgt_penalty"]
             episode.user_data["rewards"].append(rewards)
+            episode.user_data["bgt_penalty"].append(bgt_penalty)
 
     def on_episode_end(
         self,
@@ -126,14 +135,33 @@ class MyCallbacks(DefaultCallbacks):
     ):
         discounted_rewards = process_rewards(episode.user_data["rewards"])
         episode.custom_metrics["discounted_rewards"] = discounted_rewards
+        episode.custom_metrics["bgt_penalty"] = np.mean(
+            episode.user_data["bgt_penalty"]
+        )
 
+
+env_config = {
+    "horizon": env_horizon,
+    "n_hh": n_hh,
+    "n_capital": n_capital,
+    "eval_mode": False,
+    "max_savings": 0.8,
+    "k_init": 20,
+    "bgt_penalty": 1,
+    "shock_values": [0.8, 1.2],
+    "shock_transition": [[0.9, 0.1], [0.1, 0.9]],
+    "parameters": {"delta": 0.04, "alpha": 0.3, "phi": 0.5, "beta": beta},
+}
+
+env_config_eval = env_config.copy()
+env_config_eval["eval_mode"] = True
 
 common_config = {
     "callbacks": MyCallbacks,
     # ENVIRONMENT
-    "gamma": 0.98,
+    "gamma": beta,
     "env": env_label,
-    "env_config": {"horizon": env_horizon},
+    "env_config": env_config,
     "horizon": env_horizon,
     # MODEL
     "framework": "torch",
@@ -150,7 +178,7 @@ common_config = {
     "evaluation_num_episodes": 1,
     "evaluation_config": {
         "explore": False,
-        "env_config": {"eval_mode": True},
+        "env_config": env_config_eval,
     },
 }
 
