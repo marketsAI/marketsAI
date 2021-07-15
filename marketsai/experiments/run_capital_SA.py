@@ -31,17 +31,17 @@ test = False
 plot_progress = False
 algo = "PPO"
 env_label = "capital_planner"
-exp_label = "native_1hh_1c_"
+exp_label = "server_2hh_1c_"
 register_env(env_label, Capital_planner)
 
 # Macro parameters
 env_horizon = 1000
-n_hh = 1
+n_hh = 2
 n_capital = 1
 beta = 0.98
-CHKPT_FREQ = 50
+CHKPT_FREQ = 100
 # STEP 1: Parallelization options
-NUM_CPUS = 9
+NUM_CPUS = 48
 NUM_TRIALS = 1
 NUM_ROLLOUT = env_horizon * 1
 NUM_ENV_PW = 1
@@ -65,7 +65,7 @@ if test == True:
     MAX_STEPS = 10 * batch_size
     exp_name = exp_label + env_label + "_test_" + date + algo
 else:
-    MAX_STEPS = 200 * batch_size
+    MAX_STEPS = 1000 * batch_size
     exp_name = exp_label + env_label + "_run_" + date + algo
 
 
