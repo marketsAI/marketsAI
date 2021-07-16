@@ -26,12 +26,12 @@ import seaborn as sn
 import logging
 
 # STEP 0: Global configs
-date = "July15_"
-test = True
+date = "July16_"
+test = False
 plot_progress = False
 algo = "PPO"
 env_label = "capital_planner"
-exp_label = "native_5hh_1c_"
+exp_label = "server_10hh_fast_"
 register_env(env_label, Capital_planner)
 
 # Macro parameters
@@ -41,17 +41,19 @@ n_capital = 1
 beta = 0.98
 CHKPT_FREQ = 100
 # STEP 1: Parallelization options
-NUM_CPUS = 12
+NUM_CPUS = 48
+NUM_CPUS_DRIVER = 8
 NUM_TRIALS = 1
 NUM_ROLLOUT = env_horizon * 1
 NUM_ENV_PW = 1
 # num_env_per_worker
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
-NUM_MINI_BATCH = 1
+NUM_MINI_BATCH = NUM_CPUS_DRIVER
 
-n_workers = (NUM_CPUS - NUM_TRIALS) // NUM_TRIALS
+n_workers = (NUM_CPUS - NUM_TRIALS * NUM_CPUS_DRIVER) // NUM_TRIALS
 batch_size = NUM_ROLLOUT * (max(n_workers, 1)) * NUM_ENV_PW * BATCH_ROLLOUT
+
 print(n_workers, batch_size)
 shutdown()
 init(
@@ -62,10 +64,10 @@ init(
 
 # STEP 2: Experiment configuratios
 if test == True:
-    MAX_STEPS = 10 * batch_size
+    MAX_STEPS = 20 * batch_size
     exp_name = exp_label + env_label + "_test_" + date + algo
 else:
-    MAX_STEPS = 1000 * batch_size
+    MAX_STEPS = 500 * batch_size
     exp_name = exp_label + env_label + "_run_" + date + algo
 
 
@@ -145,7 +147,6 @@ env_config = {
     "n_capital": n_capital,
     "eval_mode": False,
     "max_savings": 0.8,
-    "k_init": 20,
     "bgt_penalty": 1,
     "shock_values": [0.8, 1.2],
     "shock_transition": [[0.9, 0.1], [0.1, 0.9]],
@@ -170,7 +171,7 @@ common_config = {
     "create_env_on_driver": False,
     "num_gpus": NUM_GPUS / NUM_TRIALS,
     "num_envs_per_worker": NUM_ENV_PW,
-    "num_cpus_for_driver": 1,
+    "num_cpus_for_driver": NUM_CPUS_DRIVER,
     "rollout_fragment_length": NUM_ROLLOUT,
     "train_batch_size": batch_size,
     # EVALUATION
@@ -184,11 +185,11 @@ common_config = {
 
 ppo_config = {
     # "lr":0.0003
-    "lr_schedule": [[0, 0.00003], [MAX_STEPS * 1 / 2, 0.00001]],
+    #"lr_schedule": [[0, 0.00005], [MAX_STEPS * 1 / 2, 0.00003]],
     "sgd_minibatch_size": batch_size // NUM_MINI_BATCH,
     "num_sgd_iter": 1,
     "batch_mode": "complete_episodes",
-    "lambda": 1,
+    "lambda": 0.98,
     "entropy_coeff": 0,
     "kl_coeff": 0.2,
     # "vf_loss_coeff": 0.5,
@@ -270,4 +271,48 @@ analysis = tune.run(
 
 best_checkpoint = analysis.best_checkpoint
 checkpoints.append(best_checkpoint)
+
+# Planner 4:
+env_config["n_hh"] = 10
+env_config_eval["n_hh"] = 10
+training_config["env_config"] = env_config
+training_config["evaluation_config"]["env_config"] = env_config_eval
+analysis = tune.run(
+    algo,
+    name=exp_name,
+    config=training_config,
+    stop=stop,
+    checkpoint_freq=CHKPT_FREQ,
+    checkpoint_at_end=True,
+    metric="episode_reward_mean",
+    mode="max",
+    num_samples=1,
+    # resources_per_trial={"gpu": 0.5},
+)
+
+best_checkpoint = analysis.best_checkpoint
+checkpoints.append(best_checkpoint)
+
+# Planner 5:
+env_config["n_hh"] = 100
+env_config_eval["n_hh"] = 100
+training_config["env_config"] = env_config
+training_config["evaluation_config"]["env_config"] = env_config_eval
+analysis = tune.run(
+    algo,
+    name=exp_name,
+    config=training_config,
+    stop=stop,
+    checkpoint_freq=CHKPT_FREQ,
+    checkpoint_at_end=True,
+    metric="episode_reward_mean",
+    mode="max",
+    num_samples=1,
+    # resources_per_trial={"gpu": 0.5},
+)
+
+best_checkpoint = analysis.best_checkpoint
+checkpoints.append(best_checkpoint)
+
 print(checkpoints)
+
