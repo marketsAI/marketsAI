@@ -34,7 +34,7 @@ class Capital_planner(gym.Env):
         self.n_hh = self.env_config.get("n_hh", 1)
         self.n_capital = self.env_config.get("n_capital", 1)
         self.eval_mode = self.env_config.get("eval_mode", False)
-        self.max_saving = self.env_config.get("max_saving", 0.6)
+        self.max_savings = self.env_config.get("max_savings", 0.6)
         self.k_init = self.env_config.get("k_init", 10)
         self.bgt_penalty = self.env_config.get("bgt_penalty", 1)
         self.shock_values = self.env_config.get("shock_values", [0.8, 1.2])
@@ -62,7 +62,7 @@ class Capital_planner(gym.Env):
         ) ** (1 / (self.params["alpha"] - 2))
 
         # max_s_per_j
-        self.max_s_per_j = self.max_saving / self.n_capital * 1.5
+        self.max_s_per_j = self.max_savings / self.n_capital * 1.5
 
         # non-stochastic shocks for evaluation:
         if self.eval_mode == True:
@@ -114,7 +114,7 @@ class Capital_planner(gym.Env):
         else:
             k_init = np.array(
                 [
-                    random.uniform(self.k_ss * 0.5, self.k_ss * 1.5)
+                    random.uniform(self.k_ss * 0.5, self.k_ss * 1.25)
                     for i in range(self.n_hh * self.n_capital)
                 ],
                 dtype=float,
