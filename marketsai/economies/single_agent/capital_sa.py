@@ -102,7 +102,10 @@ class Capital_planner(gym.Env):
 
         if self.eval_mode == True:
             k_init = np.array(
-                [self.k_ss / 2 for i in range(self.n_hh * self.n_capital)],
+                [
+                    self.k_ss / 2 if i % 2 == 0 else self.k_ss / 1.5
+                    for i in range(self.n_hh * self.n_capital)
+                ],
                 dtype=float,
             )
 
@@ -231,7 +234,7 @@ class Capital_planner(gym.Env):
         self.obs_ = (k_, shocks_id_new)
 
         # REWARD
-        rew = np.sum(utility_i)
+        rew = np.mean(utility_i)
 
         # DONE FLAGS
         if self.timestep < self.horizon:
