@@ -26,7 +26,7 @@ import seaborn as sn
 import logging
 
 # STEP 0: Global configs
-date = "July16_"
+date = "July17_"
 test = False
 plot_progress = False
 algo = "PPO"
@@ -42,7 +42,7 @@ beta = 0.98
 CHKPT_FREQ = 100
 # STEP 1: Parallelization options
 NUM_CPUS = 48
-NUM_CPUS_DRIVER = 8
+NUM_CPUS_DRIVER = 24
 NUM_TRIALS = 1
 NUM_ROLLOUT = env_horizon * 1
 NUM_ENV_PW = 1
@@ -64,10 +64,10 @@ init(
 
 # STEP 2: Experiment configuratios
 if test == True:
-    MAX_STEPS = 20 * batch_size
+    MAX_STEPS = 50 * batch_size
     exp_name = exp_label + env_label + "_test_" + date + algo
 else:
-    MAX_STEPS = 500 * batch_size
+    MAX_STEPS = 1000 * batch_size
     exp_name = exp_label + env_label + "_run_" + date + algo
 
 
@@ -273,6 +273,11 @@ best_checkpoint = analysis.best_checkpoint
 checkpoints.append(best_checkpoint)
 
 # Planner 4:
+if test == False:
+    MAX_STEPS = MAX_STEPS * 4
+
+stop = {"timesteps_total": MAX_STEPS}
+
 env_config["n_hh"] = 10
 env_config_eval["n_hh"] = 10
 training_config["env_config"] = env_config
