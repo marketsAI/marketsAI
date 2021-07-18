@@ -103,7 +103,7 @@ class Capital_planner(gym.Env):
         if self.eval_mode == True:
             k_init = np.array(
                 [
-                    self.k_ss / 2 if i % 2 == 0 else self.k_ss / 1.5
+                    self.k_ss * 0.9 if i % 2 == 0 else self.k_ss * 0.8
                     for i in range(self.n_hh * self.n_capital)
                 ],
                 dtype=float,
