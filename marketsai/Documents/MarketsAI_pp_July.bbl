@@ -1,9 +1,14 @@
-\begin{thebibliography}{8}
+\begin{thebibliography}{13}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Asker et~al.(2021)Asker, Fershtman, and Pakes]{asker2021}
+John Asker, Chaim Fershtman, and Ariel Pakes.
+\newblock Artificial intelligence and pricing: The impact of algorithm design.
+\newblock Technical report, National Bureau of Economic Research, 2021.
 
 \bibitem[Baker et~al.(2019)Baker, Kanitscheider, Markov, Wu, Powell, McGrew,
   and Mordatch]{baker2019}
@@ -27,14 +32,18 @@ Dimitri~P Bertsekas and Huizhen Yu.
 \newblock \emph{Mathematics of Operations Research}, 37\penalty0 (1):\penalty0
   66--94, 2012.
 
-\bibitem[Espeholt et~al.(2018)Espeholt, Soyer, Munos, Simonyan, Mnih, Ward,
-  Doron, Firoiu, Harley, Dunning, et~al.]{espeholt2018}
-Lasse Espeholt, Hubert Soyer, Remi Munos, Karen Simonyan, Vlad Mnih, Tom Ward,
-  Yotam Doron, Vlad Firoiu, Tim Harley, Iain Dunning, et~al.
-\newblock Impala: Scalable distributed deep-rl with importance weighted
-  actor-learner architectures.
-\newblock In \emph{International Conference on Machine Learning}, pages
-  1407--1416. PMLR, 2018.
+\bibitem[Calvano et~al.(2020)Calvano, Calzolari, Denicolo, and
+  Pastorello]{calvano2020}
+Emilio Calvano, Giacomo Calzolari, Vincenzo Denicolo, and Sergio Pastorello.
+\newblock Artificial intelligence, algorithmic pricing, and collusion.
+\newblock \emph{American Economic Review}, 110\penalty0 (10):\penalty0
+  3267--97, 2020.
+
+\bibitem[Graf et~al.(2021)Graf, Zobernig, Schmidt, and Kl{\"o}ckl]{graf2021}
+Christoph Graf, Viktor Zobernig, Johannes Schmidt, and Claude Kl{\"o}ckl.
+\newblock Computational performance of deep reinforcement learning to find nash
+  equilibria.
+\newblock \emph{arXiv preprint arXiv:2104.12895}, 2021.
 
 \bibitem[Ma and Stachurski(2021)]{ma2021}
 Qingyin Ma and John Stachurski.
@@ -46,6 +55,27 @@ Qingyin Ma and John Stachurski.
 Qingyin Ma, John Stachurski, and Alexis~Akira Toda.
 \newblock Unbounded dynamic programming via the q-learning transform.
 \newblock \emph{arXiv preprint arXiv:2012.00219}, 2020.
+
+\bibitem[Maei et~al.(2009)Maei, Szepesvari, Bhatnagar, Precup, Silver, and
+  Sutton]{maei2009}
+Hamid~Reza Maei, Csaba Szepesvari, Shalabh Bhatnagar, Doina Precup, David
+  Silver, and Richard~S Sutton.
+\newblock Convergent temporal-difference learning with arbitrary smooth
+  function approximation.
+\newblock In \emph{NIPS}, pages 1204--1212, 2009.
+
+\bibitem[Mnih et~al.(2013)Mnih, Kavukcuoglu, Silver, Graves, Antonoglou,
+  Wierstra, and Riedmiller]{mnih2013}
+Volodymyr Mnih, Koray Kavukcuoglu, David Silver, Alex Graves, Ioannis
+  Antonoglou, Daan Wierstra, and Martin Riedmiller.
+\newblock Playing atari with deep reinforcement learning.
+\newblock \emph{arXiv preprint arXiv:1312.5602}, 2013.
+
+\bibitem[Schulman et~al.(2017)Schulman, Wolski, Dhariwal, Radford, and
+  Klimov]{schulman2017}
+John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov.
+\newblock Proximal policy optimization algorithms.
+\newblock \emph{arXiv preprint arXiv:1707.06347}, 2017.
 
 \bibitem[Tsitsiklis(1994)]{tsitsiklis1994}
 John~N Tsitsiklis.

@@ -85,7 +85,7 @@ Can artificial intelligent (AI) algorithms learn optimal intertemporal behavior 
 	\item Paragraph 3: Deep RL and the advent of this technology. \medskip 
 	
 			\begin{itemize}
-			\item Deep RL adds neural nets as function approximator. Explain paper. \medskip
+			\item Deep RL adds neural nets as function approximator. Explain \citet{mnih2013} paper. \medskip
 			\item Why it has been so effective? Scalability and computation power. \medskip
 			\item Success cases: games, robotics, self-driving vehicles, industrial optimization. 
 		\end{itemize}
@@ -162,11 +162,7 @@ Can artificial intelligent (AI) algorithms learn optimal intertemporal behavior 
 	\end{itemize}
 
 	
-	\item Paragraph 7: Explain learning results.
-	
-	\item Paragraph 8: Explain high dimensional, incomplete information, and multiple equilibrium exercises.
-	
-	\item Paragraph 9: Explain design lessons.
+	\item Results
 	
 \end{itemize}
 	
@@ -176,6 +172,17 @@ Can artificial intelligent (AI) algorithms learn optimal intertemporal behavior 
 		\item paragraph 1: Learning in Macroeconomics. \medskip
 		
 		\item paragraph 2: Reinforcement Learning in economics. \medskip
+		
+		\begin{itemize}
+			\item \citet{calvano2020} study algorithmic collusion by evaluating the behavior of q-learning algorithms, the most classical RL algorithm, when they compete in a repeated static game consisting on a differentiated bertrand with constant marginal costs. They show that algorithms learn to collude, in the sense that they charge a markup that is above the static nash solution, even though it is not as high as the monopolistic solution. Their problem, though repeated, is static in the sense that there is no state variable nor inter-temporal choice. 
+			
+			\item \citet{asker2021} study a similar problem as \citet{calvano2020} but their focus is on how the specific RL algorithm affect the collusive behavior. They also use first generation reinforcement learning algorithms.
+			
+			\item \citet{graf2021} also study algorithmic collusion but with a deep reinforcement learning algorithm that can be used on environments with continuous action and observation space.
+			
+			\item 
+			
+		\end{itemize}
 		
 		\item paragraph 3: Literaure on machine learning learning for high-dimensional problems.
 	\end{itemize}
@@ -245,9 +252,11 @@ efficiency. NOTES: WHY?
 		where $x$ is the input (in our case the transitions $\{r, s'  ,s, a\}$), $W_i \in \mathbb{R}^{m_{i+1}\times m_i}$ are the weights, $b_i \in \mathbb{R}^{m_i+1}$ are the biases, and $\sigma()$ are activation functions.
 	\end{itemize}
 
+	\item Theory: explain proofs by \citet{maei2009}.
+
 \subsection{State of the Art Algorithms}
 
-	\item Explain SAC or PPO.
+	\item Explain PPO by \citet{schulman2017}.
 \end{itemize}
 
 \subsection{Multi-Agent Reinforcement Learning}
@@ -277,7 +286,7 @@ worker, which updates the parameters of the training agent. The received data ar
 \begin{itemize}
 	\item $N^h$ households indexed by $i$ choose how much to consume and how much to invest in order to maximize $\sum_{t=0}^{\infty} \beta^t U(C_{i,t})$.\medskip
 	
-	\item The final good is produced using $N^c$ capital goods indexed by $j$ according to technology $$Y_{i,t}=Z^h_{i,t} \left(\Pi_{j=1}^{N^c} K_{i,j,t}^{1/N^c} \right)^{\alpha} = Z^h_{i,t} \Pi_{j=1}^{N^c} K_{i,j,t}^{\alpha/N^c}$$  where total factor productivity $Z^h_{i,t}$ follows the stochastic process $Z^h_{i,t+1} \sim \mathcal P(Z^h_{i,t})$. \medskip
+	\item The final good is produced using $N^c$ capital goods indexed by $j$ according to technology $$Y_{i,t}=Z^h_{i,t} \left(\Pi_{j=1}^{N^c} K_{i,j,t}^{1/N^c} \right)^{\alpha} = Z^h_{i,t} \Pi_{j=1}^{N^c} K_{i,j,t}^{\alpha/N^c}$$  where total factor productivity $Z^h_{i,t}$ follows the stochastic process $Z^h_{i,t+1} \sim \mathcal P(Z^h_{i,t})$. We assume that $\alpha<1$ in order to avoid having aggregation, that is, given decreasing returns to scale the distribution of capital stocks matters.  \medskip
 	
 	\item The agent allocates $Y_{i,t}$ between consumption and investment in new capital goods. The evolution of the stock of capital is 
 	
