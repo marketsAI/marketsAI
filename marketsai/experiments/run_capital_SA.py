@@ -26,24 +26,24 @@ import seaborn as sn
 import logging
 
 # STEP 0: Global configs
-date = "July17_"
-test = False
+date = "July18_"
+test = True
 plot_progress = False
 algo = "PPO"
 env_label = "capital_planner"
-exp_label = "server_10hh_fast_"
+exp_label = "server_2h_tuning"
 register_env(env_label, Capital_planner)
 
 # Macro parameters
 env_horizon = 1000
-n_hh = 1
+n_hh = 2
 n_capital = 1
 beta = 0.98
-CHKPT_FREQ = 100
+CHKPT_FREQ = 1000
 # STEP 1: Parallelization options
 NUM_CPUS = 48
-NUM_CPUS_DRIVER = 24
-NUM_TRIALS = 1
+NUM_CPUS_DRIVER = 1
+NUM_TRIALS = 8
 NUM_ROLLOUT = env_horizon * 1
 NUM_ENV_PW = 1
 # num_env_per_worker
@@ -64,7 +64,7 @@ init(
 
 # STEP 2: Experiment configuratios
 if test == True:
-    MAX_STEPS = 50 * batch_size
+    MAX_STEPS = 1000 * batch_size
     exp_name = exp_label + env_label + "_test_" + date + algo
 else:
     MAX_STEPS = 1000 * batch_size
@@ -175,7 +175,7 @@ common_config = {
     "rollout_fragment_length": NUM_ROLLOUT,
     "train_batch_size": batch_size,
     # EVALUATION
-    "evaluation_interval": 10,
+    "evaluation_interval": 1,
     "evaluation_num_episodes": 1,
     "evaluation_config": {
         "explore": False,
@@ -184,18 +184,18 @@ common_config = {
 }
 
 ppo_config = {
-    # "lr":0.0003
+    "lr": tune.choice([0.0003, 0.00003, 0.00001]),
     #"lr_schedule": [[0, 0.00005], [MAX_STEPS * 1 / 2, 0.00003]],
     "sgd_minibatch_size": batch_size // NUM_MINI_BATCH,
     "num_sgd_iter": 1,
     "batch_mode": "complete_episodes",
-    "lambda": 0.98,
-    "entropy_coeff": 0,
-    "kl_coeff": 0.2,
+    "lambda": tune.choice([0.95, 0.98, 1]),
+    "entropy_coeff": tune.choice([0, 0.1, 0.2]),
+    "kl_coeff": tune.choice([0.3, 0.2, 0.1]),
     # "vf_loss_coeff": 0.5,
-    # "vf_clip_param": 100.0,
+    "vf_clip_param": tune.choice([5, 10, 20]),
     # "entropy_coeff_schedule": [[0, 0.01], [5120 * 1000, 0]],
-    "clip_param": 0.2,
+    "clip_param":  tune.choice([0.3, 0.2, 0.1]),
     "clip_actions": True,
 }
 
@@ -222,7 +222,7 @@ analysis = tune.run(
     checkpoint_at_end=True,
     metric="episode_reward_mean",
     mode="max",
-    num_samples=1,
+    num_samples=32,
     # resources_per_trial={"gpu": 0.5},
 )
 
@@ -230,94 +230,94 @@ best_checkpoint = analysis.best_checkpoint
 checkpoints.append(best_checkpoint)
 
 
-# Planner 2:
-env_config["n_hh"] = 2
-env_config_eval["n_hh"] = 2
-training_config["env_config"] = env_config
-training_config["evaluation_config"]["env_config"] = env_config_eval
-analysis = tune.run(
-    algo,
-    name=exp_name,
-    config=training_config,
-    stop=stop,
-    checkpoint_freq=CHKPT_FREQ,
-    checkpoint_at_end=True,
-    metric="episode_reward_mean",
-    mode="max",
-    num_samples=1,
-    # resources_per_trial={"gpu": 0.5},
-)
+# # Planner 2:
+# env_config["n_hh"] = 2
+# env_config_eval["n_hh"] = 2
+# training_config["env_config"] = env_config
+# training_config["evaluation_config"]["env_config"] = env_config_eval
+# analysis = tune.run(
+#     algo,
+#     name=exp_name,
+#     config=training_config,
+#     stop=stop,
+#     checkpoint_freq=CHKPT_FREQ,
+#     checkpoint_at_end=True,
+#     metric="episode_reward_mean",
+#     mode="max",
+#     num_samples=1,
+#     # resources_per_trial={"gpu": 0.5},
+# )
 
-best_checkpoint = analysis.best_checkpoint
-checkpoints.append(best_checkpoint)
+# best_checkpoint = analysis.best_checkpoint
+# checkpoints.append(best_checkpoint)
 
-# Planner 3:
-env_config["n_hh"] = 5
-env_config_eval["n_hh"] = 5
-training_config["env_config"] = env_config
-training_config["evaluation_config"]["env_config"] = env_config_eval
-analysis = tune.run(
-    algo,
-    name=exp_name,
-    config=training_config,
-    stop=stop,
-    checkpoint_freq=CHKPT_FREQ,
-    checkpoint_at_end=True,
-    metric="episode_reward_mean",
-    mode="max",
-    num_samples=1,
-    # resources_per_trial={"gpu": 0.5},
-)
+# # Planner 3:
+# env_config["n_hh"] = 5
+# env_config_eval["n_hh"] = 5
+# training_config["env_config"] = env_config
+# training_config["evaluation_config"]["env_config"] = env_config_eval
+# analysis = tune.run(
+#     algo,
+#     name=exp_name,
+#     config=training_config,
+#     stop=stop,
+#     checkpoint_freq=CHKPT_FREQ,
+#     checkpoint_at_end=True,
+#     metric="episode_reward_mean",
+#     mode="max",
+#     num_samples=1,
+#     # resources_per_trial={"gpu": 0.5},
+# )
 
-best_checkpoint = analysis.best_checkpoint
-checkpoints.append(best_checkpoint)
+# best_checkpoint = analysis.best_checkpoint
+# checkpoints.append(best_checkpoint)
 
-# Planner 4:
-if test == False:
-    MAX_STEPS = MAX_STEPS * 4
+# # Planner 4:
+# if test == False:
+#     MAX_STEPS = MAX_STEPS * 4
 
-stop = {"timesteps_total": MAX_STEPS}
+# stop = {"timesteps_total": MAX_STEPS}
 
-env_config["n_hh"] = 10
-env_config_eval["n_hh"] = 10
-training_config["env_config"] = env_config
-training_config["evaluation_config"]["env_config"] = env_config_eval
-analysis = tune.run(
-    algo,
-    name=exp_name,
-    config=training_config,
-    stop=stop,
-    checkpoint_freq=CHKPT_FREQ,
-    checkpoint_at_end=True,
-    metric="episode_reward_mean",
-    mode="max",
-    num_samples=1,
-    # resources_per_trial={"gpu": 0.5},
-)
+# env_config["n_hh"] = 10
+# env_config_eval["n_hh"] = 10
+# training_config["env_config"] = env_config
+# training_config["evaluation_config"]["env_config"] = env_config_eval
+# analysis = tune.run(
+#     algo,
+#     name=exp_name,
+#     config=training_config,
+#     stop=stop,
+#     checkpoint_freq=CHKPT_FREQ,
+#     checkpoint_at_end=True,
+#     metric="episode_reward_mean",
+#     mode="max",
+#     num_samples=1,
+#     # resources_per_trial={"gpu": 0.5},
+# )
 
-best_checkpoint = analysis.best_checkpoint
-checkpoints.append(best_checkpoint)
+# best_checkpoint = analysis.best_checkpoint
+# checkpoints.append(best_checkpoint)
 
-# Planner 5:
-env_config["n_hh"] = 100
-env_config_eval["n_hh"] = 100
-training_config["env_config"] = env_config
-training_config["evaluation_config"]["env_config"] = env_config_eval
-analysis = tune.run(
-    algo,
-    name=exp_name,
-    config=training_config,
-    stop=stop,
-    checkpoint_freq=CHKPT_FREQ,
-    checkpoint_at_end=True,
-    metric="episode_reward_mean",
-    mode="max",
-    num_samples=1,
-    # resources_per_trial={"gpu": 0.5},
-)
+# # Planner 5:
+# env_config["n_hh"] = 100
+# env_config_eval["n_hh"] = 100
+# training_config["env_config"] = env_config
+# training_config["evaluation_config"]["env_config"] = env_config_eval
+# analysis = tune.run(
+#     algo,
+#     name=exp_name,
+#     config=training_config,
+#     stop=stop,
+#     checkpoint_freq=CHKPT_FREQ,
+#     checkpoint_at_end=True,
+#     metric="episode_reward_mean",
+#     mode="max",
+#     num_samples=1,
+#     # resources_per_trial={"gpu": 0.5},
+# )
 
-best_checkpoint = analysis.best_checkpoint
-checkpoints.append(best_checkpoint)
+# best_checkpoint = analysis.best_checkpoint
+# checkpoints.append(best_checkpoint)
 
 print(checkpoints)
 
