@@ -144,16 +144,16 @@ Can artificial intelligent (AI) algorithms learn optimal intertemporal behavior 
 	
 	\item  We will consider both a  market's formulation and a planner's formulation of the problem. In the market formulation, for each capital good there is a firm who pays the quadratic cost and sells the capital good. In the planner formulation, the planner decides how much of the final good to allocate in each capital good for each household, and investment is determined by how many units can be produced given the total allocation of resources by all households on that capital good. 
 	
-	\item Within this framework we perform the following exercise:
+	\item Within this framework we perform the following exercises:
 	
 	\begin{itemize} 
-		\item Exercise 1: The planner problem. For single agent problems, we can ask the Deep RL agents to solve the exact same problem we formulate in macroeconomic models. Thus, we can check how close does the Deep RL agent gets to the solution obtained by classical dynamic programming methods. If convergence is achieved, we confirm that the expectations implicit in the behavior of the Deep RL model are rational. Also, we can scale the problem to many state variables and evaluate the potential of this learning methodology to deal with high dimensional dynamic control problems. \medskip
+		\item Exercise 1: The planner problem. For single agent problems, we can ask the Deep RL agents to solve the exact same problem we formulate in macroeconomic models. Thus, we can check how close does the Deep RL agent gets to the solution obtained by classical dynamic programming methods. If convergence is achieved, we confirm that the expectations implicit in the behavior of the Deep RL agent  are rational. Also, we can scale the problem to many state variables and evaluate the potential of this learning methodology to deal with high dimensional dynamic control problems. \medskip
 		
-		\item Exercise 2: Many households. \medskip
+		\item Exercise 2: Many households. In order to evaluate the ability of deep RL agents to learn in multi-agent environments, we consider the problem of many households who need to purchase capital goods from the capital good firm. The supply side stays competitive, that is, the price paid by households correspond to the marginal cost evaluated at the aggregate demand level. In this formulation, the deep RL solution differs from the competitive market solution because agents do not assume that the price they pay is independent of the actions. In the tradition competitive equilibrium formulation, we impose such price-taking behavior by taking the price as given when we calculate the first order conditions. In the RL formulation, we do not use first order conditions. Instead, we formulate the economy as a markov game, in which the consequences of actions are well specified for any behavior, optimal or not. Within this formulation, we increase the number of households to evaluate whether a larger number of buyers increase competition on the demand side and thus increase quantity purchased. In the limit, the solution should approximate the competitive solution.   \medskip
 		
-		\item Exercise 3: Incomplete Information. \medskip
+		\item Exercise 3: Incomplete Information. In order to showcase the flexibility with which we can manipulate the information structure of the economies under study, we simulate an economy with many households in which half of the households observes the stock and idiosyncratic shock of all households, and the other half only observes his own state and aggregate statistics of other households state variables. With this exercise, we can calculate the increase in expected utility from having the extra information, and compare the investment behavior. \medskip
 		
-		\item Exercise 4: AI agents in both supply and demand. \medskip
+		\item Exercise 4: AI agents in both supply and demand. Finally, I  simulate an economy in which both sellers and buyers are Deep RL agents. This is challenging because we cannot make use of a "walrasian auctioneer" that take magnets first order conditions and determine prices by solving a system of equations. Also ,we can study the strategic behavior of agents by varying both the number og sellers and buyers. \medskip
 		
 		
 		
