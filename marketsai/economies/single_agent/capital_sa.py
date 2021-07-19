@@ -66,12 +66,12 @@ class Capital_planner(gym.Env):
 
         # non-stochastic shocks for evaluation:
         if self.eval_mode == True:
-            self.shocks_eval = {0: [(i % 2) for i in range(self.n_hh)]}
+            self.shocks_eval = {0: [1-(i % 2) for i in range(self.n_hh)]}
             for i in range(1, self.horizon + 1):
                 self.shocks_eval[i] = (
-                    [1 - (i % 2) for i in range(self.n_hh)]
+                    [(i % 2) for i in range(self.n_hh)]
                     if (i // (1 / self.shock_transition[0][1]) + 1) % 2 == 0
-                    else [(i % 2) for i in range(self.n_hh)]
+                    else [1-(i % 2) for i in range(self.n_hh)]
                 )
 
         # CREATE SPACES
@@ -103,7 +103,7 @@ class Capital_planner(gym.Env):
         if self.eval_mode == True:
             k_init = np.array(
                 [
-                    self.k_ss * 0.9 if i % 2 == 0 else self.k_ss * 0.8
+                    self.k_ss * 0.8 if i % 2 == 0 else self.k_ss * 0.9
                     for i in range(self.n_hh * self.n_capital)
                 ],
                 dtype=float,
@@ -246,8 +246,8 @@ class Capital_planner(gym.Env):
         info = {
             "savings_rate": np.sum(inv_exp_j) / np.sum(y_i),
             "reward": rew,
-            "income": np.sum(y_i),
-            "consumption": np.sum(c_i),
+            "income": y_i,
+            "consumption": c_i,
             "bgt_penalty": np.sum(bgt_penalty_ind),
             "capital": k_ij,
             "capital_new": k_ij_new,

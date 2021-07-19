@@ -24,7 +24,7 @@ env_label = "capital_planner"
 register_env("capital_planner", Capital_planner)
 
 env_horizon = 1000
-n_hh = 1
+n_hh = 2
 n_capital = 1
 beta = 0.98
 env_config_analysis = {
@@ -44,15 +44,15 @@ config_analysis = {
     "env": env_label,
     "env_config": env_config_analysis,
     "horizon": env_horizon,
-    "explore": True,
+    "explore": False,
     "framework": "torch",
 }
 
 init()
 
 # checkpoint_path = results.best_checkpoint
-# checkpoint_path = "/home/mc5851/ray_results/GM_run_June22_PPO/PPO_gm_b10cc_00000_0_2021-06-22_11-44-12/checkpoint_1650/checkpoint-1650"
-checkpoint_path = "/Users/matiascovarrubias/ray_results/native_multi_capital_planner_test_July17_PPO/PPO_capital_planner_3e5e9_00000_0_2021-07-18_14-01-58/checkpoint_000050/checkpoint-50"
+checkpoint_path = "/home/mc5851/ray_results/server_10hh_fast_capital_planner_run_July17_PPO/PPO_capital_planner_ae6e4_00000_0_2021-07-16_19-58-13/checkpoint_1000/checkpoint-1000"
+#checkpoint_path = "/Users/matiascovarrubias/ray_results/native_multi_capital_planner_test_July17_PPO/PPO_capital_planner_3e5e9_00000_0_2021-07-18_14-01-58/checkpoint_000050/checkpoint-50"
 
 trained_trainer = PPOTrainer(env=env_label, config=config_analysis)
 trained_trainer.restore(checkpoint_path)
@@ -61,58 +61,72 @@ env = Capital_planner(env_config=env_config_analysis)
 obs = env.reset()
 # env.timestep = 100000
 
-# shock_list = []
+shock_list_0 = []
+shock_list_1 = []
 inv_list = []
-y_list = []
-k_list = []
+y_list_0 = []
+y_list_1 = []
+c_list_0 = []
+c_list_1 = []
+k_list_0 = []
+k_list_1 = []
 MAX_STEPS = env.horizon
-shock_process = [
-    [1 for i in range(20)]
-    + [0 for i in range(20)]
-    + [1 for i in range(30)]
-    + [0 for i in range(20)]
-    + [1 for i in range(10)]
-]
+
 for i in range(MAX_STEPS):
     action = trained_trainer.compute_action(obs)
     obs, rew, done, info = env.step(action)
     # obs[1] = shock_process[i]
     # env.obs_[1] = shock_process[i]
-    # shock_list.append(info["shock"])
+    shock_list_0.append(obs[1][0])
+    shock_list_1.append(obs[1][1])
     inv_list.append(info["savings_rate"])
-    y_list.append(info["income"])
-    k_list.append(np.sum(info["capital"]))
+    y_list_0.append(info["income"][0])
+    y_list_1.append(info["income"][1])
+    c_list_0.append(info["consumption"][0])
+    c_list_1.append(info["consumption"][1])
+    k_list_0.append(info["capital"][0][0])
+    k_list_1.append(info["capital"][1][0])
 
-print(k_list[-1])
+
 # plt.subplot(2, 2, 1)
-# plt.plot(shock_list[:100])
+# plt.plot(shock_list_0[:100])
+# plt.plot(shock_list_1[:100])
 # plt.title("Shock")
 
 plt.subplot(2, 2, 1)
-plt.plot(inv_list)
-plt.title("Savings Rate")
+plt.plot(c_list_0[:100])
+plt.plot(c_list_1[:100])
+plt.title("COnsumption")
 
 plt.subplot(2, 2, 2)
-plt.plot(y_list)
-plt.title("Income")
+plt.plot(inv_list[:100])
+plt.title("Savings Rate")
 
 plt.subplot(2, 2, 3)
-plt.plot(k_list)
+plt.plot(y_list_0[:100])
+plt.plot(y_list_1[:100])
+plt.title("Income")
+
+plt.subplot(2, 2, 4)
+plt.plot(k_list_0[:100])
+plt.plot(k_list_1[:100])
 plt.title("Capital")
 
 # plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
-plt.savefig("marketsai/results/capital_planner_IR_July17_1.png")
+plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_2.png")
 plt.show()
 
 IRresults = {
-    # "shock": shock_list,
+    "shock_0": shock_list_0,
+    "shock_1": shock_list_1,
     "investment": inv_list,
-    "durable_stock": k_list,
-    "y_list": y_list,
+    "k_0": k_list_0,
+    "k_1": k_list_1,
+    "y_0": y_list_0,
 }
 df_IR = pd.DataFrame(IRresults)
 # df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/xapital_planner_IR_July17_1.csv")
 df_IR = pd.DataFrame(IRresults)
-df_IR.to_csv("marketsai/results/xapital_planner_IR_July17_1.csv")
+df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_2.csv")
 
 shutdown()
