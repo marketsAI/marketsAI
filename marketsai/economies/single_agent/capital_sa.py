@@ -103,7 +103,7 @@ class Capital_planner(gym.Env):
         if self.eval_mode == True:
             k_init = np.array(
                 [
-                    self.k_ss * 0.8 if i % 2 == 0 else self.k_ss * 0.9
+                    self.k_ss * 0.9 if i % 2 == 0 else self.k_ss * 0.8
                     for i in range(self.n_hh * self.n_capital)
                 ],
                 dtype=float,
@@ -244,7 +244,7 @@ class Capital_planner(gym.Env):
 
         # ADDITIONAL INFO
         info = {
-            "savings_rate": np.sum(inv_exp_j) / np.sum(y_i),
+            "savings": s_ij,
             "reward": rew,
             "income": y_i,
             "consumption": c_i,
@@ -264,7 +264,7 @@ class Capital_planner(gym.Env):
 #     env_config={
 #         "horizon": 200,
 #         "n_hh": 2,
-#         "n_capital": 2,
+#         "n_capital": 1,
 #         "eval_mode": False,
 #         "max_savings": 0.6,
 #         "k_init": 20,

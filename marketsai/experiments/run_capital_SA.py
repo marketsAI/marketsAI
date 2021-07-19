@@ -26,20 +26,20 @@ import seaborn as sn
 import logging
 
 # STEP 0: Global configs
-date = "July18_"
-test = True
+date = "July19_"
+test = False
 plot_progress = False
 algo = "PPO"
 env_label = "capital_planner"
-exp_label = "server_2h_tuning"
+exp_label = "server_1h_finetune_"
 register_env(env_label, Capital_planner)
 
 # Macro parameters
 env_horizon = 1000
-n_hh = 2
+n_hh = 1
 n_capital = 1
 beta = 0.98
-CHKPT_FREQ = 1000
+CHKPT_FREQ = 10
 # STEP 1: Parallelization options
 NUM_CPUS = 48
 NUM_CPUS_DRIVER = 1
@@ -64,7 +64,7 @@ init(
 
 # STEP 2: Experiment configuratios
 if test == True:
-    MAX_STEPS = 1000 * batch_size
+    MAX_STEPS = 100 * batch_size
     exp_name = exp_label + env_label + "_test_" + date + algo
 else:
     MAX_STEPS = 1000 * batch_size
@@ -184,18 +184,18 @@ common_config = {
 }
 
 ppo_config = {
-    "lr": tune.choice([0.0003, 0.00003, 0.00001]),
-    #"lr_schedule": [[0, 0.00005], [MAX_STEPS * 1 / 2, 0.00003]],
+    "lr": tune.choice([0.0001, 0.00005, 0.00001]),
+    #"lr_schedule": [[0, 0.00005], [MAX_STEPS * 1 / 2, 0.00001]],
     "sgd_minibatch_size": batch_size // NUM_MINI_BATCH,
     "num_sgd_iter": 1,
     "batch_mode": "complete_episodes",
-    "lambda": tune.choice([0.95, 0.98, 1]),
-    "entropy_coeff": tune.choice([0, 0.1, 0.2]),
-    "kl_coeff": tune.choice([0.3, 0.2, 0.1]),
+    "lambda": 0.98,
+    "entropy_coeff": 0,
+    "kl_coeff": 0.2,
     # "vf_loss_coeff": 0.5,
-    "vf_clip_param": tune.choice([5, 10, 20]),
+    #"vf_clip_param": tune.choice([5, 10, 20]),
     # "entropy_coeff_schedule": [[0, 0.01], [5120 * 1000, 0]],
-    "clip_param":  tune.choice([0.3, 0.2, 0.1]),
+    "clip_param":  0.2,
     "clip_actions": True,
 }
 
@@ -222,7 +222,7 @@ analysis = tune.run(
     checkpoint_at_end=True,
     metric="episode_reward_mean",
     mode="max",
-    num_samples=32,
+    num_samples=NUM_TRIALS,
     # resources_per_trial={"gpu": 0.5},
 )
 

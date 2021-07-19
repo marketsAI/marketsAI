@@ -23,8 +23,9 @@ import seaborn as sn
 env_label = "capital_planner"
 register_env("capital_planner", Capital_planner)
 
+for_public = True
 env_horizon = 1000
-n_hh = 2
+n_hh = 1
 n_capital = 1
 beta = 0.98
 env_config_analysis = {
@@ -51,7 +52,7 @@ config_analysis = {
 init()
 
 # checkpoint_path = results.best_checkpoint
-checkpoint_path = "/home/mc5851/ray_results/server_10hh_fast_capital_planner_run_July17_PPO/PPO_capital_planner_ae6e4_00000_0_2021-07-16_19-58-13/checkpoint_1000/checkpoint-1000"
+checkpoint_path = "/home/mc5851/ray_results/server_1h_finetune_capital_planner_run_July19_PPO/PPO_capital_planner_7be30_00001_1_lr=5e-05_2021-07-19_14-23-58/checkpoint_70/checkpoint-70"
 #checkpoint_path = "/Users/matiascovarrubias/ray_results/native_multi_capital_planner_test_July17_PPO/PPO_capital_planner_3e5e9_00000_0_2021-07-18_14-01-58/checkpoint_000050/checkpoint-50"
 
 trained_trainer = PPOTrainer(env=env_label, config=config_analysis)
@@ -61,15 +62,12 @@ env = Capital_planner(env_config=env_config_analysis)
 obs = env.reset()
 # env.timestep = 100000
 
-shock_list_0 = []
-shock_list_1 = []
-inv_list = []
-y_list_0 = []
-y_list_1 = []
-c_list_0 = []
-c_list_1 = []
-k_list_0 = []
-k_list_1 = []
+
+shock_list = [[] for i in range(env.n_hh)]
+s_list = [[] for i in range(env.n_hh)]
+y_list = [[] for i in range(env.n_hh)]
+c_list = [[] for i in range(env.n_hh)]
+k_list = [[] for i in range(env.n_hh)]
 MAX_STEPS = env.horizon
 
 for i in range(MAX_STEPS):
@@ -77,56 +75,68 @@ for i in range(MAX_STEPS):
     obs, rew, done, info = env.step(action)
     # obs[1] = shock_process[i]
     # env.obs_[1] = shock_process[i]
-    shock_list_0.append(obs[1][0])
-    shock_list_1.append(obs[1][1])
-    inv_list.append(info["savings_rate"])
-    y_list_0.append(info["income"][0])
-    y_list_1.append(info["income"][1])
-    c_list_0.append(info["consumption"][0])
-    c_list_1.append(info["consumption"][1])
-    k_list_0.append(info["capital"][0][0])
-    k_list_1.append(info["capital"][1][0])
+    for i in range(env.n_hh):
+        shock_list[i].append(obs[1][i])
+        s_list[i].append(info["savings"][i][0])
+        y_list[i].append(info["income"][i])
+        c_list[i].append(info["consumption"][i])
+        k_list[i].append(info["capital"][i][0])
 
-
-# plt.subplot(2, 2, 1)
-# plt.plot(shock_list_0[:100])
-# plt.plot(shock_list_1[:100])
-# plt.title("Shock")
 
 plt.subplot(2, 2, 1)
-plt.plot(c_list_0[:100])
-plt.plot(c_list_1[:100])
-plt.title("COnsumption")
+for i in range(env.n_hh):
+    plt.plot(shock_list[i][:100])
+plt.title("Shock")
+
+# plt.subplot(2, 2, 1)
+# plt.plot(c_list_0[:200])
+# plt.plot(c_list_1[:100])
+# plt.title("Consumption")
 
 plt.subplot(2, 2, 2)
-plt.plot(inv_list[:100])
+for i in range(env.n_hh):
+    plt.plot(s_list[i][:100])
 plt.title("Savings Rate")
 
 plt.subplot(2, 2, 3)
-plt.plot(y_list_0[:100])
-plt.plot(y_list_1[:100])
+for i in range(env.n_hh):
+    plt.plot(y_list[i][:100])
 plt.title("Income")
 
 plt.subplot(2, 2, 4)
-plt.plot(k_list_0[:100])
-plt.plot(k_list_1[:100])
+for i in range(env.n_hh):
+    plt.plot(k_list[i][:100])
 plt.title("Capital")
 
 # plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
-plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_2.png")
+#plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
+
+# when ready for publication
+if for_public == True:
+    plt.savefig("/home/mc5851/marketsAI/marketsai/Documents/Figures/capital_planner_IR_July17_1.png")
+else:
+    plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
+
 plt.show()
 
 IRresults = {
-    "shock_0": shock_list_0,
-    "shock_1": shock_list_1,
-    "investment": inv_list,
-    "k_0": k_list_0,
-    "k_1": k_list_1,
-    "y_0": y_list_0,
+    f"shock_{i}": shock_list[i],
+    f"s_{i}": s_list[i],
+    f"k_{i}": k_list[i],
+    f"y_{i}": y_list[i],
+    f"c_{i}": c_list[i]
 }
-df_IR = pd.DataFrame(IRresults)
+
 # df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/xapital_planner_IR_July17_1.csv")
 df_IR = pd.DataFrame(IRresults)
-df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_2.csv")
+
+#df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.csv")
+
+#when ready for publication
+if for_public == True:
+    df_IR.to_csv("/home/mc5851/marketsAI/marketsai/Documents/Figures/capital_planner_IR_July17_1.csv")
+else:
+    df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.csv")
+
 
 shutdown()
