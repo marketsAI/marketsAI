@@ -23,12 +23,12 @@ import seaborn as sn
 import logging
 
 # STEP 0: Global configs
-date = "July20_"
-test = True
+date = "July21_"
+test = False
 plot_progress = False
 algo = "PPO"
 env_label = "capital_planner_ma"
-exp_label = "native_2hh_"
+exp_label = "server_2hh_"
 register_env(env_label, Capital_planner_ma)
 
 # Hiperparameteres
@@ -39,9 +39,9 @@ n_capital = 1
 beta = 0.98
 
 # STEP 1: Parallelization options
-NUM_CPUS = 10
+NUM_CPUS = 48
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 2
+NUM_TRIALS = 8
 NUM_ROLLOUT = env_horizon * 1
 NUM_ENV_PW = 1
 # num_env_per_worker
@@ -63,13 +63,13 @@ init(
 
 # STEP 2: Experiment configuratios
 if test == True:
-    MAX_STEPS = 100 * batch_size
+    MAX_STEPS = 10 * batch_size
     exp_name = exp_label + env_label + "_test_" + date + algo
 else:
-    MAX_STEPS = 1000 * batch_size
+    MAX_STEPS = 300 * batch_size
     exp_name = exp_label + env_label + "_run_" + date + algo
 
-CHKPT_FREQ = 100
+CHKPT_FREQ = 5
 
 stop = {"timesteps_total": MAX_STEPS}
 
@@ -103,8 +103,8 @@ class MyCallbacks(DefaultCallbacks):
             "after env reset!"
         )
         episode.user_data["rewards"] = []
-        episode.user_data["consumption"] = []
-        episode.user_data["bgt_penalty"] = []
+        # episode.user_data["consumption"] = []
+        #episode.user_data["bgt_penalty"] = []
 
     def on_episode_step(
         self,
@@ -121,11 +121,11 @@ class MyCallbacks(DefaultCallbacks):
         #     "after env reset!"
         if episode.length > 1:
             rewards = episode.prev_reward_for("hh_0")
-            consumption = episode.last_info_for("hh_0")["consumption"]
-            bgt_penalty = episode.last_info_for("hh_0")["bgt_penalty"]
+            # consumption = episode.last_info_for("hh_0")["consumption"]
+            # bgt_penalty = episode.last_info_for("hh_0")["bgt_penalty"]
             episode.user_data["rewards"].append(rewards)
-            episode.user_data["consumption"].append(consumption)
-            episode.user_data["bgt_penalty"].append(bgt_penalty)
+            # episode.user_data["consumption"].append(consumption)
+            # episode.user_data["bgt_penalty"].append(bgt_penalty)
 
     def on_episode_end(
         self,
@@ -139,26 +139,26 @@ class MyCallbacks(DefaultCallbacks):
     ):
         discounted_rewards = process_rewards(episode.user_data["rewards"])
         episode.custom_metrics["discounted_rewards"] = discounted_rewards
-        episode.custom_metrics["consumption"] = np.mean(
-            episode.user_data["consumption"][0]
-        )
-        episode.custom_metrics["bgt_penalty"] = np.mean(
-            episode.user_data["bgt_penalty"][0]
-        )
+        # episode.custom_metrics["consumption"] = np.mean(
+        #     episode.user_data["consumption"][0]
+        # )
+        # episode.custom_metrics["bgt_penalty"] = np.mean(
+        #    episode.user_data["bgt_penalty"][0]
+        #)
 
 
 env_config = {
     "horizon": 1000,
-    "n_hh": 2,
-    "n_capital": 1,
-    "eval_mode": True,
+    "n_hh": n_hh,
+    "n_capital": n_capital,
+    "eval_mode": False,
     "max_savings": 0.6,
-    "bgt_penalty": 100,
+    "bgt_penalty": 1,
     "shock_idtc_values": [0.9, 1.1],
     "shock_idtc_transition": [[0.9, 0.1], [0.1, 0.9]],
     "shock_agg_values": [0.8, 1.2],
     "shock_agg_transition": [[0.95, 0.05], [0.05, 0.95]],
-    "parameters": {"delta": 0.04, "alpha": 0.33, "phi": 0.5, "beta": 0.98},
+    "parameters": {"delta": 0.04, "alpha": 0.3, "phi": 0.5, "beta": beta},
 }
 
 env_config_eval = env_config.copy()
@@ -225,7 +225,7 @@ common_config = {
 
 
 ppo_config = {
-    "lr": tune.choice([0.0001, 0.00005, 0.00001]),
+    # "lr": tune.choice([0.00008, 0.00005, 0.00003]),
     # "lr_schedule": [[0, 0.00005], [MAX_STEPS * 1 / 2, 0.00001]],
     "sgd_minibatch_size": batch_size // NUM_MINI_BATCH,
     "num_sgd_iter": 1,
@@ -310,4 +310,3 @@ print(checkpoints)
 #     excess_dd_plot = excess_dd_plot.get_figure()
 #     excess_dd_plot.savefig("marketsai/results/penalty_plot_" + exp_name + ".png")
 
-print(checkpoints)
