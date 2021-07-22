@@ -23,9 +23,9 @@ import seaborn as sn
 env_label = "capital_planner_ma"
 register_env(env_label, Capital_planner_ma)
 
-for_public = True
+for_public = False
 env_horizon = 1000
-n_hh = 2
+n_hh = 5
 n_capital = 1
 beta = 0.98
 env_config_analysis = {
@@ -67,7 +67,7 @@ config_analysis = {
 init()
 
 # checkpoint_path = results.best_checkpoint
-checkpoint_path = "/home/mc5851/ray_results/server_2hh_capital_planner_ma_run_July21_PPO/PPO_capital_planner_ma_66a6f_00005_5_2021-07-21_10-46-15/checkpoint_200/checkpoint-200"
+checkpoint_path = "/home/mc5851/ray_results/server_5hh_capital_planner_ma_run_July21_PPO/PPO_capital_planner_ma_46ca2_00006_6_2021-07-21_14-27-16/checkpoint_225/checkpoint-225"
 # checkpoint_path = "/Users/matiascovarrubias/ray_results/native_multi_capital_planner_test_July17_PPO/PPO_capital_planner_3e5e9_00000_0_2021-07-18_14-01-58/checkpoint_000050/checkpoint-50"
 
 trained_trainer = PPOTrainer(env=env_label, config=config_analysis)
@@ -138,9 +138,9 @@ plt.title("Capital")
 
 # when ready for publication
 if for_public == True:
-    plt.savefig("/home/mc5851/marketsAI/marketsai/Documents/Figures/capital_planner_ma_IR_July22_2hh.png")
+    plt.savefig("/home/mc5851/marketsAI/marketsai/Documents/Figures/capital_planner_ma_IR_July22_5hh.png")
 else:
-    plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_ma_IR_July22_2hh.png")
+    plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_ma_IR_July22_5hh.png")
 
 plt.show()
 
