@@ -28,20 +28,20 @@ test = False
 plot_progress = False
 algo = "PPO"
 env_label = "capital_planner_ma"
-exp_label = "server_2hh_"
+exp_label = "server_100hh_"
 register_env(env_label, Capital_planner_ma)
 
 # Hiperparameteres
 
 env_horizon = 1000
-n_hh = 2
+n_hh = 100
 n_capital = 1
 beta = 0.98
 
 # STEP 1: Parallelization options
 NUM_CPUS = 48
-NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 8
+NUM_CPUS_DRIVER = 7
+NUM_TRIALS = 4
 NUM_ROLLOUT = env_horizon * 1
 NUM_ENV_PW = 1
 # num_env_per_worker
@@ -66,7 +66,7 @@ if test == True:
     MAX_STEPS = 10 * batch_size
     exp_name = exp_label + env_label + "_test_" + date + algo
 else:
-    MAX_STEPS = 300 * batch_size
+    MAX_STEPS = 1000 * batch_size
     exp_name = exp_label + env_label + "_run_" + date + algo
 
 CHKPT_FREQ = 5
@@ -271,7 +271,48 @@ analysis = tune.run(
 best_checkpoint = analysis.best_checkpoint
 checkpoints.append(best_checkpoint)
 
+# Planner 2:
+# exp_label = "server_100hh_"
+# if test == True:
+#     MAX_STEPS = 10 * batch_size
+#     exp_name = exp_label + env_label + "_test_" + date + algo
+# else:
+#     MAX_STEPS = 1000 * batch_size
+#     exp_name = exp_label + env_label + "_run_" + date + algo
+
+# env_config["n_hh"] = 100
+# env_config_eval["n_hh"] = 100
+# env = Capital_planner_ma(env_config)
+# training_config["env_config"] = env_config
+# training_config["evaluation_config"]["env_config"] = env_config_eval
+# training_config["multiagent"] = {
+#         "policies": {
+#             "hh": (
+#                 None,
+#                 env.observation_space["hh_0"],
+#                 env.action_space["hh_0"],
+#                 {},
+#             ),
+#         },
+#         "policy_mapping_fn": (lambda agent_id: agent_id.split("_")[0]),
+#         "replay_mode": "independent",  # you can change to "lockstep".
+#     },
+# analysis = tune.run(
+#     algo,
+#     name=exp_name,
+#     config=training_config,
+#     stop=stop,
+#     checkpoint_freq=CHKPT_FREQ,
+#     checkpoint_at_end=True,
+#     metric="episode_reward_mean",
+#     mode="max",
+#     num_samples=1,
+#     # resources_per_trial={"gpu": 0.5},
+# )
+
 print(checkpoints)
+
+
 
 # print(list(best_progress.columns))
 

@@ -70,12 +70,12 @@ class Capital_planner_sa(gym.Env):
 
         # non-stochastic shocks for evaluation:
         if self.eval_mode == True:
-            self.shocks_eval_agg = {0: 0}
+            self.shocks_eval_agg = {0: 1}
             for t in range(1, self.horizon + 1):
                 self.shocks_eval_agg[t] = (
                     1
                     if (t // (1 / self.shock_agg_transition[0][1]) + 1) % 2 == 0
-                    else 0
+                    else 1
                 )
             self.shocks_eval_idtc = {0: [1 - (i % 2) for i in range(self.n_hh)]}
             for t in range(1, self.horizon + 1):
@@ -284,39 +284,39 @@ class Capital_planner_sa(gym.Env):
 
 # Manual test for debugging
 
-env = Capital_planner_sa(
-    env_config={
-        "horizon": 1000,
-        "n_hh": 2,
-        "n_capital": 1,
-        "eval_mode": False,
-        "max_savings": 0.6,
-        "bgt_penalty": 1,
-        "shock_idtc_values": [0.9, 1.1],
-        "shock_idtc_transition": [[0.9, 0.1], [0.1, 0.9]],
-        "shock_agg_values": [0.8, 1.2],
-        "shock_agg_transition": [[0.95, 0.05], [0.05, 0.95]],
-        "parameters": {"delta": 0.04, "alpha": 0.3, "phi": 0.5, "beta": 0.98},
-    }
-)
-
-env.reset()
-print("k_ss:", env.k_ss, "y_ss:", env.k_ss ** env.params["alpha"])
-print("obs:", env.obs_)
-
-# obs, rew, done, info = env.step(
-#     np.array([np.random.uniform(-1, 1) for i in range(env.n_actions)])
+# env = Capital_planner_sa(
+#     env_config={
+#         "horizon": 1000,
+#         "n_hh": 2,
+#         "n_capital": 1,
+#         "eval_mode": False,
+#         "max_savings": 0.6,
+#         "bgt_penalty": 1,
+#         "shock_idtc_values": [0.9, 1.1],
+#         "shock_idtc_transition": [[0.9, 0.1], [0.1, 0.9]],
+#         "shock_agg_values": [0.8, 1.2],
+#         "shock_agg_transition": [[0.95, 0.05], [0.05, 0.95]],
+#         "parameters": {"delta": 0.04, "alpha": 0.3, "phi": 0.5, "beta": 0.98},
+#     }
 # )
 
-# print("obs", obs)
-# print("rew", rew)
-# print("info", info)
+# env.reset()
+# print("k_ss:", env.k_ss, "y_ss:", env.k_ss ** env.params["alpha"])
+# print("obs:", env.obs_)
 
-for i in range(100):
-    obs, rew, done, info = env.step(
-        np.array([np.random.uniform(-1, 1) for i in range(env.n_actions)])
-    )
+# # obs, rew, done, info = env.step(
+# #     np.array([np.random.uniform(-1, 1) for i in range(env.n_actions)])
+# # )
 
-    print("obs", obs)
+# # print("obs", obs)
+# # print("rew", rew)
+# # print("info", info)
+
+# for i in range(100):
+#     obs, rew, done, info = env.step(
+#         np.array([np.random.uniform(-1, 1) for i in range(env.n_actions)])
+#     )
+
+#     print("obs", obs)
     # print("rew", rew)
     # print("info", info)
