@@ -414,48 +414,48 @@ class Capital_planner_ma(MultiAgentEnv):
 
 # Manual test for debugging
 
-env = Capital_planner_ma(
-    env_config={
-        "horizon": 200,
-        "n_hh": 2,
-        "n_capital": 2,
-        "eval_mode": False,
-        "max_savings": 0.6,
-        "bgt_penalty": 100,
-        "shock_idtc_values": [0.9, 1.1],
-        "shock_idtc_transition": [[0.9, 0.1], [0.1, 0.9]],
-        "shock_agg_values": [0.8, 1.2],
-        "shock_agg_transition": [[0.95, 0.05], [0.05, 0.95]],
-        "parameters": {"delta": 0.04, "alpha": 0.33, "phi": 0.5, "beta": 0.98},
-    },
-)
-
-env.reset()
-print("k_ss:", env.k_ss, "y_ss:", env.k_ss ** env.params["alpha"])
-print("obs", env.obs_)
-# print("obs:", env.obs_)
-
-# obs, rew, done, info = env.step(
-#     {
-#         f"hh_{i}": np.array([np.random.uniform(-1, 1) for i in range(env.n_capital)])
-#         for i in range(env.n_actions)
-#     }
+# env = Capital_planner_ma(
+#     env_config={
+#         "horizon": 200,
+#         "n_hh": 2,
+#         "n_capital": 2,
+#         "eval_mode": False,
+#         "max_savings": 0.6,
+#         "bgt_penalty": 100,
+#         "shock_idtc_values": [0.9, 1.1],
+#         "shock_idtc_transition": [[0.9, 0.1], [0.1, 0.9]],
+#         "shock_agg_values": [0.8, 1.2],
+#         "shock_agg_transition": [[0.95, 0.05], [0.05, 0.95]],
+#         "parameters": {"delta": 0.04, "alpha": 0.33, "phi": 0.5, "beta": 0.98},
+#     },
 # )
 
-# print("obs", obs)
-# print("rew", rew)
-# print("info", info)
+# env.reset()
+# print("k_ss:", env.k_ss, "y_ss:", env.k_ss ** env.params["alpha"])
+# print("obs", env.obs_)
+# # print("obs:", env.obs_)
 
-for i in range(20):
-    obs, rew, done, info = env.step(
-        {
-            f"hh_{i}": np.array(
-                [np.random.uniform(-1, 1) for i in range(env.n_capital)]
-            )
-            for i in range(env.n_hh)
-        }
-    )
+# # obs, rew, done, info = env.step(
+# #     {
+# #         f"hh_{i}": np.array([np.random.uniform(-1, 1) for i in range(env.n_capital)])
+# #         for i in range(env.n_actions)
+# #     }
+# # )
 
-    print("obs", obs)
-    # print("rew", rew)
-    # print("info", info)
+# # print("obs", obs)
+# # print("rew", rew)
+# # print("info", info)
+
+# for i in range(20):
+#     obs, rew, done, info = env.step(
+#         {
+#             f"hh_{i}": np.array(
+#                 [np.random.uniform(-1, 1) for i in range(env.n_capital)]
+#             )
+#             for i in range(env.n_hh)
+#         }
+#     )
+
+#     print("obs", obs)
+#     # print("rew", rew)
+#     # print("info", info)

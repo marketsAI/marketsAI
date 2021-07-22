@@ -27,22 +27,22 @@ import logging
 
 # STEP 0: Global configs
 date = "July21_"
-test = True
+test = False
 plot_progress = False
 algo = "PPO"
-env_label = "capital_planner_sa"
-exp_label = "native_2hh_"
+env_label = "server_planner_sa"
+exp_label = "server_100hh_bigbatch"
 register_env(env_label, Capital_planner_sa)
 
 # Macro parameters
 env_horizon = 1000
-n_hh = 2
+n_hh = 100
 n_capital = 1
 beta = 0.98
 
 # STEP 1: Parallelization options
-NUM_CPUS = 6
-NUM_CPUS_DRIVER = 1
+NUM_CPUS = 48
+NUM_CPUS_DRIVER = 8
 NUM_TRIALS = 1
 NUM_ROLLOUT = env_horizon * 1
 NUM_ENV_PW = 1
@@ -66,10 +66,10 @@ init(
 
 # STEP 2: Experiment configuratios
 if test == True:
-    MAX_STEPS = 50 * batch_size
+    MAX_STEPS = 10 * batch_size
     exp_name = exp_label + env_label + "_test_" + date + algo
 else:
-    MAX_STEPS = 300 * batch_size
+    MAX_STEPS = 2000 * batch_size
     exp_name = exp_label + env_label + "_run_" + date + algo
 
 
