@@ -26,24 +26,24 @@ import seaborn as sn
 import logging
 
 # STEP 0: Global configs
-date = "July21_"
+date = "July22_"
 test = False
 plot_progress = False
 algo = "PPO"
 env_label = "server_planner_sa"
-exp_label = "server_100hh_bigbatch"
+exp_label = "server_1hh_"
 register_env(env_label, Capital_planner_sa)
 
 # Macro parameters
 env_horizon = 1000
-n_hh = 100
+n_hh = 1
 n_capital = 1
 beta = 0.98
 
 # STEP 1: Parallelization options
 NUM_CPUS = 48
-NUM_CPUS_DRIVER = 8
-NUM_TRIALS = 1
+NUM_CPUS_DRIVER = 1
+NUM_TRIALS = 8
 NUM_ROLLOUT = env_horizon * 1
 NUM_ENV_PW = 1
 # num_env_per_worker
@@ -69,7 +69,7 @@ if test == True:
     MAX_STEPS = 10 * batch_size
     exp_name = exp_label + env_label + "_test_" + date + algo
 else:
-    MAX_STEPS = 2000 * batch_size
+    MAX_STEPS = 300 * batch_size
     exp_name = exp_label + env_label + "_run_" + date + algo
 
 

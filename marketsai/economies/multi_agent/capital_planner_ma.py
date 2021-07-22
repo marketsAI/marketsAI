@@ -89,12 +89,12 @@ class Capital_planner_ma(MultiAgentEnv):
 
         # non-stochastic shocks for evaluation (shocks change at their expected duration):
         if self.eval_mode == True:
-            self.shocks_eval_agg = {0: 0}
+            self.shocks_eval_agg = {0: 1}
             for t in range(1, self.horizon + 1):
                 self.shocks_eval_agg[t] = (
                     1
                     if (t // (1 / self.shock_agg_transition[0][1]) + 1) % 2 == 0
-                    else 0
+                    else 1
                 )
             self.shocks_eval_idtc = {0: [1 - (i % 2) for i in range(self.n_hh)]}
             for t in range(1, self.horizon + 1):
