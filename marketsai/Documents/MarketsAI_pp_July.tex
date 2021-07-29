@@ -66,7 +66,7 @@
 \author{Matias Covarrubias}
 \maketitle
 \begin{abstract}
-Can artificial intelligent (AI) algorithms learn optimal intertemporal behavior without knowing any mathematical details of the economy beforehand?  How should we specify economies and markets so as to make them easy to learn? In this paper, I apply Deep Reinforcement Learning (Deep RL), the current front-runner in the design of AI agents, to macroeconomic problems. In the context of an investment under uncertainty model, I show that Deep RL agents can learn the rational expectations solution and I suggest design choices that aid such learning. Then, by manipulating our baseline framework I highlight three topics in which this technology can be useful: high dimensional problems, incomplete information problems and equilibrium selection in models with multiple equilibrium.
+Can artificial intelligent (AI) algorithms learn optimal intertemporal behavior without knowing any mathematical details of the economy beforehand?  How should we specify economies and markets so as to make them easy to learn? In this paper, I apply Deep Reinforcement Learning (Deep RL), the current front-runner in the design of AI agents, to macroeconomic problems. In the context of an investment under uncertainty model with heterogenous agents, I show that Deep RL agents can learn the rational expectations solution and I suggest design choices that aid such learning. Then, by manipulating our baseline framework I highlight three topics in which this technology can be useful: high dimensional problems, incomplete information problems and equilibrium selection in models with multiple equilibrium.
 \end{abstract}
 
 \newpage 
@@ -256,8 +256,42 @@ efficiency. NOTES: WHY?
 
 \subsection{State of the Art Algorithms}
 
-	\item Explain PPO by \citet{schulman2017}.
+	\item Before, we gobtaingin a policy by choosing the action that maximizes a parametrized action-value functions. For policy gradient methods, we parametrized the policy directly:
+	
+	\begin{align*}
+	\pi(a,s) = P(a| s, \theta)
+	\end{align*}
+	
+	\item Three reason to consider Policy based methods:
+	
+	\begin{itemize}
+		\item There may situation in which storing the value function may be hard but the policy may be simple.
+		\item Another reson why it may be better to use policy gradient is that they have better convergence properties. Value function methods sometimes go wild. 
+		\item So there are cases in which the policy may be more compact. Another big one is that these methods work better at continuous or large state spaces, since they circumvent the need to calculate the max over Q. That may be very intensive. This last one may be the bigger one.
+		\item We can estimate stochastic policies. 
+	\end{itemize}  
+
+	\item Disadvantages:
+	\begin{itemize}
+	\item  BUT, they are less sample efficient. Maximizing the Q-value is very aggressive, you are trying to summarilze all your current info. 
+	\item They typically converge to local rather than global maximum.
+	\end{itemize}
+	\item Proximal Policy Optimization \citet{schulman2017} is a policy gradient algorithms that has been used in many of the recent success cases (cite all). The first step is to comput an estimator of the policy gradient:
+	
+	\begin{align*}
+	\hat{g} = \hat{\E}_t\left[ \Delta_\theta \log \pi_\theta(a_t | s_t) \hat{A}_t \right]
+	\end{align*}
+	
+	where $\hat{\E}_t$ is the empirical average over a finite batch of transitions. 
+		
+	\item We transform this estimate in a loss function so we can apply grandient ascent. The loss function is :
+	
+	\begin{align*}
+	L^{PG}(\theta) =  \hat{\E}_t\left[ \log \pi_\theta(a_t | s_t) \hat{A}_t \right]
+	\end{align*}
 \end{itemize}
+
+
 
 \subsection{Multi-Agent Reinforcement Learning}
 

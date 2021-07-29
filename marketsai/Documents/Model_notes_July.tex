@@ -306,6 +306,18 @@ left=0.75in,right=0.75in,paperheight=11.0in,textheight=9.5in,centering]{geometry
 
 \begin{itemize}
 	
+	\item In order to formulate the planner's problem, we assume that all the resources that are committed by households for investment on capital good $j$ are actually employed in production, and then total production of capital good $j$ is distributed among housholds according to their contribution. In this case, total production is defined implicitly by:
+	
+	$$\sum_{i=1}^{N^h} s_{i,j,t} Y_{i,t} = \frac{\phi}{2} I_{j,t}^2 \quad \text{for } j \in [1,...,N^h]$$
+	
+	Solving for $I_{j,t}$ we get:
+	
+	$$I_{j,t} =  \sqrt{\frac{2}{\phi} \sum_{i=1}^{N^h} s_{i,j,t} Y_{i,t}}$$
+	
+	We can then distribute it among households according to
+	
+	$$I_{i,j,t} = \frac{s_{i,j,t}Y_{i,t}}{ \sum_{i=1}^{N^h} s_{i,j,t} Y_{i,t}}  I_{j,t} =   \frac{s_{i,j,t}Y_{i,t}}{\sqrt{\frac{\phi}{2} \sum_{i=1}^{N^h} s_{i,j,t} Y_{i,t}}}$$
+	
 	\item The recursive formulation of the problem is:
 	
 	
@@ -316,7 +328,7 @@ left=0.75in,right=0.75in,paperheight=11.0in,textheight=9.5in,centering]{geometry
 	&\qquad
 	Y_{i,t}=Z^h_{i,t} \Pi_{j=1}^{N^c} K_{i,j,t}^{\alpha/N^c}  \quad \text{for } i \in [1,...,N^h]\\
 	&\qquad
-	K_{i,j,t+1} \leq (1-\delta) K_{i,j,t} + \sqrt{\frac{2}{\phi} s_{i,j,t} Y_{i,t}}  \quad \text{for } i \in [1,...,N^h] \text{ and } j \in [1,...,N^c]
+	K_{i,j,t+1} \leq (1-\delta) K_{i,j,t} + \frac{s_{i,,j,t}Y_{i,j,t}}{\sqrt{\frac{\phi}{2} \sum_{i=1}^{N^h} s_{i,j,t} Y_{i,j,t}}}  \quad \text{for } i \in [1,...,N^h] \text{ and } j \in [1,...,N^c]
 	\end{align*}
 	
 	
@@ -324,7 +336,7 @@ left=0.75in,right=0.75in,paperheight=11.0in,textheight=9.5in,centering]{geometry
 	
 	\begin{align*}
 	\mathcal{L}_{t} &= \E_t \sum_{r=0}^{\infty}\beta^r  \left( \sum_{i=1}^{N^h} U\left( (1-\sum_{j=1}^{N^c} s_{i,j,t+r})Z^h_{i,t+r} \Pi_{j=1}^{N^c} K_{i,j,t+r}^{\alpha/N^c}  \right) + \right. \\
-& 	\left. \sum_{i=1}^{N^h} \sum_{j=1}^{N^c}  Q_{i,j,t+r} \left[(1-\delta) K_{i,j,t+r} + \sqrt{\frac{2}{\phi} s_{i,j,t+r} Z^h_{i,t+r} \Pi_{j=1}^{N^c} K_{i,j,t+r}^{\alpha/N^c}}-K_{i,j,t+r+1}\right] \right)
+& 	\left. \sum_{i=1}^{N^h} \sum_{j=1}^{N^c}  Q_{i,j,t+r} \left[(1-\delta) K_{i,j,t+r} + \frac{s_{i,,j,t+r}Y_{i,j,t+r}}{\sqrt{\frac{\phi}{2} \sum_{i=1}^{N^h} s_{i,j,t+r} Y_{i,j,t+r}}}-K_{i,j,t+r+1}\right] \right)
 	\end{align*}
 	
 	\item The first order conditions are:
@@ -337,7 +349,6 @@ left=0.75in,right=0.75in,paperheight=11.0in,textheight=9.5in,centering]{geometry
 	
 	{\color{red} To do: 
 		\begin{itemize}
-			\item Change proble to overal cost.  b
 			\item Simplify FOC for $K$. you can use x/sqrt(x) o nthe right side and qrite in terms of investment.
 			\item Calculate steady state system of equations. 
 			\item Order the rest of the doc.
@@ -350,7 +361,38 @@ left=0.75in,right=0.75in,paperheight=11.0in,textheight=9.5in,centering]{geometry
 %	& \left[K_{t+1}\right] && Q_t = \frac{\beta \alpha}{K_{t+1}} +\beta Q_{t+1} \left[(1-\delta) + \frac{s_{t+1} \alpha K_{t+1}^{\alpha-1}}{\sqrt{2 s_{t+1} K^\alpha_{t+1}}} \right]  
 %	\end{align}
 %	
+
+ \item In the case of $N^h=1$ and $N^c=1$, the recursive formulation is: 
+ 
+ 	
+ \begin{align*}
+ V_t\left(K_t, Z_t\right) = &\max_{s_t,K_{t+1}} U(C_t) + \beta \E_t V_{t+1}(K_{t+1}, Z_{t+1}) \qquad \text{s.t.}\\
+ &\qquad
+ C_t = Y_t(1-s_t)\\
+ &\qquad
+ Y_t = Z_t K_t^\alpha\\
+ &\qquad
+ K_{t+1} \leq (1-\delta) K_t + \sqrt{\frac{2}{\phi} s_t Y_t}
+ \end{align*}
+ 
+ \item The Euler conditions for $s_{t}$ and $K_{t+1}$ can be condensed into:
+ 
+ \begin{align*}
+ \phi I_{t} = \E_t \left[ \beta \frac{\beta U'(C_{t+1})}{U'(C_t)} \left(\alpha \frac{Y_{t+1}}{K_{t+1}} + \phi I_{t+1} (1-\delta) \right) \right]
+ \end{align*}
+ 
+ where:
+ 
+ \begin{align*}
+ I_t & = \sqrt{\frac{2}{\phi} s_t Y_{t}} \\
+ Y_t & = Z_t K^{\alpha}_t \\
+ K_{t+1} & = (1-\delta) K_t + \sqrt{\frac{2}{\phi} s_t Y_t}
+ \end{align*} 
+ 
+ \item 
 \end{itemize}
+
+	
 	\subsection{Steady State}
 	\begin{itemize}	
 	\item In the steady state, we have that $\sqrt{2 s K^\alpha} = \delta K$ and so $s K^{\alpha-1} =\delta^2 K/2$ .
