@@ -73,6 +73,14 @@ Can artificial intelligent (AI) algorithms learn optimal intertemporal behavior 
 \section{Introduction}
 
 \begin{itemize}
+		\item {\color{red} To do: 
+		
+		\begin{itemize}
+			\item Present the RL framework as having three distict characteristics: model-free, sample or simulation based, and using deep neural nets.
+			\item Explain why neural nets help based on the notes you saw. Be fast about it.
+			\item Reintoriduce as a "learning in macro" paper.
+	\end{itemize}}
+
 	\item Paragraph 1 (reframe) :Can artificial intelligent (AI) algorithms learn optimal intertemporal behavior without knowing any mathematical details of the economy beforehand?  How should we specify economies and markets so as to make them easy to learn? In this paper, I apply Deep Reinforcement Learning (Deep RL), the current front-runner in the design of AI agents, to macroeconomic problems. In the context of an investment under uncertainty model, I show that Deep RL agents can learn the rational expectations solution and I suggest design choices that aid such learning. Then, by manipulating our baseline framework I highlight three topics in which this technology can be useful: high dimensional problems, incomplete information problems and equilibrium selection in models with multiple equilibrium.\medskip
 	
 	\item Paragraph 2: Explain model free RL. \medskip 
@@ -123,6 +131,13 @@ Can artificial intelligent (AI) algorithms learn optimal intertemporal behavior 
 	
 	\begin{itemize}
 	
+	\item {\color{red} To do: 
+	
+\begin{itemize}
+	\item Re-sell the model as a version of the stochastic growth model with heterogeneous agents. 
+	\item Fill exercisez. Re-wrtie the role that each plays. For exercise 2, two roles: multi-agent and strategic behavior.
+	\item Write results very minimallisticaly. 
+\end{itemize}}
 	\item My criteria for choosing a baseline framework are the following:
 	
 	\begin{itemize}
@@ -136,7 +151,7 @@ Can artificial intelligent (AI) algorithms learn optimal intertemporal behavior 
 	\item Consistent with this criteria, I present a model of investment under uncertainty in which we focus on the purchase market for capital goods. There are a discrete number of buyers (household who produce, consume and invest) and sellers (each producing a different type of capital good). More precisely:
 	
 
-	\item $N^h$ households indexed by  choose how much to consume and how much to invest in order to maximize the discounted intertemporal utility..\medskip
+	\item $N^h$ households indexed by  choose how much to consume and how much to invest in order to maximize the discounted intertemporal utility.\medskip
 	
 	\item The final good is produced using $N^c$ capital goods. All capital goods are bundled with a Cobb-Douglas aggregation and the production function have decreasing returns to scale over that bundle. The  total factor productivity of each households follows a markov chain.   \medskip
 	
@@ -167,8 +182,17 @@ Can artificial intelligent (AI) algorithms learn optimal intertemporal behavior 
 \end{itemize}
 	
 	\subsection{Related Literature}
-	
+
+
 	\begin{itemize}
+			
+		\item {\color{red} To do: 
+			
+			\begin{itemize}
+				\item Fill with bullet-points. 
+				\item Put paper on macro and machine learning in perspective. (just bullet points)
+		\end{itemize}}
+	
 		\item paragraph 1: Learning in Macroeconomics. \medskip
 		
 		\item paragraph 2: Reinforcement Learning in economics. \medskip
@@ -190,7 +214,17 @@ Can artificial intelligent (AI) algorithms learn optimal intertemporal behavior 
 
 \section{A Primer on Reinforcement Learning}
 
+
+
+
 \begin{itemize}
+	\item {\color{red} To do: 
+	
+	\begin{itemize}
+		\item 1 paragraph defining markov problems very minimallistically. 
+		\item Just small phrases with the flow of the arguments.
+		\item Explain soft -actor critic algorithms.
+\end{itemize}}
 \item Define Markov Decision Problems.
 \item Example 1: Monopolist problem.
 \item Algorithm: Q-learning
@@ -316,6 +350,13 @@ worker, which updates the parameters of the training agent. The received data ar
 
 
 \section{Baseline Framework}
+
+ {\color{red} To do: 
+	
+	\begin{itemize}
+		\item Divide between main text and appendix. Focus only on what's important. 
+\end{itemize}}
+
 
 \begin{itemize}
 	\item $N^h$ households indexed by $i$ choose how much to consume and how much to invest in order to maximize $\sum_{t=0}^{\infty} \beta^t U(C_{i,t})$.\medskip
@@ -545,6 +586,14 @@ worker, which updates the parameters of the training agent. The received data ar
 \end{itemize}
 
 \section{Applying Reinforcement Learning}
+
+{\color{red} To do: 
+	
+	\begin{itemize}
+		\item Write exercises in RL form. What changes about the functions you always talk about?  
+		\item Write the two implementations of the planner. 
+		\item Write results
+\end{itemize}}
 
 
 \subsection{Learning by a Planner}
