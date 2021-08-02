@@ -1,0 +1,100 @@
+% Parameters
+parameters beta sigma alpha delta phi;
+beta  = 0.98;		% discount factor
+sigma = 1.0;		% CRRA coefficient
+alpha = 0.3;		% capital share
+delta = 0.04;		% depreciation rate
+phi = 0.5;          % adj. cost parameter
+
+% Exogenous States
+var_shock z_agg z_ind_1 z_ind_2;
+shock_num = 8;
+z_agg_low = 0.8; z_agg_high = 1.2;
+z_ind_low = 0.9; z_ind_high = 1.1;
+z_agg = [z_agg_low,z_agg_low,z_agg_low,z_agg_low, z_agg_high,z_agg_high, z_agg_high,z_agg_high];
+z_ind_1 = [z_ind_low, z_ind_low, z_ind_high, z_ind_high,z_ind_low, z_ind_low, z_ind_high, z_ind_high];
+z_ind_2 = [z_ind_low, z_ind_high,z_ind_low, z_ind_high,z_ind_low, z_ind_high, z_ind_low, z_ind_high];
+
+Pr_agg_ll = 0.95;  Pr_agg_hh  = 0.95;
+Pr_ind_ll = 0.9;  Pr_ind_hh  = 0.9;
+shock_trans_agg = [
+  Pr_agg_ll, 1-Pr_agg_ll
+  1-Pr_agg_hh, Pr_agg_hh
+  ];
+shock_trans_ind = [
+  Pr_ind_ll, 1-Pr_ind_ll
+  1-Pr_ind_hh, Pr_ind_hh
+  ];
+shock_trans = kron(shock_trans_agg, shock_trans_ind, shock_trans_ind);
+
+% Endogenous States
+var_state K_1 K_2 ;
+Kss  = (alpha * beta / (phi*delta*2*(1-beta*(1-delta))))^(1/(2-alpha));
+KPts = 101;
+KMin = Kss*0.5;
+KMax = Kss*1.5;
+K_1    = linspace(KMin,KMax,KPts);
+K_2    = linspace(KMin,KMax,KPts);
+
+% Interp
+var_interp s_1_interp s_2_interp;
+initial s_1_interp 0.15;
+initial s_2_interp 0.15;
+% Time iterations update
+s_1_interp = s_1;
+s_2_interp = s_2;
+
+% Endogenous variables as unknowns of equations
+var_policy s_1 s_2 K_1_next K_2_next;
+inbound s_1       0 1;
+inbound s_2       0 1;
+inbound K_1_next  0 ((2/phi)*z_agg.*z_ind_1.*K_1.^alpha).^(1/2)+(1-delta)*K_1;
+inbound K_2_next  0 ((2/phi)*z_agg.*z_ind_2.*K_2.^alpha).^(1/2)+(1-delta)*K_2;
+
+
+% Other endogenous variables
+var_aux w;
+
+model;
+  % Budget constraints
+  c_1 = (1-s) * z_agg*z_ind_1 * K_1^alpha;
+  c_1 = (1-s) * z_agg*z_ind_1 * K_1^alpha;  
+  u_1_prime = c_1^(-sigma);
+  u_2_prime = c_2^(-sigma);
+  %change this
+  i = ((2/phi) * s * z_agg*z_ind * K^alpha)^(1/2);
+  
+  % Evaluate the interpolation object to get future consumption
+  s_1_future' = s_1_interp'(K_1_next,k_2_next);
+  s_2_future' = s_2_interp'(K_1_next,k_2_next);
+  c_1_future' = (1-s_1_future') * z_agg'*z_ind_1' * K_1_next^alpha;
+  c_2_future' = (1-s_2_future') * z_agg'*z_ind_2' * K_2_next^alpha;
+  % change this
+  i_next' = ((2/phi) * s_future' * z_agg'*z_ind' * K_next^alpha)^(1/2);
+  kret_1_next' = z_agg'*z_ind_1'*alpha*K_1_next^(alpha-1) + phi * i_next' * (1-delta);
+  kret_2_next' = z_agg'*z_ind_2'*alpha*K_2_next^(alpha-1) + phi * i_next' * (1-delta);
+  u_1_prime_future' = c_1_future'^(-sigma);
+  u_2_prime_future' = c_2_future'^(-sigma);
+  
+  % Calculate residual of the equation
+  euler_residual_1 = phi*i_1  - beta*GDSGE_EXPECT{u_prime_future'*kret_next'}/u_prime;
+  market_clear = i + (1-delta)*K - K_next;
+   
+  
+  % Calcualte other endogenous variables
+  w = z_agg*z_ind*(1-alpha)*K^alpha;
+  
+  equations;
+    euler_residual;
+    market_clear;
+  end;
+end;
+
+simulate;
+  num_periods = 10000;
+  num_samples = 6;
+  initial K Kss;
+  initial shock 1;
+  var_simu s K w;
+  K' = K_next;
+end;
