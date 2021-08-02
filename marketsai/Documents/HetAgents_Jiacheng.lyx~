@@ -175,7 +175,6 @@ create a run_ script to run a rl game.
 I want to compare the solutions with PPO and with SAC algorithms.
 \end_layout
 
-\end_deeper
 \begin_layout Itemize
 create a single-agent economy which is equivalent to the stochastic growth
  model solved in GDSGE.
