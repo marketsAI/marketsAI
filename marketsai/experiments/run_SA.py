@@ -131,12 +131,12 @@ class MyCallbacks(DefaultCallbacks):
 common_config = {
     "callbacks": MyCallbacks,
     # ENVIRONMENT
-    "gamma": 0.98,
-    "env": "gm",
-    "env_config": {"horizon": env_horizon},
-    "horizon": env_horizon,
+    "gamma": 0.98, #discount rate
+    "env": "gm", #environment
+    "env_config": {"horizon": env_horizon}, # specify configurations of th eenvironment
+    "horizon": env_horizon, #horizon of the game
     # MODEL
-    "framework": "torch",
+    "framework": "torch", # weather to use pytorch or tensorflow
     # "model": tune.grid_search([{"use_lstm": True}, {"use_lstm": False}]),
     # TRAINING CONFIG
     "num_workers": n_workers,

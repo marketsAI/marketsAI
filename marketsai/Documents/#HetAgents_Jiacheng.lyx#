@@ -159,83 +159,47 @@ Heterogenous Agents - A machine learning perspective
 \end_layout
 
 \begin_layout Standard
-We will use the following programs:
+Tasks:
 \end_layout
 
 \begin_layout Itemize
-Python for Reinforcement Learning
+run stochastic growth model with GDSGE.
 \end_layout
 
 \begin_deeper
 \begin_layout Itemize
-Ray Rllib 
+make sure you understand the economic structure of the problem.
 \end_layout
 
 \begin_layout Itemize
-Numpy, matplotlib, panda's, etc...
+calculate optimal policies
 \end_layout
 
 \begin_layout Itemize
-Visual Studio Code as python interface.
- 
+write the economic problem and the graphs of the solution here in this file.
 \end_layout
 
 \end_deeper
 \begin_layout Itemize
-Matlab for traditional programming
+create a run_ script to run a rl game.
 \end_layout
 
 \begin_deeper
 \begin_layout Itemize
-GDSGE
-\end_layout
-
-\begin_layout Itemize
-ploting
+I want to compare the solutions with PPO and with SAC algorithms.
 \end_layout
 
 \end_deeper
 \begin_layout Itemize
-Lyx for text processing.
- 
+create a single-agent economy which is equivalent to the stochastic growth
+ model solved in GDSGE.
 \end_layout
 
+\begin_deeper
 \begin_layout Itemize
-Github (with Matias) and Dropbox (with Thomas) for collaborative environment.
- 
+Do they give the same solution? Do they achieve the same discounted utility?
 \end_layout
 
-\begin_layout Standard
-The task is to write a document where we explain and solve Krussel and Smith
- (1998) both with GDSGE and with Reinforcement Learning.
-\end_layout
-
-\begin_layout Standard
-What things are key to understand in Python?
-\end_layout
-
-\begin_layout Itemize
-Lists and list comprehensions.
- 
-\end_layout
-
-\begin_layout Itemize
-Object Oriented Programming (learn how to create and use classes).
-\end_layout
-
-\begin_layout Itemize
-Create functions.
-\end_layout
-
-\begin_layout Itemize
-Ploting with matplotlib, seaborn.
- 
-\end_layout
-
-\begin_layout Itemize
-for loops, if's etc.
- 
-\end_layout
-
+\end_deeper
 \end_body
 \end_document
