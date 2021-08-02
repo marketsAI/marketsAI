@@ -70,12 +70,12 @@ class Capital_planner_sa(gym.Env):
 
         # non-stochastic shocks for evaluation:
         if self.eval_mode == True:
-            self.shocks_eval_agg = {0: 1}
+            self.shocks_eval_agg = {0: 0}
             for t in range(1, self.horizon + 1):
                 self.shocks_eval_agg[t] = (
                     1
                     if (t // (1 / self.shock_agg_transition[0][1]) + 1) % 2 == 0
-                    else 1
+                    else 0
                 )
             self.shocks_eval_idtc = {0: [1 - (i % 2) for i in range(self.n_hh)]}
             for t in range(1, self.horizon + 1):
@@ -269,7 +269,8 @@ class Capital_planner_sa(gym.Env):
         # ADDITIONAL INFO
         info = {
             "savings": s_ij,
-            "reward": rew,
+            "investment": inv_ij,
+            "reward": utility_i,
             "income": y_i,
             "consumption": c_i,
             "bgt_penalty": np.sum(bgt_penalty_ind),
@@ -287,7 +288,7 @@ class Capital_planner_sa(gym.Env):
 # env = Capital_planner_sa(
 #     env_config={
 #         "horizon": 1000,
-#         "n_hh": 2,
+#         "n_hh": 1,
 #         "n_capital": 1,
 #         "eval_mode": False,
 #         "max_savings": 0.6,
@@ -318,5 +319,5 @@ class Capital_planner_sa(gym.Env):
 #     )
 
 #     print("obs", obs)
-    # print("rew", rew)
-    # print("info", info)
+#     print("rew", rew)
+#     print("info", info)

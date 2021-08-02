@@ -26,26 +26,26 @@ import seaborn as sn
 import logging
 
 # STEP 0: Global configs
-date = "July22_"
+date = "July31_"
 test = False
 plot_progress = False
 algo = "PPO"
 env_label = "capital_planner_sa"
-exp_label = "server_multi_"
+exp_label = "native_1hh_modelhyp"
 register_env(env_label, Capital_planner_sa)
 
 # Macro parameters
-env_horizon = 1000
-n_hh = 2
+env_horizon = 500
+n_hh = 1
 n_capital = 1
 beta = 0.98
 
 # STEP 1: Parallelization options
-NUM_CPUS = 48
+NUM_CPUS = 12
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 8
+NUM_TRIALS = 1
 NUM_ROLLOUT = env_horizon * 1
-NUM_ENV_PW = 1
+NUM_ENV_PW = 10
 # num_env_per_worker
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
@@ -54,7 +54,7 @@ NUM_MINI_BATCH = NUM_CPUS_DRIVER
 n_workers = (NUM_CPUS - NUM_TRIALS * NUM_CPUS_DRIVER) // NUM_TRIALS
 batch_size = NUM_ROLLOUT * (max(n_workers, 1)) * NUM_ENV_PW * BATCH_ROLLOUT
 
-CHKPT_FREQ = 5
+CHKPT_FREQ = 20
 
 print(n_workers, batch_size)
 shutdown()
@@ -66,10 +66,10 @@ init(
 
 # STEP 2: Experiment configuratios
 if test == True:
-    MAX_STEPS = 10 * batch_size
+    MAX_STEPS = 2 * batch_size
     exp_name = exp_label + env_label + "_test_" + date + algo
 else:
-    MAX_STEPS = 300 * batch_size
+    MAX_STEPS = 1000 * batch_size
     exp_name = exp_label + env_label + "_run_" + date + algo
 
 
@@ -144,7 +144,7 @@ class MyCallbacks(DefaultCallbacks):
 
 
 env_config = {
-    "horizon": 1000,
+    "horizon": env_horizon,
     "n_hh": n_hh,
     "n_capital": n_capital,
     "eval_mode": False,
@@ -159,6 +159,7 @@ env_config = {
 
 env_config_eval = env_config.copy()
 env_config_eval["eval_mode"] = True
+env_config_eval["horizon"] = 1000
 
 common_config = {
     "callbacks": MyCallbacks,
@@ -169,7 +170,11 @@ common_config = {
     "horizon": env_horizon,
     # MODEL
     "framework": "torch",
-    # "model": tune.grid_search([{"use_lstm": True}, {"use_lstm": False}]),
+    # "model": tune.grid_search(
+    #     [
+    #         {"fcnet_hiddens": [256, 256, 256]},
+    #     ]
+    # ),
     # TRAINING CONFIG
     "num_workers": n_workers,
     "create_env_on_driver": False,
@@ -188,16 +193,16 @@ common_config = {
 }
 
 ppo_config = {
-    # "lr": tune.choice([0.0001, 0.00005, 0.00001]),
+    # "lr": tune.choice([0.000005]),
     # "lr_schedule": [[0, 0.00005], [MAX_STEPS * 1 / 2, 0.00001]],
     "sgd_minibatch_size": batch_size // NUM_MINI_BATCH,
     "num_sgd_iter": 1,
     "batch_mode": "complete_episodes",
-    "lambda": 0.98,
-    "entropy_coeff": 0,
-    "kl_coeff": 0.2,
+    "lambda": 0.99,
+    # "entropy_coeff": 0,
+    # "kl_coeff": 0.2,
     # "vf_loss_coeff": 0.5,
-    # "vf_clip_param": tune.choice([5, 10, 20]),
+    # "vf_clip_param": tune.choice([10, 20, 30]),
     # "entropy_coeff_schedule": [[0, 0.01], [5120 * 1000, 0]],
     "clip_param": 0.2,
     "clip_actions": True,
@@ -226,7 +231,7 @@ analysis = tune.run(
     checkpoint_at_end=True,
     metric="episode_reward_mean",
     mode="max",
-    num_samples=NUM_TRIALS,
+    num_samples=1,
     # resources_per_trial={"gpu": 0.5},
 )
 
@@ -281,8 +286,6 @@ best_checkpoint = analysis.best_checkpoint
 checkpoints.append(best_checkpoint)
 
 # Planner 4:
-
-
 
 
 # env_config["n_hh"] = 10

@@ -1,0 +1,94 @@
+\begin{thebibliography}{13}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Asker et~al.(2021)Asker, Fershtman, and Pakes]{asker2021}
+John Asker, Chaim Fershtman, and Ariel Pakes.
+\newblock Artificial intelligence and pricing: The impact of algorithm design.
+\newblock Technical report, National Bureau of Economic Research, 2021.
+
+\bibitem[Baker et~al.(2019)Baker, Kanitscheider, Markov, Wu, Powell, McGrew,
+  and Mordatch]{baker2019}
+Bowen Baker, Ingmar Kanitscheider, Todor Markov, Yi~Wu, Glenn Powell, Bob
+  McGrew, and Igor Mordatch.
+\newblock Emergent tool use from multi-agent autocurricula.
+\newblock \emph{arXiv preprint arXiv:1909.07528}, 2019.
+
+\bibitem[Berner et~al.(2019)Berner, Brockman, Chan, Cheung, D{\k{e}}biak,
+  Dennison, Farhi, Fischer, Hashme, Hesse, et~al.]{berner2019}
+Christopher Berner, Greg Brockman, Brooke Chan, Vicki Cheung, Przemys{\l}aw
+  D{\k{e}}biak, Christy Dennison, David Farhi, Quirin Fischer, Shariq Hashme,
+  Chris Hesse, et~al.
+\newblock Dota 2 with large scale deep reinforcement learning.
+\newblock \emph{arXiv preprint arXiv:1912.06680}, 2019.
+
+\bibitem[Bertsekas and Yu(2012)]{bertsekas2012}
+Dimitri~P Bertsekas and Huizhen Yu.
+\newblock Q-learning and enhanced policy iteration in discounted dynamic
+  programming.
+\newblock \emph{Mathematics of Operations Research}, 37\penalty0 (1):\penalty0
+  66--94, 2012.
+
+\bibitem[Calvano et~al.(2020)Calvano, Calzolari, Denicolo, and
+  Pastorello]{calvano2020}
+Emilio Calvano, Giacomo Calzolari, Vincenzo Denicolo, and Sergio Pastorello.
+\newblock Artificial intelligence, algorithmic pricing, and collusion.
+\newblock \emph{American Economic Review}, 110\penalty0 (10):\penalty0
+  3267--97, 2020.
+
+\bibitem[Graf et~al.(2021)Graf, Zobernig, Schmidt, and Kl{\"o}ckl]{graf2021}
+Christoph Graf, Viktor Zobernig, Johannes Schmidt, and Claude Kl{\"o}ckl.
+\newblock Computational performance of deep reinforcement learning to find nash
+  equilibria.
+\newblock \emph{arXiv preprint arXiv:2104.12895}, 2021.
+
+\bibitem[Ma and Stachurski(2021)]{ma2021}
+Qingyin Ma and John Stachurski.
+\newblock Dynamic programming deconstructed: Transformations of the bellman
+  equation and computational efficiency.
+\newblock \emph{Operations Research}, 2021.
+
+\bibitem[Ma et~al.(2020)Ma, Stachurski, and Toda]{ma2020}
+Qingyin Ma, John Stachurski, and Alexis~Akira Toda.
+\newblock Unbounded dynamic programming via the q-learning transform.
+\newblock \emph{arXiv preprint arXiv:2012.00219}, 2020.
+
+\bibitem[Maei et~al.(2009)Maei, Szepesvari, Bhatnagar, Precup, Silver, and
+  Sutton]{maei2009}
+Hamid~Reza Maei, Csaba Szepesvari, Shalabh Bhatnagar, Doina Precup, David
+  Silver, and Richard~S Sutton.
+\newblock Convergent temporal-difference learning with arbitrary smooth
+  function approximation.
+\newblock In \emph{NIPS}, pages 1204--1212, 2009.
+
+\bibitem[Mnih et~al.(2013)Mnih, Kavukcuoglu, Silver, Graves, Antonoglou,
+  Wierstra, and Riedmiller]{mnih2013}
+Volodymyr Mnih, Koray Kavukcuoglu, David Silver, Alex Graves, Ioannis
+  Antonoglou, Daan Wierstra, and Martin Riedmiller.
+\newblock Playing atari with deep reinforcement learning.
+\newblock \emph{arXiv preprint arXiv:1312.5602}, 2013.
+
+\bibitem[Schulman et~al.(2017)Schulman, Wolski, Dhariwal, Radford, and
+  Klimov]{schulman2017}
+John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov.
+\newblock Proximal policy optimization algorithms.
+\newblock \emph{arXiv preprint arXiv:1707.06347}, 2017.
+
+\bibitem[Tsitsiklis(1994)]{tsitsiklis1994}
+John~N Tsitsiklis.
+\newblock Asynchronous stochastic approximation and q-learning.
+\newblock \emph{Machine learning}, 16\penalty0 (3):\penalty0 185--202, 1994.
+
+\bibitem[Vinyals et~al.(2019)Vinyals, Babuschkin, Czarnecki, Mathieu, Dudzik,
+  Chung, Choi, Powell, Ewalds, Georgiev, et~al.]{vinyals2019}
+Oriol Vinyals, Igor Babuschkin, Wojciech~M Czarnecki, Micha{\"e}l Mathieu,
+  Andrew Dudzik, Junyoung Chung, David~H Choi, Richard Powell, Timo Ewalds,
+  Petko Georgiev, et~al.
+\newblock Grandmaster level in starcraft ii using multi-agent reinforcement
+  learning.
+\newblock \emph{Nature}, 575\penalty0 (7782):\penalty0 350--354, 2019.
+
+\end{thebibliography}
