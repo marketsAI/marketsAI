@@ -181,6 +181,141 @@ write the economic problem and the graphs of the solution here in this file.
 
 \end_deeper
 \begin_layout Itemize
+Response:
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+Economic problem: 
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+Under this simple RBC model, with the given household utility, investment
+ and production technology, and productivity shocks imposed on the production
+ function which evolve following a given Markov process, the goal is to
+ obtain a policy function (optimal choices of 
+\begin_inset Formula $c$
+\end_inset
+
+ given the state variable 
+\begin_inset Formula $K$
+\end_inset
+
+ and the exogenous shock 
+\begin_inset Formula $z$
+\end_inset
+
+).
+ First, we can derive the Euler equations that fully characterize the optimality
+ from the behavioral rules of the consumers.
+ This and the market clearing conditions produce a system of equations that
+ can be solved via policy iterations (question here?) built inside the GDSGE
+ Toolbox.
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+The way this is done is: first calculate the steady-state values of 
+\begin_inset Formula $c^{0}$
+\end_inset
+
+ and 
+\begin_inset Formula $K$
+\end_inset
+
+ given the parameters, and select a range of values 
+\begin_inset Formula $K$
+\end_inset
+
+ for which we want the corresopnding policy 
+\begin_inset Formula $c$
+\end_inset
+
+ to be calculated; let the system start from an initial 
+\begin_inset Formula $c^{0}$
+\end_inset
+
+ (for example all the resources at the first period) and solve for next
+ stage consumption 
+\begin_inset Formula $c^{1}$
+\end_inset
+
+ and capital 
+\begin_inset Formula $K'$
+\end_inset
+
+, then record the 
+\begin_inset Quotes eld
+\end_inset
+
+error
+\begin_inset Quotes erd
+\end_inset
+
+; we also specify the bounds in which we want the solutions 
+\begin_inset Formula $c$
+\end_inset
+
+ and 
+\begin_inset Formula $K'$
+\end_inset
+
+ to be searched for, and this procedure repeats until 
+\begin_inset Formula $\|c^{\left(n\right)}-c^{\left(n-1\right)}\|<\text{Tol}$
+\end_inset
+
+ .
+\end_layout
+
+\begin_layout Itemize
+The solution is depicted as follows:
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\begin_inset Graphics
+	filename /Users/jasonli/Workspace/RAs/RA_Philippon/repository/marketsAI/marketsai/Econ_algos/rbc/rbc_solution_c.png
+	lyxscale 40
+	width 40page%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename /Users/jasonli/Workspace/RAs/RA_Philippon/repository/marketsAI/marketsai/Econ_algos/rbc/rbc_solution_K_next.png
+	lyxscale 40
+	width 40page%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+where the two lines correspond to the optimal policy responses of to the
+ two kinds of shocks respectively.
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+Examples of simulation results: different paths for wages.
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Graphics
+	filename /Users/jasonli/Workspace/RAs/RA_Philippon/repository/marketsAI/marketsai/Econ_algos/rbc/rbc_simulated_wages.png
+	lyxscale 50
+	width 40page%
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
 create a run_ script to run a rl game.
 \end_layout
 
