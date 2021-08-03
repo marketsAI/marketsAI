@@ -24,7 +24,7 @@ from marketsai.utils import encode
 env_label = "capital_planner_sa"
 register_env("capital_planner_sa", Capital_planner_sa)
 
-for_public = False
+for_public = True
 env_horizon = 1000
 n_hh = 1
 n_capital = 1
@@ -56,8 +56,8 @@ config_analysis = {
 init()
 
 # checkpoint_path = results.best_checkpoint
-# checkpoint_path = "/home/mc5851/ray_results/server_1hh_server_planner_sa_run_July22_PPO/PPO_server_planner_sa_75e68_00003_3_2021-07-22_10-59-49/checkpoint_300/checkpoint-300"
-checkpoint_path = "/Users/matiascovarrubias/ray_results/native_1hh_capital_planner_sa_run_July29_PPO/PPO_capital_planner_sa_1efd0_00006_6_clip_param=0.1,entropy_coeff=0.0,lambda=1.0,lr=5e-05,vf_clip_param=20_2021-07-29_22-51-57/checkpoint_001000/checkpoint-1000"
+checkpoint_path = "/home/mc5851/ray_results/server_multi_capital_planner_sa_run_August2_PPO/PPO_capital_planner_sa_1ba2b_00003_3_2021-08-02_11-55-49/checkpoint_75/checkpoint-75"
+# checkpoint_path = "/Users/matiascovarrubias/ray_results/native_1hh_capital_planner_sa_run_July29_PPO/PPO_capital_planner_sa_1efd0_00006_6_clip_param=0.1,entropy_coeff=0.0,lambda=1.0,lr=5e-05,vf_clip_param=20_2021-07-29_22-51-57/checkpoint_001000/checkpoint-1000"
 
 trained_trainer = PPOTrainer(env=env_label, config=config_analysis)
 trained_trainer.restore(checkpoint_path)
@@ -93,8 +93,16 @@ shutdown()
 # econ
 
 # Dictionary containging a list of actions for each endogenous state (the list is over ex_shocks)
+# dict = pd.read_csv(
+#     "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/Econ_algos/cap_planner_1hh_econ.csv",
+#     header=None,
+#     index_col=0,
+#     squeeze=True,
+#     dtype=float,
+# ).T.to_dict("list")
+
 dict = pd.read_csv(
-    "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/Econ_algos/cap_planner_1hh_econ.csv",
+    "/home/mc5851/marketsAI/marketsai/Econ_algos/cap_planner_1hh_econ.csv",
     header=None,
     index_col=0,
     squeeze=True,
@@ -208,36 +216,47 @@ plt.title("Capital")
 # plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
 
 # when ready for publication
+# if for_public == True:
+#     plt.savefig(
+#         "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/Documents/Figures/capital_planner_IRecon_July29_1hh.png"
+#     )
+# else:
+#     plt.savefig(
+#         "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/results/capital_planner_IRecon_July22_1hh.png"
+#     )
+
 if for_public == True:
     plt.savefig(
-        "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/Documents/Figures/capital_planner_IRecon_July29_1hh.png"
+        "/home/mc5851/marketsAI/marketsai/Documents/Figures/capital_planner_IRecon_Aug3_1hh.png"
     )
 else:
     plt.savefig(
-        "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/results/capital_planner_IRecon_July22_1hh.png"
+        "/home/mc5851/marketsAI/marketsai/results/capital_planner_IRecon_Aug3_1hh.png"
     )
 
 plt.show()
 
-IRresults = {
-    f"shock_{i}": shock_list[i],
-    f"s_{i}": s_list[i],
-    f"k_{i}": k_list[i],
-    f"y_{i}": y_list[i],
-    f"c_{i}": c_list[i],
-}
+# CVS file
 
-# df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/xapital_planner_IR_July17_1.csv")
-df_IR = pd.DataFrame(IRresults)
+# IRresults = {
+#     f"shock_{i}": shock_list[i],
+#     f"s_{i}": s_list[i],
+#     f"k_{i}": k_list[i],
+#     f"y_{i}": y_list[i],
+#     f"c_{i}": c_list[i],
+# }
 
-# df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.csv")
+# # df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/xapital_planner_IR_July17_1.csv")
+# df_IR = pd.DataFrame(IRresults)
 
-# when ready for publication
-if for_public == True:
-    df_IR.to_csv(
-        "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/Documents/Figures/capital_planner_IRecon_July29_1hh.csv"
-    )
-else:
-    df_IR.to_csv(
-        "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/results/capital_planner_IRecon_July22_1hh.csv"
-    )
+# # df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.csv")
+
+# # when ready for publication
+# if for_public == True:
+#     df_IR.to_csv(
+#         "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/Documents/Figures/capital_planner_IRecon_July29_1hh.csv"
+#     )
+# else:
+#     df_IR.to_csv(
+#         "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/results/capital_planner_IRecon_July22_1hh.csv"
+#     )
