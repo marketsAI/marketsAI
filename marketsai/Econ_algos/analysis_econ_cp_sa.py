@@ -24,7 +24,7 @@ from marketsai.utils import encode
 env_label = "capital_planner_sa"
 register_env("capital_planner_sa", Capital_planner_sa)
 
-for_public = True
+for_public = False
 env_horizon = 1000
 n_hh = 1
 n_capital = 1
@@ -224,7 +224,7 @@ plt.title("Capital")
 #     plt.savefig(
 #         "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/results/capital_planner_IRecon_July22_1hh.png"
 #     )
-
+plt.pyplot.tight_layout()
 if for_public == True:
     plt.savefig(
         "/home/mc5851/marketsAI/marketsai/Documents/Figures/capital_planner_IRecon_Aug3_1hh.png"
