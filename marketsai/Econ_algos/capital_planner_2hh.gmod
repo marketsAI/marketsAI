@@ -9,6 +9,12 @@ phi = 0.5;          % adj. cost parameter
 % Exogenous States (make sure kronecker product works fine)
 var_shock z_agg z_ind_1 z_ind_2;
 shock_num = 8;
+% z__agg_vals = [0.8, 1.2];
+% z_agg_vals = [0.9, 1.1];
+% z = flipud(combvec(z_agg_vals,z_ind_vals, z_ind_vals))
+% z_agg = z[1,:];
+% z_ind_1 = z[2,:];
+% z_ind_2 = z[3,:];
 z_agg_low = 0.8; z_agg_high = 1.2;
 z_ind_low = 0.9; z_ind_high = 1.1;
 z_agg = [z_agg_low,z_agg_low,z_agg_low,z_agg_low, z_agg_high,z_agg_high, z_agg_high,z_agg_high];
@@ -25,7 +31,7 @@ shock_trans_ind = [
   Pr_ind_ll, 1-Pr_ind_ll
   1-Pr_ind_hh, Pr_ind_hh
   ];
-shock_trans = kron(shock_trans_agg, shock_trans_ind, shock_trans_ind);
+shock_trans = kron(kron(shock_trans_agg, shock_trans_ind), shock_trans_ind);
 
 % Endogenous States (make sure steady state is fine)
 var_state K_1 K_2 ;
@@ -54,29 +60,42 @@ inbound K_2_next  0 ((2/phi)*z_agg.*z_ind_2.*K_2.^alpha).^(1/2)+(1-delta)*K_2;
 
 model;
   % Budget constraints
-  c_1 = (1-s_1) * z_agg*z_ind_1 * K_1^alpha;
-  c_2 = (1-s_2) * z_agg*z_ind_2 * K_2^alpha;  
+  y_1 =  z_agg*z_ind_1 * K_1^alpha
+  y_2 =  z_agg*z_ind_2 * K_2^alpha
+  c_1 = (1-s_1) * y_1;
+  c_2 = (1-s_2) * y_2;  
   u_1_prime = c_1^(-sigma);
   u_2_prime = c_2^(-sigma);
-  %change this
-  i_1 = ((2/phi) * s_1 * z_agg*z_ind_1 * K_1^alpha)^(1/2);
-  i_2 = ((2/phi) * s_2 * z_agg*z_ind_2 * K_2^alpha)^(1/2);
+  i_exp_1 = s_1 * y_1
+  i_exp_2 = s_2 * y_2
+  i_exp_tot = s_1*y_1 + s_2*y_2
+  i_tot = ((2/phi) * i_exp_tot)^(1/2)
+  i_1 = i_tot * i_exp_1 / i_exp_tot;
+  i_2 = i_tot * i_exp_2 / i_exp_tot;
   
-  % Evaluate the interpolation object to get future consumption
-  s_1_future' = s_1_interp'(K_1_next,k_2_next);
-  s_2_future' = s_2_interp'(K_1_next,k_2_next);
-  c_1_future' = (1-s_1_future') * z_agg'*z_ind_1' * K_1_next^alpha;
-  c_2_future' = (1-s_2_future') * z_agg'*z_ind_2' * K_2_next^alpha;
-  % change this
-  i_next' = ((2/phi) * s_future' * z_agg'*z_ind' * K_next^alpha)^(1/2);
-  kret_1_next' = z_agg'*z_ind_1'*alpha*K_1_next^(alpha-1) + phi * i_next' * (1-delta);
-  kret_2_next' = z_agg'*z_ind_2'*alpha*K_2_next^(alpha-1) + phi * i_next' * (1-delta);
+  % Evaluate the interpolation object to get future variables
+  s_1_future' = s_1_interp'(K_1_next,K_2_next);
+  s_2_future' = s_2_interp'(K_1_next,K_2_next);
+  y_1_future' = z_agg'*z_ind_1' * K_1_next^alpha;
+  y_2_future' = z_agg'*z_ind_2' * K_2_next^alpha 
+  c_1_future' = (1-s_1_future') * y_1_future';
+  c_2_future' = (1-s_2_future') * y_2_future';
+  i_exp_1_future' = s_1_future' * y_1_future';
   u_1_prime_future' = c_1_future'^(-sigma);
   u_2_prime_future' = c_2_future'^(-sigma);
+  i_exp_2_future' = s_2_future' * y_2_future';
+  i_exp_tot_future' = i_exp_1_future' + i_exp_2_future';
+  i_tot_future' = ((2/phi) * i_exp_tot_future')^(1/2);
+  i_1_future' = i_tot_future' * i_exp_1_future' / i_exp_tot_future'
+  i_2_future' = i_tot_future' * i_exp_2_future' / i_exp_tot_future'
+  
+  kret_1_next' = alpha * y_1_future'/K_1_next + (1-delta) * phi * i_tot_future' / (2-i_1_future'/i_tot_future') ;
+  kret_2_next' = alpha * y_2_future'/K_2_next + (1-delta) * phi * i_tot_future' / (2-i_2_future'/i_tot_future') ;
+
   
   % Calculate residual of the equation
-  euler_residual_1 = phi*i_1  - beta*GDSGE_EXPECT{u_1_prime_future'*kret_1_next'}/u_1_prime;
-  euler_residual_2 = phi*i_2  - beta*GDSGE_EXPECT{u_2_prime_future'*kret_2_next'}/u_2_prime;
+  euler_residual_1 = phi* i_tot/(2-i_1/i_tot)  - beta*GDSGE_EXPECT{u_1_prime_future' * kret_1_next'}/u_1_prime;
+  euler_residual_2 = phi* i_tot/(2-i_2/i_tot) - beta*GDSGE_EXPECT{u_2_prime_future' * kret_2_next'}/u_2_prime;
   budget_1 = i_1 + (1-delta)*K_1 - K_1_next;
   budget_2 = i_2 + (1-delta)*K_2 - K_2_next;
    
@@ -92,8 +111,10 @@ end;
 simulate;
   num_periods = 10000;
   num_samples = 6;
-  initial K Kss;
+  initial K_1 Kss;
+  initial K_2 Kss;
   initial shock 1;
-  var_simu s K;
-  K' = K_next;
+  var_simu s_1 s_2 K_1 K_2;
+  K_1' = K_1_next;
+  K_2' = K_2_next;
 end;

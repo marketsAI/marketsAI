@@ -155,41 +155,73 @@ outer color=transparent!80]
 	\item How should we specify economies and markets so as to make them easy to learn? 
 \end{itemize}
 
-\item I apply Deep Reinforcement Learning (Deep RL)  to macroeconomic problems. \medskip
+\item I introduce Deep Reinforcement Learning (Deep RL) as a "learning from experience" technology, in the spirit of least square learning (e.g., Macet and Sargent (1989)) but with less information about the economy. \medskip
 
-\item  In the context of an investment under uncertainty model with heterogeneous agents, I show that Deep RL agents can learn the rational expectations solution and I suggest design choices that aid such learning. \medskip
+\item  In a simple heterogeneous agents model, I show that Deep RL agents can learn the rational expectations solution and I suggest design choices that aid such learning. \medskip
 
-\item Then, by manipulating our baseline framework I highlight three topics in which this technology can be useful:   \medskip
+\item Then, by manipulating our baseline framework I highlight potential applications:   \medskip
 \begin{itemize}
-	\item high dimensional problems. \ms
-	\item incomplete information problems. \ms
+	\item high dimensional and incomplete information problems. \ms
 	\item equilibrium selection in models with multiple equilibrium. \ms
+	\item Strategic problems in dynamic settings. \ms
 \end{itemize},
 
 \end{itemize}
 \end{frame}
 
 \begin{frame}
-\frametitle{An overview of Reinforcement Learning}
+\frametitle{Deep Reinforcement Learning}
 
 \begin{itemize}
 	\item  RL is a class of algorithms that adapt dynamic programming techniques to the problem of online learning, that is, to learn how to control a system by interacting and experimenting with it. \medskip
 	
-	\item They do not use any mathematical knowledge of  the system they are controlling, other than the allowed actions and states. \medskip
+	\item Deep RL has three main characteristics: \medskip
+	
+	\begin{enumerate}
+		\item \textbf{Model-free}: The algorithms do not use any mathematical knowledge of  the system they are controlling, other than other than the allowed actions and states. \medskip
+		
+		\item \textbf{Simulation-Based}: They feed actions to the system and observe the reward they get that period and how the state evolves. With that information, they update their estimations of value function and policy function.  \medskip
+		
+		\item \textbf{Deep}: they use Deep Neural Nets as function approximators for the value function and/or the policy function.   \medskip
+		
+	\end{enumerate} 
+	
+
+
+	\item It has shown state of the art performance in many tasks such as: \medskip
 	
 	\begin{itemize}
-		\item They feed actions to the system and observe the reward they get that period and how the state evolves.  \medskip
-		\item After many transitions, if  successful, they are able to estimate the consequences of their actions accurately and thus make optimal decisions. \medskip
+		\item Games, including complex multi-agent games. (e.g., Go and Dota 2)\medskip
+		\item Robotics and autonomous driving. (e.g., Tesla autopilot and Covariant  robotic arms). \medskip
+		\item Operations research and logistics.  (e.g., Deepmind on Google Data Center Cooling). \medskip
+	\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Related Literature}
+
+\begin{itemize}
+	
+	\item Reinforcement Learning algorithms in economics: \medskip
+	\begin{itemize}
+		\item Calvano et al (2020) and Asker, Fershtman and Pakes (2021) uses first generation RL algorithms to study algorithmic collusion in repeated Bertrand games. \medskip
+		
+		\item Marimon, Sargent and McGrattan (1989) uses a "pre-RL" AI algorithm to study equilibrium selection in a Kiyotaki and Wright (1989) monetary model. \medskip
+	\end{itemize}
+	
+	
+	\item Use of neural nets in computation macroeconomics \medskip
+	\begin{itemize}
+		\item Maliar, Maliar and Winant (2020) solve Krusell and Smith (1998) without using bounded rationality.   \medskip
+		
+		\item Kahou, Fernandez-Villaverde, Perla and Sood (2021) exploits symmetry in policy functions suing neural nets. \medskip 
+		
+		\item Azinovic, Gaegauf and Scheidegger (2020) also uses a simulation based approach with neural net approximators to solve the equilibrium differential equations. \medskip	
 	\end{itemize}
 
-	\item  Deep RL adds neural nets as function approximators. It has shown state of the art performance in many tasks such as: \medskip
+	\item This paper is the first to use Deep RL algorithms on dynamic stochastic problems. 
 	
-	\begin{itemize}
-		\item Games, including complex multi-agent games. (cite) \medskip
-		\item Robotics. ( cite) \medskip
-		\item Autonomous driving. (cite) \medskip
-		\item Operations research. (cite) \medskip
-	\end{itemize}
 \end{itemize}
 \end{frame}
 
@@ -209,7 +241,7 @@ outer color=transparent!80]
 	\item Traditional challenges of Deep RL and why economics may be particularly well suited for this technology.\medskip
 
 \begin{itemize}
-	\item Rewards engineering is usually the main bottleneck. In economics, rewards are well specified in every period. \medskip
+	\item Rewards engineering is usually the main bottleneck (e.g., in chess). In economics, rewards are well specified in every period. \medskip
 	
 	\item RL algorithms usually require millions of transitions in order to learn.  In economics, sampling a transition is usually very fast. \medskip
 	
@@ -259,27 +291,22 @@ We formalize an economy as a a Partially Observed Markov Game. In each period:\m
 
 \begin{itemize}
 
-	\item My criteria for choosing a baseline framework are the following: \medskip
+\item  I present a version of the stochastic growth model with heterogeneous agents in which we focus on the purchase market for capital goods.  \medskip
 
+\item $N^h$ households produce the final good and choose how much consume vs invest. The final good is produced using bundle of $N^c$ capital goods.    \medskip
+
+\item  The cost of producing new capital goods is quadratic in total investment on that good.  \medskip
+
+\item  We will consider both a  market's formulation and a planner's formulation of the problem. \medskip
+
+\item As in Krusell and Smith (1998) model, we have heterogenous agents that accumulate capital and face idiosyncratic risk and aggregate risk. \medskip
 \begin{itemize}
-	\item Simple economics, challenging solution: the problem should be easy to explain and with clear economics. \medskip
-	
-	\item Dynamics at the forefront: the key trade-offs of the model should be intertemporal. \medskip
-	
-	\item Meaningful scalability: the problem needs to have a clear path to scalability. It cannot have aggregation properties. \medskip
+\item But, different source of idiosyncratic risk and many separate production functions. \medskip
+
+\item Also, here we model a finite set of households, instead of a continuum. \medskip
+
+\item  Cao (2020) solves the Krusell and Smith (1998) framework with finite agents using the GDSGE toolbox (Cao, Luo, and Nie (2020)). \medskip
 \end{itemize}
-
-\item  I present a version of the stochastic growth model in which we focus on the purchase market for capital goods and introduce heterogenous agents.  \medskip
-
-\item $N^h$ households produce the final good and  choose how much consume vs invest.\medskip
-
-\item The final good is produced using bundle of $N^c$ capital goods.    \medskip
-
-\item  The cost of producing new capital goods is quadratic in \textbf{aggregate} investment.  \medskip
-
-\item  We will consider both a  market's formulation and a planner's formulation of the problem.
-
-
 \end{itemize}
 
 \end{frame}
@@ -299,6 +326,7 @@ We formalize an economy as a a Partially Observed Markov Game. In each period:\m
 		\begin{enumerate}
 			\item Deep RL agent learn optimal solution consistent with rational expectations.  \ms
 			\item It can quickly solve high dimensional problems. \ms
+			\item Can be implemented as a multi-agent cooperative game with "centralized learning, decentralized execution".
 		\end{enumerate}
 		
 	\end{itemize}
@@ -357,51 +385,120 @@ We formalize an economy as a a Partially Observed Markov Game. In each period:\m
 
 \end{frame}
 
-
-%%% SLIDE 2 %%%
 \begin{frame}
-\frametitle{To start: Planner formulation, 1 Household, 1 capital good}
-\begin{itemize}
-	\item A representative household chooses how much to consume and how much to invest in order to maximize $\sum_{t=0}^{\infty} \beta^t u(c_t)$.\medskip
-	
-	\item The final good is produced using capital $K$ according to the production function $Y=Z K^{\alpha}$. The agent needs to decide how much of that product to consume and how much to use for production of new capital goods. \medskip
-	
-	\item \textbf{Adjustment costs:} In order to produce $I_t$ new capital goods the representative agent needs to sacrifice $\frac{\phi}{2} I^2_t$ final goods.  \medskip
-	
-	\item We express the problem in terms of choosing the saving rate $s$ such that consumption is $C_t=(1-s_t)Y_t$ and investment is defined by the equation $\frac{2}{\phi} I_t^2 = s_t Y_t$. Thus: \medskip
-	
-	$$I_t = \sqrt{\frac{2}{\phi} s_t Y_t}$$
-\end{itemize}
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Planner, 1HH, 1 capital: recursive formulation}
+\frametitle{Market formulation, $N^h$ HHs, 1 capital: household problem}
 
 \begin{itemize}
-	\item The recursive formulation of the problem is: \medskip
+	\item  First, we assume that there is a market for investment goods and we introduce capital good firms that pay the adjustment cost and sell the investment good at price $p^k_{t}$. Thus, from the point of view of the household, investment is $I^h_{i,t} = s_{i,t} Y_{i,t}/p^k_{t}$.   \medskip
+	
+	\item There are $N^h$ households that operate a production fraction and decide how much capital goods to purchase. The recursive formulation of the problem for household $i$ is:
 	
 	
 	\begin{align*}
-	V_t\left(K_t, Z_t\right) = &\max_{s_t,K_{t+1}} U(C_t) + \beta \E_t V_{t+1}(K_{t+1}, Z_{t+1}) \qquad \text{s.t.}\\
+	V_i \left(\{K_{i,t}, Z^{id}_{i,t} \}_{i}, Z^{agg}_t \right) = &\max_{\{s_{i,t},K_{i,t+1}\}_{j}}  U(C_{i,t}) + \beta \E_t V_i((\{K_{i,t+1}, Z^{id}_{i,t+1} \}_{i}, Z^{agg}_{t+1}) \qquad \text{s.t.}\\
 	&\qquad
-	C_t = Y_t(1-s_t)\\
+	C_{i,t} = (1- s_{i,t})Y_{i,t} \\
 	&\qquad
-	Y_t = Z_t K_t^\alpha\\
+	Y_{i,t}=Z^{agg}_{t} Z^{id}_{i,t}  K_{i,t}^{\alpha}\\
 	&\qquad
-	K_{t+1} \leq (1-\delta) K_t + \sqrt{\frac{2}{\phi} s_t Y_t}
+	K_{i,t+1} \leq (1-\delta) K_{i,t} + \frac{s_{i,t} Y_{i,t}}{p^k_{t}}  
 	\end{align*}
 	
-	where $Z_t$ follows a markov chain with transition probability $\mathcal{P}$.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Market, $N^h$ HHs, 1 capital: capital good firm}
+
+\begin{itemize}
+
+\item At first, we will assume that the capital producer is price taker: \medskip
+
+\begin{itemize}
+	\item It pays a cuadratic adjustment cost $C(I_t)=\frac{\phi}{2} I_{t}^2$. \medskip
+	\item It maximizes profits	$$\pi_{t}=p^k_{t} I_{t}-\frac{\phi}{2} I_{t}^2 $$. \medskip
+	
+	\item Price is then determined by 	 $$p^k_{t} = \phi I_{t}$$ \medskip
+	
+\end{itemize}
+
+\item A key part of the problem with many households is that the covex adjustment cost are over the total amount of produced capital. \medskip
+\begin{itemize}
+	\item Then, given decreasing returns to scale, agents need  information on the entire distribution of capitals stock to predict prices. \medskip
+\end{itemize}
+%\item Later, in order to study strategic behavior in environments where both buyers and sellers are Deep RL agents,  we will allow a deep RL agent to fix the mark-up over price. 
+
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Market, $N^h$ HHs, $N^c$ capital goods.}
+
+\begin{itemize}
+\item Now we assume there are $N^c$ capital goods indexed by $j$.   \medskip
+
+\item The recursive formulation of the problem for household $i$ is:
+
+\begin{align*}
+V_i \left(\{K_{i,j,t}\}_{i,j} \{ Z^{ind}_{i,t} \}_i, Z_t^{agg}\right) = &\max_{\{s_{i,j,t},K_{i,j,t+1}\}_{j}}  U(C_{i,t}) + \beta \E_t V_i(\{K_{i,j,t+1}\}_{i,j} \{Z^{ind}_{i,t+1} \}_i, Z_{t+1}^{agg}) \qquad \text{s.t.}\\
+&\qquad
+C_{i,t} = (1-\sum_{j=1}^{N^c} s_{i,j,t})Y_{i,t} \\
+&\qquad
+Y_{i,t}=Z^{agg}_{t} Z^{id}_{i,t}  \Pi_{j=1}^{N^c} K_{i,j,t}^{\alpha/N^c}\\
+&\qquad
+K_{i,j,t+1} \leq (1-\delta) K_{i,j,t} + \frac{s_{i,j,t} Y_{i,t}}{p^k_{j,t}}  \quad \text{for } j \in [1,...,N^c] 
+\end{align*}
+
+\item The supply is give by the equation $p^k_{j,t} = \phi I^c_{j,t}$
 
 \end{itemize}
 
 \end{frame}
+
+%%% SLIDE 2 %%%
+%\begin{frame}
+%\frametitle{ Planner formulation, 1 Household, 1 capital good}
+%\begin{itemize}
+%	\item A representative household chooses how much to consume and how much to invest in order to maximize $\sum_{t=0}^{\infty} \beta^t u(c_t)$.\medskip
+%	
+%	\item The final good is produced using capital $K$ according to the production function $Y=Z K^{\alpha}$. The agent needs to decide how much of that product to consume and how much to use for production of new capital goods. \medskip
+%	
+%	\item \textbf{Adjustment costs:} In order to produce $I_t$ new capital goods the representative agent needs to sacrifice $\frac{\phi}{2} I^2_t$ final goods.  \medskip
+%	
+%	\item We express the problem in terms of choosing the saving rate $s$ such that consumption is $C_t=(1-s_t)Y_t$ and investment is defined by the equation $\frac{2}{\phi} I_t^2 = s_t Y_t$. Thus: \medskip
+%	
+%	$$I_t = \sqrt{\frac{2}{\phi} s_t Y_t}$$
+%\end{itemize}
+%
+%\end{frame}
+%
+%\begin{frame}
+%\frametitle{Planner, 1HH, 1 capital: recursive formulation}
+%
+%\begin{itemize}
+%	\item The recursive formulation of the problem is: \medskip
+%	
+%	
+%	\begin{align*}
+%	V_t\left(K_t, Z_t\right) = &\max_{s_t,K_{t+1}} U(C_t) + \beta \E_t V_{t+1}(K_{t+1}, Z_{t+1}) \qquad \text{s.t.}\\
+%	&\qquad
+%	C_t = Y_t(1-s_t)\\
+%	&\qquad
+%	Y_t = Z_t K_t^\alpha\\
+%	&\qquad
+%	K_{t+1} \leq (1-\delta) K_t + \sqrt{\frac{2}{\phi} s_t Y_t}
+%	\end{align*}
+%	
+%	where $Z_t$ follows a markov chain with transition probability $\mathcal{P}$.
+%
+%\end{itemize}
+%
+%\end{frame}
 
 \begin{frame}
 \frametitle{ Planner, $N^h$ HHs, 1 capital }
 \begin{itemize}
-\item A key part of the problem with many households is that the covex adjustment cost are over the total amount of produced capital. \medskip
 
  \item For the planner formulation, we assume that all the resources that are committed by households are  employed in production, and then total production is distributed among households according to their contribution. Total production is defined implicitly by:
 
@@ -436,72 +533,6 @@ K_{i,t+1} \leq (1-\delta) K_{i,t} + \frac{s_{i,t}Y_{i,t}}{\sqrt{\frac{\phi}{2} \
 	
 	where $Z^{agg}_t$ and  ${Z^{id}_{i,t}}_i$ follow markov chains with transition probability $\mathcal{P}^{agg}$ and $\mathcal{P}^{ind}$.
 	
-\end{itemize}
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Market, $N^h$ HHs, 1 capital: household problem}
-
-\begin{itemize}
-	\item  First, we assume that there is a market for investment goods and we introduce capital good firms that pay the adjustment cost and sell the investment good at price $p^k_{t}$. Thus, from the point of view of the household, investment is $I^h_{i,t} = s_{i,t}/p^k_{t}$.   \medskip
-	
-	\item The recursive formulation of the problem for household $i$ is:
-	
-	
-	\begin{align*}
-	V_i \left(\{K_{i,t}, Z^{id}_{i,t} \}_{i}, Z^{agg}_t \right) = &\max_{\{s_{i,t},K_{i,t+1}\}_{j}}  U(C_{i,t}) + \beta \E_t V_i((\{K_{i,t+1}, Z^{id}_{i,t+1} \}_{i}, Z^{agg}_{t+1}) \qquad \text{s.t.}\\
-	&\qquad
-	C_{i,t} = (1- s_{i,t})Y_{i,t} \\
-	&\qquad
-	Y_{i,t}=Z^{agg}_{t} Z^{id}_{i,t}  K_{i,t}^{\alpha}\\
-	&\qquad
-	K_{i,t+1} \leq (1-\delta) K_{i,t} + \frac{s_{i,t} Y_{i,t}}{p^k_{t}}  
-	\end{align*}
-	
-\end{itemize}
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Market, $N^h$ HHs, 1 capital: capital good firm}
-
-\begin{itemize}
-	
-	\item At first, we will assume that the capital producer is price taker: \medskip
-	
-	\begin{itemize}
-		\item It maximizes 	$$\pi^c_{t}=p^k_{t} I^c_{t}-\frac{\phi}{2} \left(I^c_{t}\right)^2 $$. \medskip
-		
-		\item Price is then determined by 	 $$p^k_{t} = \phi I^c_{t}$$ \medskip
-		
-	\end{itemize}
-
-	\item Then, in order to study strategic behavior in environments where both buyers and sellers are Deep RL agents,  we will allow a deep RL agent to fix the mark-up over price. 
-	
-\end{itemize}
-\end{frame}
-
-\begin{frame}
-\frametitle{Market, $N^h$ HHs, $N^c$ capital goods.}
-
-\begin{itemize}
-	\item Now we have $N^c$ capital goods indexed by $j$.   \medskip
-	
-	\item The recursive formulation of the problem for household $i$ is:
-	
-	\begin{align*}
-V_i \left(\{K_{i,j,t}\}_{i,j}\right) = &\max_{\{s_{i,j,t},K_{i,j,t+1}\}_{j}}  U(C_{i,t}) + \beta \E_t V_i(\{K_{i,j,t+1}\}_{i,j}) \qquad \text{s.t.}\\
-&\qquad
-C_{i,t} = (1-\sum_{j=1}^{N^c} s_{i,j,t})Y_{i,t} \\
-&\qquad
-Y_{i,t}=Z^h_{i,t} \Pi_{j=1}^{N^c} K_{i,j,t}^{\alpha/N^c}\\
-&\qquad
-K_{i,j,t+1} \leq (1-\delta) K_{i,j,t} + \frac{s_{i,j,t} Y_{i,t}}{p^k_{j,t}}  \quad \text{for } j \in [1,...,N^c] 
-\end{align*}
-
-\item The supply is give by the equation $p^k_{j,t} = \phi I^c_{j,t}$ where 
-
 \end{itemize}
 
 \end{frame}
@@ -555,6 +586,26 @@ where $x$ is the input (in our case the transitions $\{r, s'  ,s, a\}$), $W_i \i
 \end{itemize}
 
 \end{frame}
+
+\begin{frame}
+\frametitle{Way Neural Nets?}
+
+\begin{itemize}
+	\item They are an universal approximator. \medskip
+	
+	\item It is easy to impose constraint by manipulating the input or output layer.  \medskip 
+	
+	\item They are efficient for high dimensional problems (Grohs, Jentzen and Salimova (2019)). \medskip
+	
+	\item Since they are not aligned to a basis, they satisfy a symmetry property called "isotropy". \medskip
+	
+	\item  Neural networks are "easy" to compute. There's good software for them and are particularly suited for GPU-acceleration and other computational tools. \medskip
+	
+	\item There are proofs that in many scenarios for neural networks the local minima are the global minima (Watt, Lacotte and Pilanchi 2020)
+\end{itemize}
+
+\end{frame}
+
 
 \begin{frame}
 \frametitle{Convergence results in RL}
@@ -644,7 +695,7 @@ An agent consist of a \textbf{choose\_action} and a \textbf{learn} function. Loo
 \section{Results}
 
 \begin{frame}
-\frametitle{Experiment 1: Results}
+\frametitle{Results: Experiment 1}
 
  We start with the plannner's problem. Exercises: \ms
 
@@ -673,7 +724,8 @@ An agent consist of a \textbf{choose\_action} and a \textbf{learn} function. Loo
 \frametitle{Planner, 1 household. Exact solution vs Learned policy}
 
 \begin{itemize}
-	\item We can compare the discounted utility on a simulated time window of a 1000 periods. 
+	\item We can compare the discounted utility on a simulated time window of a 1000 periods. \medskip
+	\item W calculate the theoretical maximum by solving the model with global methods on a very fine grid using the GDSGE package.
 	\begin{figure}
 		\centering\includegraphics[scale=0.3]{\dir/econ_vs_RL_learning.png}
 	\end{figure}
@@ -686,12 +738,12 @@ An agent consist of a \textbf{choose\_action} and a \textbf{learn} function. Loo
 \frametitle{Planner, 1 household. Simulating the exact solution vs Learned policy}
 
 \begin{itemize}
-	\item We simulate a series of shocks and compare the optimal poly calculated through policy iteration vs the policy learned trough Deep RL. 
+	\item We simulate a series of shocks for 100 periods and compare the optimal policy calculated through policy iteration vs the policy learned trough Deep RL. 
 \begin{figure}
 	\centering\includegraphics[scale=0.5]{\dir/capital_planner_IRecon_Aug3_1hh.png}
 \end{figure}
 
-	\item We still observe differences differences in time series.
+	\item The consumption paths are very close, but  we still observe differences in time series.
 \end{itemize}
 \end{frame}
 
@@ -713,11 +765,11 @@ An agent consist of a \textbf{choose\_action} and a \textbf{learn} function. Loo
 \end{frame}
 
 \begin{frame}
-\frametitle{Planner, solving for $N^h$ actions instead of only one map.}
+\frametitle{Planner,no centralized learning.}
 
 \begin{itemize}
 	
-	\item We now compare scalability in the case when we solve map from the global state to $N^h$ policies.
+	\item We now compare scalability in the case when we solve map from the global state to $N^h$ policies (no centralized learning).
 	
 	\begin{figure}
 		\centering\includegraphics[scale=0.28]{\dir/Learning_graph_planner_sa.png}
@@ -727,13 +779,13 @@ An agent consist of a \textbf{choose\_action} and a \textbf{learn} function. Loo
 \end{itemize}
 
 \end{frame}
-
-\begin{frame}
-\frametitle{Planner, 1 household (3 state variables)}
-	\begin{figure}
-	\centering\includegraphics[scale=0.4]{\dir/econ_v_srl_1hh_July29.png}
-\end{figure}
-\end{frame}
+%
+%\begin{frame}
+%\frametitle{Planner, 1 household (3 state variables)}
+%	\begin{figure}
+%	\centering\includegraphics[scale=0.4]{\dir/econ_v_srl_1hh_July29.png}
+%\end{figure}
+%\end{frame}
 
 %\begin{frame}
 %\frametitle{Planner, 2 households (5 state variables)}
@@ -743,7 +795,7 @@ An agent consist of a \textbf{choose\_action} and a \textbf{learn} function. Loo
 %\end{frame}
 
 \begin{frame}
-\frametitle{Comments on learning}
+\frametitle{Comments on Experiment 1}
 
 \begin{itemize}
 	\item Learning is fast even in high dimensional problems. Time to reach the peak using only three physical cores: \ms
