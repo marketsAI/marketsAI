@@ -21,6 +21,7 @@ toc
 
 % grid = [K_1', K_2', s_1', s_2'];
 % writematrix(grid,'cap_planner_2hh_econ.csv')
+% save('MyArray.mat','MyArray')
 % %transpose both and a
 % 
 % %Simulate

@@ -306,19 +306,53 @@ left=0.75in,right=0.75in,paperheight=11.0in,textheight=9.5in,centering]{geometry
 
 \begin{itemize}
 	
-	\item In order to formulate the planner's problem, we assume that all the resources that are committed by households for investment on capital good $j$ are actually employed in production, and then total production of capital good $j$ is distributed among housholds according to their contribution. In this case, total production is defined implicitly by:
+	\item In order to formulate the planner's problem, we assume that all the resources that are committed by households for investment on the capital good are actually employed in production, and then total production is distributed among households according to their contribution. In this case, total production is defined implicitly by:
 	
-	$$\sum_{i=1}^{N^h} s_{i,j,t} Y_{i,t} = \frac{\phi}{2} I_{j,t}^2 \quad \text{for } j \in [1,...,N^h]$$
+	$$\sum_{i=1}^{N^h} s_{i,t} Y_{i,t} = \frac{\phi}{2} I_{t}^2 \quad \text{for } j \in [1,...,N^h]$$
 	
-	Solving for $I_{j,t}$ we get:
+	Solving for $I_{t}$ we get:
 	
-	$$I_{j,t} =  \sqrt{\frac{2}{\phi} \sum_{i=1}^{N^h} s_{i,j,t} Y_{i,t}}$$
+	$$I_{t} =  \sqrt{\frac{2}{\phi} \sum_{i=1}^{N^h} s_{i,t} Y_{i,t}}$$
 	
 	We can then distribute it among households according to
 	
-	$$I_{i,j,t} = \frac{s_{i,j,t}Y_{i,t}}{ \sum_{i=1}^{N^h} s_{i,j,t} Y_{i,t}}  I_{j,t} =   \frac{s_{i,j,t}Y_{i,t}}{\sqrt{\frac{\phi}{2} \sum_{i=1}^{N^h} s_{i,j,t} Y_{i,t}}}$$
+	$$I_{i,t} = \frac{s_{i,t}Y_{i,t}}{ \sum_{i=1}^{N^h} s_{i,t} Y_{i,t}}  I_{t} =   \frac{s_{i,t}Y_{i,t}}{\sqrt{\frac{\phi}{2} \sum_{i=1}^{N^h} s_{i,t} Y_{i,t}}}$$
 	
 	\item The recursive formulation of the problem is:
+	
+	
+	\begin{align*}
+	V\left(\{K_{i,t}\}_{i}\right) = &\max_{\{s_{i,t};K_{i,t+1}\}_{i}} \sum_{i=1}^{N^h} U(C_{i,t}) + \beta \E_t V(\{K_{i,t+1}\}_{i}) \qquad \text{s.t.}\\
+	&\qquad
+	C_{i,t} = (1-s_{i,t})Y_{i,t} \quad \text{for } i \in [1,...,N^h]\\
+	&\qquad
+	Y_{i,t}=Z^{agg}_{t} Z^{ind}_{i,t}K_{i,t}^{\alpha}  \quad \text{for } i \in [1,...,N^h]\\
+	&\qquad
+	K_{i,t+1} \leq (1-\delta) K_{i,t} + \frac{s_{i,,t}Y_{i,t}}{\sqrt{\frac{\phi}{2} \sum_{i=1}^{N^h} s_{i,t} Y_{i,t}}}  \quad \text{for } i \in [1,...,N^h] 
+	\end{align*}
+	
+	
+	\item The lagrangian of the problem is: 
+	
+	\begin{align*}
+	\mathcal{L}_{t} &= \E_t \sum_{r=0}^{\infty}\beta^r  \left( \sum_{i=1}^{N^h} U\left( (1 -  s_{i,t+r})Z^h_{i,t+r} \Pi_{j=1}^{N^c} K_{i,t+r}^{\alpha/N^c}  \right) + \right. \\
+	& 	\left. \sum_{i=1}^{N^h} Q_{i,t+r} \left[(1-\delta) K_{i,t+r} + \frac{s_{i,,t+r}Y_{i,t+r}}{\sqrt{\frac{\phi}{2} \sum_{i=1}^{N^h} s_{i,t+r} Y_{i,t+r}}}-K_{i,t+r+1}\right] \right)
+	\end{align*}
+	
+	\item The first order conditions are:
+	\begin{align*}
+	& \left[s_{i,t}\right] && Q_{i,t} = \frac{ U'(C_{i,t})\sqrt{\frac{\phi}{2} s_{i,t} Y_{i,t}}}{\left[1-\frac{1}{2} \frac{s_{i,t} Y_{i,t}}{\sum_{i=1}^{N^c} s_{i,t} Y_{i,t}}\right]} = U'(C_{i,t}) \frac{\phi I_{t}}{2-\frac{I_{i,t}}{I_{t}}} \\
+	& \left[K_{i,t+1}\right] && Q_{i,t} = \beta \E_t \left[  U'(C_{i,t+1}) (1- s_{i,t+1}) \alpha \frac{Y_{i,t+1}}{K_{i,t+1}} \right. \\
+	&   &&  \left. \quad  \qquad   +   Q_{i,t+1} \left( (1-\delta) + s_{i,t} \alpha \frac{Y_{i,t+1}}{K_{i,t+1}} \frac{ \left[1-\frac{1}{2} \frac{s_{i,t+1} Y_{i,t+1}}{\sum_{i=1}^{N^c} s_{i,t+1} Y_{i,t+1}}\right]}{\sqrt{\frac{\phi}{2} s_{i,t+1} Y_{i,t+1}}} \right) \right]
+	\end{align*}
+	
+	\item Combining both F.O.C.s, we can write the euler equation as:
+	
+	\begin{align*}
+	\frac{\phi I_{t}}{2-\frac{I_{i,t}}{I_{t}}} = \beta \E_t \mathcal{M}_{t,t+1} \left[  \alpha \frac{Y_{i,t+1}}{K_{i,t+1}}    + (1-\delta) 	\frac{\phi I_{t+1}}{2-\frac{I_{i,t+1}}{I_{t+1}}} \right]
+	\end{align*}
+	
+	\item With $N^c > 1$, the recursive formulation is:
 	
 	
 	\begin{align*}
@@ -341,18 +375,23 @@ left=0.75in,right=0.75in,paperheight=11.0in,textheight=9.5in,centering]{geometry
 	
 	\item The first order conditions are:
 	\begin{align*}
-	& \left[s_{i,j,t}\right] && Q_{i,j,t} =  \phi \sqrt{\frac{2}{\phi} s_{i,j,t} Y_{i,t}} \frac{\partial U(C_{i,t})}{\partial C_{i,t}} =\phi I_t U'(C_{i,t}) \\
-	& \left[K_{i,j,t+1}\right] && Q_{i,j,t} = \beta \E_t \left[  \frac{\partial U(C_{i,t})}{\partial C_{i,t}}  (1-\sum_{j=1}^{N^c} s_{i,j,t+1}) \frac{\alpha}{N^c} \frac{Y_{i,t+1}}{K_{i,j,t+1}} \right. \\
-	  &   &&  \left. \quad  \qquad   +   Q_{i,j,t+1} \left( (1-\delta) + \left(\frac{2}{\phi} s_{i,j,t+1} Y_{i,t+1} \right)^{-1/2}  
-	\frac{s_{i,j,t+1}}{\phi} \frac{\alpha}{N^c} \frac{Y_{i,t+1}}{K_{i,j,t+1}} \right)  \right]
+	& \left[s_{i,j,t}\right] && Q_{i,j,t} = \frac{ U'(C_{i,t})\sqrt{\frac{\phi}{2} s_{i,j,t} Y_{i,t}}}{\left[1-\frac{1}{2} \frac{s_{i,j,t} Y_{i,t}}{\sum_{i=1}^{N^c} s_{i,j,t} Y_{i,t}}\right]} = U'(C_{i,t}) \frac{\phi I_{j,t}}{2-\frac{I_{i,j,t}}{I_{j,t}}} \\
+	& \left[K_{i,j,t+1}\right] && Q_{i,j,t} = \beta \E_t \left[  U'(C_{i,t+1}) (1-\sum_{j=1}^{N^c} s_{i,j,t+1}) \frac{\alpha}{N^c} \frac{Y_{i,t+1}}{K_{i,j,t+1}} \right. \\
+	  &   &&  \left. \quad  \qquad   +   Q_{i,j,t+1} \left( (1-\delta) + s_{i,j,t} \frac{\alpha}{N^c} \frac{Y_{i,t+1}}{K_{i,j,t+1}} \frac{ \left[1-\frac{1}{2} \frac{s_{i,j,t+1} Y_{i,t+1}}{\sum_{i=1}^{N^c} s_{i,j,t+1} Y_{i,t+1}}\right]}{\sqrt{\frac{\phi}{2} s_{i,j,t+1} Y_{i,t+1}}} \right) \right]
 	\end{align*}
 	
+	\item Combining both F.O.C.s, we can write the  euler equation as:
+	
+	\begin{align*}
+	\frac{\phi I_{j,t}}{2-\frac{I_{i,j,t}}{I_{j,t}}} = \beta \E_t \mathcal{M}_{t,t+1} \left[ (1-\sum_{j=1}^{N^c} s_{i,j,t+1} + s_{i,j,t}) \frac{\alpha}{N^c} \frac{Y_{i,t+1}}{K_{i,j,t+1}}    + (1-\delta) 	\frac{\phi I_{j,t+1}}{2-\frac{I_{i,j,t+1}}{I_{j,t+1}}} \right]
+	\end{align*}
 	{\color{red} To do: 
 		\begin{itemize}
-			\item Simplify FOC for $K$. you can use x/sqrt(x) o nthe right side and qrite in terms of investment.
+			\item Add cross term of the other Q's in F.O.C.
+			\item Simplify Euler if its is possible.
+			\item Is there any way to show aggregation failure?
 			\item Calculate steady state system of equations. 
 			\item Order the rest of the doc.
-			\item Why do we need the planner for? Just as an analog for the program?
 		\end{itemize}}
 	
 %		\item The first order conditions are:
@@ -362,18 +401,9 @@ left=0.75in,right=0.75in,paperheight=11.0in,textheight=9.5in,centering]{geometry
 %	\end{align}
 %	
 
- \item In the case of $N^h=1$ and $N^c=1$, the recursive formulation is: 
- 
- 	
- \begin{align*}
- V_t\left(K_t, Z_t\right) = &\max_{s_t,K_{t+1}} U(C_t) + \beta \E_t V_{t+1}(K_{t+1}, Z_{t+1}) \qquad \text{s.t.}\\
- &\qquad
- C_t = Y_t(1-s_t)\\
- &\qquad
- Y_t = Z_t K_t^\alpha\\
- &\qquad
- K_{t+1} \leq (1-\delta) K_t + \sqrt{\frac{2}{\phi} s_t Y_t}
- \end{align*}
+
+
+
  
  \item The Euler conditions for $s_{t}$ and $K_{t+1}$ can be condensed into:
  
@@ -389,7 +419,7 @@ left=0.75in,right=0.75in,paperheight=11.0in,textheight=9.5in,centering]{geometry
  K_{t+1} & = (1-\delta) K_t + \sqrt{\frac{2}{\phi} s_t Y_t}
  \end{align*} 
  
- \item 
+
 \end{itemize}
 
 	
@@ -409,8 +439,7 @@ left=0.75in,right=0.75in,paperheight=11.0in,textheight=9.5in,centering]{geometry
 	
 	\item Finally, solving for $K$ we get:
 	
-		\begin{align}  K & = \left[\frac{\beta \alpha}{\delta[1-\beta(1-\delta)]} \right]^\frac{1}{2-\alpha}
-	\end{align}
+		\begin{align*}  K & = \left[\frac{\beta \alpha}{\delta[1-\beta(1-\delta)]} \right]^\frac{1}{2-\alpha} \end{align*}
 	
 	\end{itemize}
 	
@@ -433,9 +462,28 @@ left=0.75in,right=0.75in,paperheight=11.0in,textheight=9.5in,centering]{geometry
 
 \end{itemize}
 
+	\section{Marcet and Sargent (1989) and Townsend (1983)}
 	
+	\begin{itemize}
+		\item There are $N^I$ industries each cosisting of $N^i$ identical firms. Their representative firm in industry $j$ has objective function 
+		
+		\begin{align*}
+		E_t \sum_{r=0}^{\infty} \beta^r \left[p_{j,t} f k_{j,t} -w_{j,t} k_{j,t} - \frac{\phi}{2}\left(k_{j,t+1}-k_{j,t} \right)^2 \right]
+		\end{align*}
+		
+		where 
+		\begin{align*}
+		p_{j,t} & = -A d K_{j,t} + u_{j,t},\quad A>0, f>0,\\
+		K_{j,t} & = N^i k_{j,t}, \quad N>0,\\
+		u_{j,t} & = \mathbf{\theta}_t + \mathbf{\epsilon}_{j,t} \\
+		\mathbf{\theta}_t & = \rho \mathbf{\theta}_{t-1}+\mathbf{v}_t,\quad  |\rho| <1 \\ 
+		\end{align*}
+		where $\mathbf{\epsilon}_{j,t}$ and $\mathbf{v}_t$ are orthogonal white noises, $p_{j,t}$ is the price in industry $j$, $k_{j,t}$ is the capital stock of the representative firm, $f k_{j,t}$ is the firm's output, $u_{j,t}$ is a random shock to demand, $\theta_t$ is a common component to the demand in all industries and $w_{j,t}$ is the stochastic rental rate of industry $j$, which is identically and independently distributed. 
+		
+		\item Firms in industry $a$ observe the history $\{p_{a,s}, K_{a,s}, p_{b,s};s\leq t\} $ and, symmetrically, firms in industry $b$ observes history $\{p_{b,s}, K_{b,s}, p_{a,s};s\leq t\} $
+	\end{itemize}
 
-
+	
 
 
 \end{document}
