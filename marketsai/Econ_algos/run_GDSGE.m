@@ -11,17 +11,44 @@ script = 'iter_'+model;
 % run iterations
 ItrRslt = eval(script);
 
+
 % Policy grid (I want a matrix with K rows and N_shocks as columns
 K_1 = ItrRslt.var_state.K_1;
 K_2 = ItrRslt.var_state.K_2;% 1*101
 s_1 = ItrRslt.var_policy.s_1;
 s_2 = ItrRslt.var_policy.s_2;% N_shocks * 101
+shock_num = ItrRslt.shock_num;
 
+cap_plan_2hh = struct('K_1', K_1, 'K_2', K_2, 'shock_num', shock_num, 's_1', s_1, 's_2', s_2);
+save('cap_plan_2hh.mat', 'cap_plan_2hh');
+save()
 toc
 
-% grid = [K_1', K_2', s_1', s_2'];
-% writematrix(grid,'cap_planner_2hh_econ.csv')
-% save('MyArray.mat','MyArray')
+% create meshgrid
+yPts = 4;
+yTEpsilonVar = 0.00219;
+yNEpsilonVar = 0.00167;
+rhoYT = 0.901;
+rhoYN = 0.225;
+
+% we create the shocks first as row vectors
+[yTTrans,yT] = markovappr(rhoYT,yTEpsilonVar^0.5,1,yPts);
+[yNTrans,yN] = markovappr(rhoYN,yNEpsilonVar^0.5,1,yPts);
+
+% transition probs
+shock_trans = kron(yNTrans,yTTrans);
+
+% grids 
+%ndgrid gives you some matrices as intermediate value 
+[yT,yN] = ndgrid(yT,yN);
+% now we transform it in typical form, but notice that the second shock
+% goes in firtcompared to kronecker
+yT = yT(:)';
+yN = yN(:)';
+
+
+
+
 % %transpose both and a
 % 
 % %Simulate

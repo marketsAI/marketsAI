@@ -7,19 +7,23 @@ delta = 0.04;		% depreciation rate
 phi = 0.5;          % adj. cost parameter
 
 % Exogenous States (make sure kronecker product works fine)
-var_shock z_agg z_ind_1 z_ind_2;
-shock_num = 8;
-% z__agg_vals = [0.8, 1.2];
-% z_agg_vals = [0.9, 1.1];
+var_shock z_agg z_ind_1 z_ind_2 z_ind_3 z_ind_4 z_ind_5;
+shock_num = 2^6;
+z__agg_vals = [0.8, 1.2];
+z_ind_vals = [0.9, 1.1];
 % z = flipud(combvec(z_agg_vals,z_ind_vals, z_ind_vals))
 % z_agg = z[1,:];
-z_ind_1 = z[2,:];
-z_ind_2 = z[3,:];
+% z_ind_1 = z[2,:];
+% z_ind_2 = z[3,:];
 z_agg_low = 0.8; z_agg_high = 1.2;
 z_ind_low = 0.9; z_ind_high = 1.1;
-z_agg = [z_agg_low,z_agg_low,z_agg_low,z_agg_low, z_agg_high,z_agg_high, z_agg_high,z_agg_high];
-z_ind_1 = [z_ind_low, z_ind_low, z_ind_high, z_ind_high,z_ind_low, z_ind_low, z_ind_high, z_ind_high];
-z_ind_2 = [z_ind_low, z_ind_high,z_ind_low, z_ind_high,z_ind_low, z_ind_high, z_ind_low, z_ind_high];
+[z_ind_1, z_ind_2, z_ind_3, z_ind_4, z_ind_5, z_agg] = ndgrid(z_ind_vals, z_ind_vals, z_ind_vals, z_ind_vals, z_ind_vals, z_agg_vals)
+z_agg = z_agg(:)'
+z_ind_1 = z_ind_1(:)'
+z_ind_2 = z_ind_2(:)'
+z_ind_3 = z_ind_3(:)'
+z_ind_4 = z_ind_4(:)'
+z_ind_5 = z_ind_5(:)'
 
 Pr_agg_ll = 0.95;  Pr_agg_hh  = 0.95;
 Pr_ind_ll = 0.9;  Pr_ind_hh  = 0.9;
@@ -31,31 +35,48 @@ shock_trans_ind = [
   Pr_ind_ll, 1-Pr_ind_ll
   1-Pr_ind_hh, Pr_ind_hh
   ];
-shock_trans = kron(kron(shock_trans_agg, shock_trans_ind), shock_trans_ind);
+%try to loop it
+shock_trans = kron(kron(kron(kron(kron(shock_trans_agg, shock_trans_ind),shock_trans_ind), shock_trans_ind),shock_trans_ind), shock_trans_ind);
 
 % Endogenous States (make sure steady state is fine)
-var_state K_1 K_2 ;
+var_state K_1 K_2 K_3 K_4 K_5 ;
 Kss  = (alpha * beta / (phi*delta*2*(1-beta*(1-delta))))^(1/(2-alpha));
 KPts = 101;
 KMin = Kss*0.5;
 KMax = Kss*1.5;
 K_1    = linspace(KMin,KMax,KPts);
 K_2    = linspace(KMin,KMax,KPts);
+K_3    = linspace(KMin,KMax,KPts);
+K_4    = linspace(KMin,KMax,KPts);
+K_5    = linspace(KMin,KMax,KPts);
 
 % Interp
-var_interp s_1_interp s_2_interp;
+var_interp s_1_interp s_2_interp s_3_interp s_4_interp s_5_interp;
 initial s_1_interp 0.15;
 initial s_2_interp 0.15;
+initial s_3_interp 0.15;
+initial s_4_interp 0.15;
+initial s_5_interp 0.15;
 % Time iterations update
 s_1_interp = s_1;
 s_2_interp = s_2;
+s_3_interp = s_3;
+s_4_interp = s_4;
+s_5_interp = s_5;
 
 % Endogenous variables as unknowns of equations (change limits)
-var_policy s_1 s_2 K_1_next K_2_next;
+var_policy s_1 s_2 s_3 s_4 s_5 K_1_next K_2_next K_3_next K_4_next K_5_next ;
 inbound s_1       0 1;
 inbound s_2       0 1;
+inbound s_3       0 1;
+inbound s_4       0 1;
+inbound s_5       0 1;
 inbound K_1_next  0 ((2/phi)*z_agg.*z_ind_1.*K_1.^alpha).^(1/2)+(1-delta)*K_1;
 inbound K_2_next  0 ((2/phi)*z_agg.*z_ind_2.*K_2.^alpha).^(1/2)+(1-delta)*K_2;
+inbound K_3_next  0 ((2/phi)*z_agg.*z_ind_3.*K_3.^alpha).^(1/2)+(1-delta)*K_3;
+inbound K_4_next  0 ((2/phi)*z_agg.*z_ind_4.*K_4.^alpha).^(1/2)+(1-delta)*K_4;
+inbound K_5_next  0 ((2/phi)*z_agg.*z_ind_5.*K_5.^alpha).^(1/2)+(1-delta)*K_5;
+
 
 
 model;
@@ -74,26 +95,28 @@ model;
   i_2 = i_tot * i_exp_2 / i_exp_tot;
   
   % Evaluate the interpolation object to get future variables
-  s_1_future' = s_1_interp'(K_1_next,k_2_next);
-  s_2_future' = s_2_interp'(K_1_next,k_2_next);
+  s_1_future' = s_1_interp'(K_1_next,K_2_next);
+  s_2_future' = s_2_interp'(K_1_next,K_2_next);
   y_1_future' = z_agg'*z_ind_1' * K_1_next^alpha;
   y_2_future' = z_agg'*z_ind_2' * K_2_next^alpha 
   c_1_future' = (1-s_1_future') * y_1_future';
   c_2_future' = (1-s_2_future') * y_2_future';
   i_exp_1_future' = s_1_future' * y_1_future';
+  u_1_prime_future' = c_1_future'^(-sigma);
+  u_2_prime_future' = c_2_future'^(-sigma);
   i_exp_2_future' = s_2_future' * y_2_future';
   i_exp_tot_future' = i_exp_1_future' + i_exp_2_future';
-  i_tot' = ((2/phi) * i_exp_tot_future')^(1/2);
+  i_tot_future' = ((2/phi) * i_exp_tot_future')^(1/2);
   i_1_future' = i_tot_future' * i_exp_1_future' / i_exp_tot_future'
   i_2_future' = i_tot_future' * i_exp_2_future' / i_exp_tot_future'
   
-  kret_1_next' = z_agg'*z_ind_1'*alpha*K_1_next^(alpha-1) + * (1-delta)* phi * i_tot_future' / (2-i_1_future'/i_tot_future') ;
-  kret_1_next' = z_agg'*z_ind_2'*alpha*K_2_next^(alpha-1) + * (1-delta)* phi * i_tot_future' / (2-i_2_future'/i_tot_future') ;
+  kret_1_next' = alpha * y_1_future'/K_1_next + (1-delta) * phi * i_tot_future' / (2-i_1_future'/i_tot_future') ;
+  kret_2_next' = alpha * y_2_future'/K_2_next + (1-delta) * phi * i_tot_future' / (2-i_2_future'/i_tot_future') ;
 
   
   % Calculate residual of the equation
-  euler_residual_1 = phi* i_tot/(2-i_1/i_tot)  - beta*GDSGE_EXPECT{u_1_prime_future'*kret_1_next'}/u_1_prime;
-  euler_residual_2 = phi* i_tot/(2-i_2/i_tot) - beta*GDSGE_EXPECT{u_2_prime_future'*kret_2_next'}/u_2_prime;
+  euler_residual_1 = phi* i_tot/(2-i_1/i_tot)  - beta*GDSGE_EXPECT{u_1_prime_future' * kret_1_next'}/u_1_prime;
+  euler_residual_2 = phi* i_tot/(2-i_2/i_tot) - beta*GDSGE_EXPECT{u_2_prime_future' * kret_2_next'}/u_2_prime;
   budget_1 = i_1 + (1-delta)*K_1 - K_1_next;
   budget_2 = i_2 + (1-delta)*K_2 - K_2_next;
    
@@ -109,8 +132,10 @@ end;
 simulate;
   num_periods = 10000;
   num_samples = 6;
-  initial K Kss;
+  initial K_1 Kss;
+  initial K_2 Kss;
   initial shock 1;
-  var_simu s K;
-  K' = K_next;
+  var_simu s_1 s_2 K_1 K_2;
+  K_1' = K_1_next;
+  K_2' = K_2_next;
 end;
