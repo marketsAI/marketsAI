@@ -9,14 +9,14 @@ from scipy.interpolate import RegularGridInterpolator
 impoirt and unpack struct from matlab using schipy.io
 
 """
-dict = "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/Econ_algos/cap_plan_2hh"
-matlab_struct = sio.loadmat(dict, simplify_cells=True)
-K_1 = matlab_struct["cap_plan_2hh"]["K_1"]
-K_2 = matlab_struct["cap_plan_2hh"]["K_2"]
-shock = np.array([i for i in range(matlab_struct["cap_plan_2hh"]["shock_num"])])
-s_1 = matlab_struct["cap_plan_2hh"]["s_1"]  # type numpy.ndarray
-s_2 = matlab_struct["cap_plan_2hh"]["s_2"]
-s_1_interp = my_interpolating_function = RegularGridInterpolator((shock, K_1, K_2), s_1)
+# dict = "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/Econ_algos/cap_plan_2hh"
+# matlab_struct = sio.loadmat(dict, simplify_cells=True)
+# K_1 = matlab_struct["cap_plan_2hh"]["K_1"]
+# K_2 = matlab_struct["cap_plan_2hh"]["K_2"]
+# shock = np.array([i for i in range(matlab_struct["cap_plan_2hh"]["shock_num"])])
+# s_1 = matlab_struct["cap_plan_2hh"]["s_1"]  # type numpy.ndarray
+# s_2 = matlab_struct["cap_plan_2hh"]["s_2"]
+# s_1_interp = my_interpolating_function = RegularGridInterpolator((shock, K_1, K_2), s_1)
 
 """
 create a linear interpolation over a ND grid
@@ -34,7 +34,7 @@ xg, yg, zg = np.meshgrid(x, y, z, indexing="ij", sparse=True)
 data = f(xg, yg, zg)
 
 my_interpolating_function = RegularGridInterpolator((x, y, z), data)
-pts = np.array([[2.1, 6.2, 8.3], [3.3, 5.2, 7.1]])
+pts = np.array([3.3, 5.2, 7.1])
 print(my_interpolating_function(pts))
 
 

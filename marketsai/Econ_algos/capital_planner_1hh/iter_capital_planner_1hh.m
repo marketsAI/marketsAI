@@ -79,23 +79,33 @@ GNDSGE_dummy_shock = 1;
 DEFAULT_PARAMETERS_END_HERE = true;
 beta  = 0.98;
 sigma = 1.0;
-alpha = 0.36;
+alpha = 0.3;
 delta = 0.04;
 phi = 0.5;
-shock_num = 2;
-z_low = 0.9;
-z_high = 1.1;
-Pr_ll = 0.9;
-Pr_hh  = 0.9;
-z = [z_low,z_high];
-shock_trans = [;
-Pr_ll, 1-Pr_ll;
-1-Pr_hh, Pr_hh;
+shock_num = 4;
+z_agg_low = 0.8;
+z_agg_high = 1.2;
+z_ind_low = 0.9;
+z_ind_high = 1.1;
+z_agg = [z_agg_low,z_agg_low,z_agg_high,z_agg_high];
+z_ind = [z_ind_low,z_ind_high,z_ind_low,z_ind_high];
+Pr_agg_ll = 0.95;
+Pr_agg_hh  = 0.95;
+Pr_ind_ll = 0.9;
+Pr_ind_hh  = 0.9;
+shock_trans_agg = [;
+Pr_agg_ll, 1-Pr_agg_ll;
+1-Pr_agg_hh, Pr_agg_hh;
 ];
+shock_trans_ind = [;
+Pr_ind_ll, 1-Pr_ind_ll;
+1-Pr_ind_hh, Pr_ind_hh;
+];
+shock_trans = kron(shock_trans_agg, shock_trans_ind);
 Kss  = (alpha * beta / (phi*delta*(1-beta*(1-delta))))^(1/(2-alpha));
 KPts = 101;
 KMin = Kss*0.5;
-KMax = Kss*1.2;
+KMax = Kss*1.5;
 K    = linspace(KMin,KMax,KPts);
 
 
@@ -104,9 +114,10 @@ if nargin>=1
 end
   
 assert(exist('shock_num','var')==1);
-assert(length(z)==2);
-assert(size(shock_trans,1)==2);
-assert(size(shock_trans,2)==2);
+assert(length(z_agg)==4);
+assert(length(z_ind)==4);
+assert(size(shock_trans,1)==4);
+assert(size(shock_trans,2)==4);
 
 
 %% Solve the last period problem
@@ -114,7 +125,8 @@ assert(size(shock_trans,2)==2);
 
 %% Solve the infinite horizon problem
 [GNDSGE_TENSOR_shockIdx,GNDSGE_TENSOR_K]=ndgrid(1:shock_num,K);
-GNDSGE_TENSOR_z=ndgrid(z,K);
+GNDSGE_TENSOR_z_agg=ndgrid(z_agg,K);
+GNDSGE_TENSOR_z_ind=ndgrid(z_ind,K);
 GNDSGE_NPROB=numel(GNDSGE_TENSOR_shockIdx);
 
 
@@ -128,7 +140,7 @@ GNDSGE_UB = 100*ones(2,GNDSGE_NPROB);
 GNDSGE_LB(1:1,:)=0;
 GNDSGE_UB(1:1,:)=1;
 GNDSGE_LB(2:2,:)=0;
-GNDSGE_UB(2:2,:)=((2/phi)*GNDSGE_TENSOR_z(:)'.*GNDSGE_TENSOR_K(:)'.^alpha).^(1/2)+(1-delta)*GNDSGE_TENSOR_K(:)';
+GNDSGE_UB(2:2,:)=((2/phi)*GNDSGE_TENSOR_z_agg(:)'.*GNDSGE_TENSOR_z_ind(:)'.*GNDSGE_TENSOR_K(:)'.^alpha).^(1/2)+(1-delta)*GNDSGE_TENSOR_K(:)';
 
 
 GNDSGE_EQVAL = 1e20*ones(2,GNDSGE_NPROB);
@@ -138,7 +150,7 @@ GNDSGE_X0 = rand(size(GNDSGE_SOL)) .* (GNDSGE_UB-GNDSGE_LB) + GNDSGE_LB;
 GNDSGE_SOL(:) = GNDSGE_X0;
 GNDSGE_AUX = zeros(1,GNDSGE_NPROB);
 GNDSGE_SKIP = zeros(1,GNDSGE_NPROB);
-GNDSGE_DATA = zeros(14,GNDSGE_NPROB);
+GNDSGE_DATA = zeros(32,GNDSGE_NPROB);
 
 if ~( nargin>=1 && isfield(GNDSGE_OPTIONS,'WarmUp') && isfield(GNDSGE_OPTIONS.WarmUp,'var_interp') )
     s_interp=zeros(GNDSGE_SIZE);
@@ -224,7 +236,7 @@ while(~stopFlag)
     
 
     
-GNDSGE_DATA(:) = [repmat([shock_num;beta(:);sigma(:);alpha(:);delta(:);phi(:);shock_trans(:);z(:); ],1,GNDSGE_NPROB);GNDSGE_TENSOR_shockIdx(:)';GNDSGE_TENSOR_K(:)';   ];
+GNDSGE_DATA(:) = [repmat([shock_num;beta(:);sigma(:);alpha(:);delta(:);phi(:);shock_trans(:);z_agg(:);z_ind(:); ],1,GNDSGE_NPROB);GNDSGE_TENSOR_shockIdx(:)';GNDSGE_TENSOR_K(:)';   ];
 
 MEX_TASK_NAME = MEX_TASK_INF_HORIZON;
 GNDSGE_F(:) = 1e20;
@@ -406,7 +418,7 @@ IterRslt.output_var_index = output_var_index;
         IterRslt.shock_num = shock_num;
         IterRslt.shock_trans = shock_trans;
         IterRslt.params = v2struct(beta,sigma,alpha,delta,phi,GNDSGE_EMPTY);
-        IterRslt.var_shock = v2struct(z);
+        IterRslt.var_shock = v2struct(z_agg,z_ind);
         IterRslt.var_state = v2struct(K);
         IterRslt.var_policy = v2struct(s,K_next);
         IterRslt.var_interp = v2struct(s_interp);

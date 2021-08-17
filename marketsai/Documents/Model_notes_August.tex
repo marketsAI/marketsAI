@@ -468,7 +468,7 @@ left=0.75in,right=0.75in,paperheight=11.0in,textheight=9.5in,centering]{geometry
 		\item There are $N^I$ industries each cosisting of $N^i$ identical firms. Their representative firm in industry $j$ has objective function 
 		
 		\begin{align*}
-		E_t \sum_{r=0}^{\infty} \beta^r \left[p_{j,t} f k_{j,t} -w_{j,t} k_{j,t} - \frac{\phi}{2}\left(k_{j,t+1}-k_{j,t} \right)^2 \right]
+		E_t \sum_{r=0}^{\infty} \beta^r \left[p_{j,t} f k_{j,t} -\omega_{j,t} k_{j,t} - \frac{\phi}{2}\left(k_{j,t+1}-k_{j,t} \right)^2 \right]
 		\end{align*}
 		
 		where 
@@ -478,9 +478,106 @@ left=0.75in,right=0.75in,paperheight=11.0in,textheight=9.5in,centering]{geometry
 		u_{j,t} & = \mathbf{\theta}_t + \mathbf{\epsilon}_{j,t} \\
 		\mathbf{\theta}_t & = \rho \mathbf{\theta}_{t-1}+\mathbf{v}_t,\quad  |\rho| <1 \\ 
 		\end{align*}
-		where $\mathbf{\epsilon}_{j,t}$ and $\mathbf{v}_t$ are orthogonal white noises, $p_{j,t}$ is the price in industry $j$, $k_{j,t}$ is the capital stock of the representative firm, $f k_{j,t}$ is the firm's output, $u_{j,t}$ is a random shock to demand, $\theta_t$ is a common component to the demand in all industries and $w_{j,t}$ is the stochastic rental rate of industry $j$, which is identically and independently distributed. 
+		where $\mathbf{\epsilon}_{j,t}$ and $\mathbf{v}_t$ are orthogonal white noises, $p_{j,t}$ is the price in industry $j$, $k_{j,t}$ is the capital stock of the representative firm, $f k_{j,t}$ is the firm's output, $u_{j,t}$ is a random shock to demand, $\theta_t$ is a common component to the demand in all industries and $omega_{j,t}$ is the stochastic rental rate of industry $j$, which is identically and independently distributed. 
 		
 		\item Firms in industry $a$ observe the history $\{p_{a,s}, K_{a,s}, p_{b,s};s\leq t\} $ and, symmetrically, firms in industry $b$ observes history $\{p_{b,s}, K_{b,s}, p_{a,s};s\leq t\} $
+		
+		\item "We assume that firms in each industry solve their optimization problem by positing that the variables in their information sets follow a vector autoregression. They use this vector autoregression to solve the "prediction part" of the linear-quadratic control problem $i$; In this section, we assume for convenience that firms in each industry fit a first-order vector autoregression to their observables" 
+		
+		\item Next, we are going to represent the problem in terms of matrices. The global state and noise the problem are:
+		
+		\begin{align*}
+		\mathbf{z}_t =  \left[ {\begin{array}{c}
+			K_{a,t} \\
+			u_{a,t} \\
+			K_{b,t}\\
+			u_{b,t} \\
+			\theta_t 
+			\end{array} } \right], \mathbf{\epsilon}_t =  \left[ {\begin{array}{c}
+				\mathbf{\epsilon}_{a,t} \\
+				\mathbf{\epsilon}_{b,t} \\
+				\mathbf{v}_t \\
+				\omega_{a,t-1} \\
+				\omega_{b,t-1} \\
+				\end{array} } \right]
+		\end{align*}
+		
+		\item The idiosyncratic states are:
+		
+		\begin{align*}
+		\mathbf{z}_{a,t} =  \left[ {\begin{array}{c}
+			K_{a,t} \\
+			u_{a,t} \\
+			p_{b,t} \\
+			\end{array} } \right],   \mathbf{z}_{b,t} = \left[ {\begin{array}{c}
+			K_{b,t} \\
+			u_{a,t} \\
+			p_{a,t} \\
+			\end{array} } \right] 
+		\end{align*}
+		
+		\item We can map the idiosynctraic state to the global state by setting 
+		
+		\begin{align*}
+		 \left[ {\begin{array}{c}
+			K_{a,t} \\
+			u_{a,t} \\
+			p_{b,t} \\
+			\end{array} } \right] = \left[ {\begin{array}{ccccc}
+			1 & 0 & 0 & 0 & 0 \\
+			0 & 1 & 0 & 0 & 0 \\
+			0 & 0 & -Af & 1 & 0
+			\end{array} } \right] \left[ {\begin{array}{c}
+			K_{a,t} \\
+			u_{a,t} \\
+			K_{b,t}\\
+			u_{b,t} \\
+			\theta_t 
+			\end{array} } \right]
+		\end{align*}
+		
+		\item We notate these mapping matrices as $\mathbf{e}_a$ and $\mathbf{e}_b$ such that $\mathbf{z}_{a,t} = \mathbf{e}_a \mathbf{z}_t$ and $\mathbf{z}_{b,t} = \mathbf{e}_b \mathbf{z}_t$.
+		
+		\item Also, we can map idiosyncratic state to prices via $p_{a,t} = c_a \mathbf{z}_{a,t}$ and  $p_{a,t} = c_a \mathbf{z}_{a,t}$  where $c_a = c_b = [{\begin{array}{ccc} -Af & 1 &  0 \end{array}}]$.
+		
+		\item Firms perceived law of motion is: 
+		
+		\begin{align*}
+		\mathbf{z}_{j,t} = \mathbf{\beta}_j \mathbf{z}_{j,t-1} + \mathbf{\eta}_{j,t}
+		\end{align*}
+		
+		where $\mathbf{\eta}_{j,t}$ is a vector of white noises and $\mathbf{\beta}_j$ is $3\times3$ matrix. 
+		
+		\item The firms first solve the expectation in its problem by using the perceived law of motion. {\color{red}(check better)}. 
+		
+		\item The first order condition for $j$ is 
+		
+		\begin{align*}
+		k_{j,t+1}=k_{j,t}+d^{-1} f \sum_{i=0}^\infty \beta^i E_t p_{j,t+i+1} -d^{-1} \omega_{j,t}
+		\end{align*}
+		
+		\item Using the perceived law of motion to solve the expection term, we get 
+		
+		\begin{align*}
+		k_{j,t+1}=k_{j,t}+d^{-1} f \sum_{i=0}^\infty (b\mathbf{\beta})^{i+1} \mathbf{e}_j \mathbf{z}_t -d^{-1} \omega_{j,t}
+		\end{align*}
+		
+		\item We now solve the geometric progression expression:
+		
+		\begin{align*}
+		k_{j,t+1}=k_{j,t}+d^{-1} f c_j b \mathbf{\beta} \left[\mathbf{I} - b \mathbf{\beta}_j \right]^{-1} (b\mathbf{\beta})^{i+1} \mathbf{e}_j \mathbf{z}_t -d^{-1} \omega_{j,t}
+		\end{align*}
+		
+		\item We now aggregate, simply multiplying by $N$ and on both sides and using $K_j=Nk_j$.
+		
+		\begin{align*}
+		K_{j,t+1}=K_{j,t}+Nd^{-1} f c_j b \mathbf{\beta} \left[\mathbf{I} - b \mathbf{\beta}_j \right]^{-1} (b\mathbf{\beta})^{i+1} \mathbf{e}_j \mathbf{z}_t -d^{-1} N \omega_{j,t}
+		\end{align*} 
+		
+		
+		
+			
+	
 	\end{itemize}
 
 	

@@ -53,6 +53,7 @@ class Capital_planner_ma(MultiAgentEnv):
         self.n_hh = self.env_config.get("n_hh", 1)
         self.n_capital = self.env_config.get("n_capital", 1)
         self.eval_mode = self.env_config.get("eval_mode", False)
+        self.analysis_mode = self.env_config.get("analysis_mode", False)
         self.max_savings = self.env_config.get("max_savings", 0.6)
         self.bgt_penalty = self.env_config.get("bgt_penalty", 1)
 
@@ -68,7 +69,7 @@ class Capital_planner_ma(MultiAgentEnv):
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
-            {"delta": 0.04, "alpha": 0.7, "phi": 0.5, "beta": 0.98},
+            {"delta": 0.04, "alpha": 0.3, "phi": 0.5, "beta": 0.98},
         )
 
         # steady state
@@ -103,6 +104,28 @@ class Capital_planner_ma(MultiAgentEnv):
                     if (t // (1 / self.shock_idtc_transition[0][1]) + 1) % 2 == 0
                     else [1 - (i % 2) for i in range(self.n_hh)]
                 )
+        if self.analysis_mode == True:
+            self.shocks_analysis_agg = {0: 0}
+            for t in range(1, self.horizon + 1):
+                self.shocks_analysis_agg[t] = (
+                    1
+                    if (t // (1 / self.shock_agg_transition[0][1]) + 1) % 2 == 0
+                    else 0
+                )
+            self.shocks_analysis_idtc = {0: [0 for i in range(self.n_hh)]}
+            for t in range(1, self.horizon + 1):
+                self.shocks_analysis_idtc[t] = (
+                    [0 for i in range(self.n_hh)]
+                    if (t // (1 / self.shock_idtc_transition[0][1]) + 1) % 2 == 0
+                    else [0 for i in range(self.n_hh)]
+                )
+            # self.shocks_analysis_idtc = {0: [1 - (i % 2) for i in range(self.n_hh)]}
+            # for t in range(1, self.horizon + 1):
+            #     self.shocks_analysis_idtc[t] = (
+            #         [(i % 2) for i in range(self.n_hh)]
+            #         if (t // (1 / self.shock_idtc_transition[0][1]) + 1) % 2 == 0
+            #         else [1 - (i % 2) for i in range(self.n_hh)]
+            #     )
 
         # if self.eval_mode == True:
         #     self.shocks_eval_agg = {0: 0}
@@ -179,6 +202,26 @@ class Capital_planner_ma(MultiAgentEnv):
             shocks_idtc_init = self.shocks_eval_idtc[0]
             shock_agg_init = self.shocks_eval_agg[0]
 
+        elif self.analysis_mode == True:
+            k_init = np.array(
+                [
+                    self.k_ss * 0.9 if i % 2 == 0 else self.k_ss * 0.8
+                    for i in range(self.n_hh * self.n_capital)
+                ],
+                dtype=float,
+            )  # we may not want this when we have more than 1 j
+
+            # k_init = np.array(
+            #     [
+            #         self.k_ss * 0.8 if i % 2 == 0 else self.k_ss * 0.8
+            #         for i in range(self.n_hh * self.n_capital)
+            #     ],
+            #     dtype=float,
+            # )  # we may not want this when we have more than 1 j
+
+            shocks_idtc_init = self.shocks_analysis_idtc[0]
+            shock_agg_init = self.shocks_analysis_agg[0]
+
         # when learning, we randomize the initial observations
         else:
             k_init = np.array(
@@ -228,9 +271,6 @@ class Capital_planner_ma(MultiAgentEnv):
         return self.obs_
 
     def step(self, action_dict):  # INPUT: Action Dictionary
-        # to do:
-        # test shock structure
-        # write negative rewards
 
         # UPDATE recursive structure
 
@@ -323,12 +363,13 @@ class Capital_planner_ma(MultiAgentEnv):
 
         # NEXT OBS
 
-        # flatten k_ij_new
-
         # update shock
         if self.eval_mode == True:
             shocks_idtc_id_new = np.array(self.shocks_eval_idtc[self.timestep])
             shock_agg_id_new = self.shocks_eval_agg[self.timestep]
+        elif self.analysis_mode == True:
+            shocks_idtc_id_new = np.array(self.shocks_analysis_idtc[self.timestep])
+            shock_agg_id_new = self.shocks_analysis_agg[self.timestep]
         else:
             shocks_idtc_id_new = np.array(
                 [

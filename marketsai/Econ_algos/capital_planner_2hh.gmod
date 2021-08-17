@@ -36,7 +36,7 @@ shock_trans = kron(kron(shock_trans_agg, shock_trans_ind), shock_trans_ind);
 % Endogenous States (make sure steady state is fine)
 var_state K_1 K_2 ;
 Kss  = (alpha * beta / (phi*delta*2*(1-beta*(1-delta))))^(1/(2-alpha));
-KPts = 101;
+KPts = 7;
 KMin = Kss*0.5;
 KMax = Kss*1.5;
 K_1    = linspace(KMin,KMax,KPts);

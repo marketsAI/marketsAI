@@ -1,70 +1,191 @@
+%% Preamble (run only once per sessions
 clear all
-tic
-% State which model
-model = "capital_planner_2hh";
-%path = '/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/Econ_algos/' + model;
-script = 'iter_'+model;
+addpath(genpath(pwd));
+parpool(3);
 
-%add path
-%addpath '/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/Econ_algos/' + model;
+%% Globals
+clear all
+options = struct;
+options.NumThreads = 3;
+options.SaveFreq = 100;
 
-% run iterations
-ItrRslt = eval(script);
+beta  = 0.98;		% discount factor
+sigma = 1.0;		% CRRA coefficient
+alpha = 0.3;		% capital share
+delta = 0.04;		% depreciation rate
+phi = 0.5;          % adj. cost parameter
 
+%
+%% 1 hh
+% small grid (5 points)
+n_hh = 1; 
+options.Kss  = (alpha * beta / (phi*delta*n_hh*(1-beta*(1-delta))))^(1/(2-alpha));
+options.KMin = options.Kss*0.5;
+options.KMax = options.Kss*1.5;
+tStart = tic;
+options.KPts =5;
+options.K    = linspace(options.KMin,options.KMax,options.KPts);
+IterRslt = iter_capital_planner_1hh(options);
+IterRslt.timeElapsed=toc(tStart);
+save('cap_plan_1hh_5pts.mat', 'IterRslt')
 
-% Policy grid (I want a matrix with K rows and N_shocks as columns
-K_1 = ItrRslt.var_state.K_1;
-K_2 = ItrRslt.var_state.K_2;% 1*101
-s_1 = ItrRslt.var_policy.s_1;
-s_2 = ItrRslt.var_policy.s_2;% N_shocks * 101
-shock_num = ItrRslt.shock_num;
+% med grid (11 points)
+tStart = tic;
+options.KPts = 11;
+options.K    = linspace(options.KMin,options.KMax,options.KPts);
+IterRslt = iter_capital_planner_2hh(options);
+IterRslt.timeElapsed=toc(tStart);
+save('cap_plan_1hh_11pts.mat', 'IterRslt')
 
-cap_plan_2hh = struct('K_1', K_1, 'K_2', K_2, 'shock_num', shock_num, 's_1', s_1, 's_2', s_2);
-save('cap_plan_2hh.mat', 'cap_plan_2hh');
-save()
-toc
+% large grid (21 points)
+options.KPts = 21;
+options.K    = linspace(options.KMin,options.KMax,options.KPts);
+IterRslt = iter_capital_planner_2hh(options);
+IterRslt.timeElapsed=toc(tStart);
+save('cap_plan_1hh_21pts.mat', 'IterRslt')
 
-% create meshgrid
-yPts = 4;
-yTEpsilonVar = 0.00219;
-yNEpsilonVar = 0.00167;
-rhoYT = 0.901;
-rhoYN = 0.225;
+%% 2 hh
+% small grid (5 points)
+n_hh = 2; 
+options.Kss  = (alpha * beta / (phi*delta*n_hh*(1-beta*(1-delta))))^(1/(2-alpha));
+options.KMin = options.Kss*0.5;
+options.KMax = options.Kss*1.5;
+tStart = tic;
+options.KPts =5;
+options.K_1    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_2    = linspace(options.KMin,options.KMax,options.KPts);
+IterRslt = iter_capital_planner_2hh(options);
+IterRslt.timeElapsed=toc(tStart);
+save('cap_plan_2hh_5pts.mat', 'IterRslt')
 
-% we create the shocks first as row vectors
-[yTTrans,yT] = markovappr(rhoYT,yTEpsilonVar^0.5,1,yPts);
-[yNTrans,yN] = markovappr(rhoYN,yNEpsilonVar^0.5,1,yPts);
+% med grid (11 points)
+tStart = tic;
+options.KPts = 11;
+options.K_1    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_2    = linspace(options.KMin,options.KMax,options.KPts);
+IterRslt = iter_capital_planner_2hh(options);
+IterRslt.timeElapsed=toc(tStart);
+save('cap_plan_2hh_11pts.mat', 'IterRslt')
 
-% transition probs
-shock_trans = kron(yNTrans,yTTrans);
+% large grid (21 points)
+options.KPts = 21;
+options.K_1    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_2    = linspace(options.KMin,options.KMax,options.KPts);
+IterRslt = iter_capital_planner_2hh(options);
+IterRslt.timeElapsed=toc(tStart);
+save('cap_plan_2hh_21pts.mat', 'IterRslt')
 
-% grids 
-%ndgrid gives you some matrices as intermediate value 
-[yT,yN] = ndgrid(yT,yN);
-% now we transform it in typical form, but notice that the second shock
-% goes in firtcompared to kronecker
-yT = yT(:)';
-yN = yN(:)';
+%% 3 hh
+% small grid (5 points)
+n_hh = 3; 
+options.Kss  = (alpha * beta / (phi*delta*n_hh*(1-beta*(1-delta))))^(1/(2-alpha));
+options.KMin = options.Kss*0.5;
+options.KMax = options.Kss*1.5;
+tStart = tic;
+options.KPts =5;
+options.K_1    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_2    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_3    = linspace(options.KMin,options.KMax,options.KPts);
+IterRslt = iter_capital_planner_3hh(options);
+IterRslt.timeElapsed=toc(tStart);
+save('cap_plan_3hh_5pts.mat', 'IterRslt')
 
+% med grid (11 points)
+tStart = tic;
+options.KPts = 11;
+options.K_1    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_2    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_3    = linspace(options.KMin,options.KMax,options.KPts);
+IterRslt = iter_capital_planner_3hh(options);
+IterRslt.timeElapsed=toc(tStart);
+save('cap_plan_3hh_11pts.mat', 'IterRslt')
 
+% large grid (21 points)
+options.KPts = 21;
+options.K_1    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_2    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_3    = linspace(options.KMin,options.KMax,options.KPts);
+IterRslt = iter_capital_planner_3hh(options);
+IterRslt.timeElapsed=toc(tStart);
+save('cap_plan_3hh_21pts.mat', 'IterRslt')
 
+%% 4 hh
+% small grid (5 points)
+n_hh = 4; 
+options.Kss  = (alpha * beta / (phi*delta*n_hh*(1-beta*(1-delta))))^(1/(2-alpha));
+options.KMin = options.Kss*0.5;
+options.KMax = options.Kss*1.5;
 
-% %transpose both and a
-% 
-% %Simulate
-% SimuRslt = simulate_capital_planner_1hh_2z(ItrRslt);
-% 
-% % tets
-% z_idx_grid = [0, 1];
-% z_grid = [0.99, 1.01];
-% e_grid = [0.00, 0.3271];
-% unemp_grid = [0.07, 0.00];  % unemployement transfer
-% beta_grid = [0.9858 0.9894 0.9930];
-% [beta,e,z] = ndgrid(beta_grid,e_grid,z_grid);
-% [~,unemp,z_idx] = ndgrid(beta_grid,unemp_grid,z_idx_grid);
-% beta=beta(:); e = e(:); unemp = unemp(:);
-% z = z(:); z_idx = z_idx(:);
+% tStart = tic;
+% options.KPts = 5;
+% options.K_1    = linspace(options.KMin,options.KMax,options.KPts);
+% options.K_2    = linspace(options.KMin,options.KMax,options.KPts);
+% options.K_3    = linspace(options.KMin,options.KMax,options.KPts);
+% options.K_4    = linspace(options.KMin,options.KMax,options.KPts);
+% IterRslt = iter_capital_planner_3hh(options);
+% IterRslt.timeElapsed=toc(tStart);
+% save('cap_plan_4hh_5pts.mat', 'IterRslt')
 
+% % med grid (11 points)
+% tStart = tic;
+% options.KPts = 11;
+% options.K_1    = linspace(options.KMin,options.KMax,options.KPts);
+% options.K_2    = linspace(options.KMin,options.KMax,options.KPts);
+% options.K_3    = linspace(options.KMin,options.KMax,options.KPts);
+% options.K_4    = linspace(options.KMin,options.KMax,options.KPts);
+% IterRslt = iter_capital_planner_3hh(options);
+% IterRslt.timeElapsed=toc(tStart);
+% save('cap_plan_4hh_11pts.mat', 'IterRslt')
 
+% large grid (21 points)
+options.KPts = 21;
+tStart = tic;
+options.K_1    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_2    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_3    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_4    = linspace(options.KMin,options.KMax,options.KPts);
+IterRslt = iter_capital_planner_4hh(options);
+IterRslt.timeElapsed=toc(tStart);
+save('cap_plan_4hh_21pts.mat', 'IterRslt')
+
+%% 5 hh
+% small grid (5 points)
+n_hh = 5; 
+options.Kss  = (alpha * beta / (phi*delta*n_hh*(1-beta*(1-delta))))^(1/(2-alpha));
+options.KMin = options.Kss*0.5;
+options.KMax = options.Kss*1.5;
+tStart = tic;
+options.KPts =5;
+options.K_1    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_2    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_3    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_4    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_5    = linspace(options.KMin,options.KMax,options.KPts);
+IterRslt = iter_capital_planner_3hh(options);
+IterRslt.timeElapsed=toc(tStart);
+save('cap_plan_5hh_5pts.mat', 'IterRslt')
+
+% med grid (11 points)
+tStart = tic;
+options.KPts = 11;
+options.K_1    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_2    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_3    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_4    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_5    = linspace(options.KMin,options.KMax,options.KPts);
+IterRslt = iter_capital_planner_3hh(options);
+IterRslt.timeElapsed=toc(tStart);
+save('cap_plan_5hh_11pts.mat', 'IterRslt')
+
+% large grid (21 points)
+options.KPts = 21;
+options.K_1    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_2    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_3    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_4    = linspace(options.KMin,options.KMax,options.KPts);
+options.K_5    = linspace(options.KMin,options.KMax,options.KPts);
+IterRslt = iter_capital_planner_3hh(options);
+IterRslt.timeElapsed=toc(tStart);
+save('cap_plan_5hh_21pts.mat', 'IterRslt')
 
 

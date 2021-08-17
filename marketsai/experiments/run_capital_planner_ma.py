@@ -23,12 +23,12 @@ import seaborn as sn
 import logging
 
 # STEP 0: Global configs
-date = "July22_"
+date = "August16_"
 test = False
 plot_progress = False
 algo = "PPO"
 env_label = "capital_planner_ma"
-exp_label = "server_10hh_"
+exp_label = "native_10hh_"
 register_env(env_label, Capital_planner_ma)
 
 # Hiperparameteres
@@ -39,9 +39,9 @@ n_capital = 1
 beta = 0.98
 
 # STEP 1: Parallelization options
-NUM_CPUS = 48
+NUM_CPUS = 6
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 8
+NUM_TRIALS = 1
 NUM_ROLLOUT = env_horizon * 1
 NUM_ENV_PW = 1
 # num_env_per_worker
@@ -69,7 +69,7 @@ else:
     MAX_STEPS = 300 * batch_size
     exp_name = exp_label + env_label + "_run_" + date + algo
 
-CHKPT_FREQ = 5
+CHKPT_FREQ = 2
 
 stop = {"timesteps_total": MAX_STEPS}
 
@@ -104,7 +104,7 @@ class MyCallbacks(DefaultCallbacks):
         )
         episode.user_data["rewards"] = []
         # episode.user_data["consumption"] = []
-        #episode.user_data["bgt_penalty"] = []
+        # episode.user_data["bgt_penalty"] = []
 
     def on_episode_step(
         self,
@@ -144,7 +144,7 @@ class MyCallbacks(DefaultCallbacks):
         # )
         # episode.custom_metrics["bgt_penalty"] = np.mean(
         #    episode.user_data["bgt_penalty"][0]
-        #)
+        # )
 
 
 env_config = {
@@ -264,7 +264,7 @@ analysis = tune.run(
     checkpoint_at_end=True,
     metric="episode_reward_mean",
     mode="max",
-    num_samples=NUM_TRIALS,
+    num_samples=2,
     # resources_per_trial={"gpu": 0.5},
 )
 
@@ -313,7 +313,6 @@ checkpoints.append(best_checkpoint)
 print(checkpoints)
 
 
-
 # print(list(best_progress.columns))
 
 # # STEP 4: Plot and evaluate
@@ -350,4 +349,3 @@ print(checkpoints)
 #     )
 #     excess_dd_plot = excess_dd_plot.get_figure()
 #     excess_dd_plot.savefig("marketsai/results/penalty_plot_" + exp_name + ".png")
-

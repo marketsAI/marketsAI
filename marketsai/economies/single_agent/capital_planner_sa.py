@@ -233,9 +233,6 @@ class Capital_planner_sa(gym.Env):
         ]
 
         # NEXT OBS
-
-        # flatten k_ij_new
-        k_ = np.array([item for sublist in k_ij_new for item in sublist], dtype=float)
         # update shock
         if self.eval_mode == True:
             shocks_idtc_id_new = np.array(self.shocks_eval_idtc[self.timestep])
@@ -254,6 +251,9 @@ class Capital_planner_sa(gym.Env):
                 list(range(len(self.shock_agg_values))),
                 weights=self.shock_agg_transition[shock_agg_id],
             )[0]
+
+        # flatten k_ij_new
+        k_ = np.array([item for sublist in k_ij_new for item in sublist], dtype=float)
         # create Tuple
         self.obs_ = (k_, shocks_idtc_id_new, shock_agg_id_new)
 

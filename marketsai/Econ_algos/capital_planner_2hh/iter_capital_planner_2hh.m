@@ -104,7 +104,7 @@ Pr_ind_ll, 1-Pr_ind_ll;
 ];
 shock_trans = kron(kron(shock_trans_agg, shock_trans_ind), shock_trans_ind);
 Kss  = (alpha * beta / (phi*delta*2*(1-beta*(1-delta))))^(1/(2-alpha));
-KPts = 101;
+KPts = 7;
 KMin = Kss*0.5;
 KMax = Kss*1.5;
 K_1    = linspace(KMin,KMax,KPts);

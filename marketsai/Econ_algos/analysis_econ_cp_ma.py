@@ -1,3 +1,7 @@
+""" This code import the policies obtained through RL and Policy Iteration and then compare them
+in sumalations.
+"""
+
 # Evaluation
 from ray.rllib.agents.ppo import PPOTrainer
 
@@ -10,23 +14,16 @@ import pandas as pd
 import numpy as np
 import seaborn as sn
 from marketsai.utils import encode
+import scipy.io as sio
+from scipy.interpolate import RegularGridInterpolator
 
-# Progress graph
-# progress_path = "/home/mc5851/ray_results/GM_run_June22_PPO/PPO_gm_b10cc_00000_0_2021-06-22_11-44-12/progress.csv"
-# #print(artifact_uri)
-# progress = pd.read_csv(progress_path)
-# #progress
-# plot = sn.lineplot(data=progress, x="episodes_total", y="custom_metrics/discounted_rewards_mean")
-# progress_plot = plot.get_figure()
-# progress_plot.savefig("/home/mc5851/marketsAI/marketsai/results/sgm_progress_PPO_June21.png")
-
-# register_env("Durable_sgm", Durable_sgm)
+# register and configure environment
 env_label = "capital_planner_sa"
 register_env("capital_planner_sa", Capital_planner_sa)
 
 for_public = False
 env_horizon = 1000
-n_hh = 1
+n_hh = 3
 n_capital = 1
 beta = 0.98
 env_config_analysis = {
@@ -43,7 +40,13 @@ env_config_analysis = {
     "parameters": {"delta": 0.04, "alpha": 0.3, "phi": 0.5, "beta": beta},
 }
 
+env = Capital_planner_sa(env_config=env_config_analysis)
+obs = env.reset()
 
+
+""" Import Deep RL policy """
+
+# Configure and restore the solved checkpointed trainer
 config_analysis = {
     "gamma": beta,
     "env": env_label,
@@ -55,16 +58,13 @@ config_analysis = {
 
 init()
 
-# checkpoint_path = results.best_checkpoint
 checkpoint_path = "/home/mc5851/ray_results/server_multi_capital_planner_sa_run_August2_PPO/PPO_capital_planner_sa_1ba2b_00003_3_2021-08-02_11-55-49/checkpoint_75/checkpoint-75"
 # checkpoint_path = "/Users/matiascovarrubias/ray_results/native_1hh_capital_planner_sa_run_July29_PPO/PPO_capital_planner_sa_1efd0_00006_6_clip_param=0.1,entropy_coeff=0.0,lambda=1.0,lr=5e-05,vf_clip_param=20_2021-07-29_22-51-57/checkpoint_001000/checkpoint-1000"
 
 trained_trainer = PPOTrainer(env=env_label, config=config_analysis)
 trained_trainer.restore(checkpoint_path)
 
-env = Capital_planner_sa(env_config=env_config_analysis)
-obs = env.reset()
-
+# sumulate with the policy
 shock_list = [[] for i in range(env.n_hh)]
 s_list = [[] for i in range(env.n_hh)]
 inv_list = [[] for i in range(env.n_hh)]
@@ -90,49 +90,44 @@ for i in range(MAX_STEPS):
 
 shutdown()
 
-# econ
+""" Extact policxy obtained feom Policy Iteration with GSDSGE package."""
+# To do:
+# 2. check that the structure of the interpolation is done corretly.
+# 3. create return from the function.
+dir_policy_folder = "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/Econ_algos"
+dir_model = f"/cap_plan_{env.n_hh}hh_5pts"
+matlab_struct = sio.loadmat(dir_policy_folder + dir_model, simplify_cells=True)
+K = [
+    np.array(matlab_struct["IterRslt"]["var_state"][f"K_{i+1}"])
+    for i in range(env.n_hh)
+]
+shock = np.array([i for i in range(matlab_struct["IterRslt"]["shock_num"])])
+s_on_grid = [
+    matlab_struct["IterRslt"]["var_policy"][f"s_{i+1}"] for i in range(env.n_hh)
+]  # type numpy.ndarray
 
-# Dictionary containging a list of actions for each endogenous state (the list is over ex_shocks)
-# dict = pd.read_csv(
-#     "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/Econ_algos/cap_planner_1hh_econ.csv",
-#     header=None,
-#     index_col=0,
-#     squeeze=True,
-#     dtype=float,
-# ).T.to_dict("list")
+s_interp = [
+    RegularGridInterpolator((shock,) + tuple(K), s_on_grid[i]) for i in range(env.n_hh)
+]
 
-dict = pd.read_csv(
-    "/home/mc5851/marketsAI/marketsai/Econ_algos/cap_planner_1hh_econ.csv",
-    header=None,
-    index_col=0,
-    squeeze=True,
-    dtype=float,
-).T.to_dict("list")
+sample_obs = env.observation_space.sample()
+sample_K = obs[0]
+sample_ind_shock = sample_obs[1]
+sample_agg_shock = sample_obs[2]
+
+sample_shock_raw = [sample_agg_shock] + list(sample_ind_shock)
+sample_shock_id = encode(sample_shock_raw, dims=[2 for i in range(env.n_hh + 1)])
+pts = [sample_shock_id] + list(sample_K)
+sample_s = [s_interp[i](pts)[0] for i in range(env.n_hh)]
 
 
-def compute_action(obs, dict: dict, max_s: float):
+def compute_action(obs, policy_list: list, max_action: float):
+    # to do, check encode part
     K = obs[0][0]
     shock_raw = [obs[2], obs[1][0]]
     shock_id = encode(shock_raw, dims=[2, 2])
-
-    grid = list(dict.keys())
-    grid_ar = np.asarray(list(dict.keys()), dtype=float)
-    nearest_k_id = (np.abs(grid_ar - K)).argmin()
-    if K > grid[nearest_k_id]:
-        k_0 = grid[nearest_k_id]
-        k_1 = grid[nearest_k_id + 1]
-        s = dict[k_0][shock_id] + ((K - k_0) / (k_1 - k_0)) * (
-            dict[k_1][shock_id] - dict[k_0][shock_id]
-        )
-    elif K < grid[nearest_k_id]:
-        k_0 = grid[nearest_k_id - 1]
-        k_1 = grid[nearest_k_id]
-        s = dict[k_0][shock_id] + ((K - k_0) / (k_1 - k_0)) * (
-            dict[k_1][shock_id] - dict[k_0][shock_id]
-        )
-    else:
-        s = dict[K][shock_id]
-    action = np.array([2 * s / max_s - 1])
+    s = [policy_list[i](np.array([shock_id] + K)) for i in range(env.n_hh)]
+    action = np.array([2 * s[i] / max_action - 1 for i in range(env.n_hh)])
     return action
 
 
@@ -147,7 +142,7 @@ MAX_STEPS = env.horizon
 # MAX_STEPS = 100
 obs = env.reset()
 for i in range(MAX_STEPS):
-    action = compute_action(obs, dict, env.max_s_per_j)
+    action = compute_action(obs, s_interp, env.max_s_per_j)
     obs, rew, done, info = env.step(action)
     # obs[1] = shock_process[i]
     # env.obs_[1] = shock_process[i]
@@ -160,7 +155,9 @@ for i in range(MAX_STEPS):
         k_list_econ[i].append(info["capital"][i][0])
         rew_list_econ[i].append(info["reward"][i])
 
-## Comparing rewards
+""" Compare the obtained rewards"""
+
+
 def process_rewards(r):
     """Compute discounted reward from a vector of rewards."""
     discounted_r = np.zeros_like(r)
@@ -172,6 +169,9 @@ def process_rewards(r):
 
 
 print(process_rewards(rew_list[0]), process_rewards(rew_list_econ[0]))
+
+
+""" Plot comparable simulations """
 ### PLOTTING ###
 plt.subplot(2, 2, 1)
 for i in range(env.n_hh):
@@ -216,26 +216,30 @@ plt.title("Capital")
 # plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
 
 # when ready for publication
+plt.pyplot.tight_layout()
 # if for_public == True:
 #     plt.savefig(
-#         "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/Documents/Figures/capital_planner_IRecon_July29_1hh.png"
+#         "/home/mc5851/marketsAI/marketsai/Documents/Figures/cap_plan_2hh_5pts_Aug16.png"
 #     )
 # else:
 #     plt.savefig(
-#         "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/results/capital_planner_IRecon_July22_1hh.png"
+#         "/home/mc5851/marketsAI/marketsai/results/cap_plan_2hh_5pts_Aug16.png"
 #     )
-plt.pyplot.tight_layout()
 if for_public == True:
     plt.savefig(
-        "/home/mc5851/marketsAI/marketsai/Documents/Figures/capital_planner_IRecon_Aug3_1hh.png"
+        "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/Documents/Figures/cap_plan_2hh_5pts_Aug16.png"
     )
 else:
     plt.savefig(
-        "/home/mc5851/marketsAI/marketsai/results/capital_planner_IRecon_Aug3_1hh.png"
+        "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/results/cap_plan_2hh_5pts_Aug16.png"
     )
-
 plt.show()
 
+
+""" Aggregate Results"""
+
+
+""" To create a CSV with the data of the graphs. It can be useful to open source. """
 # CVS file
 
 # IRresults = {
@@ -260,3 +264,71 @@ plt.show()
 #     df_IR.to_csv(
 #         "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/results/capital_planner_IRecon_July22_1hh.csv"
 #     )
+
+""" To plot from the progress csv directly """
+
+# Progress graph
+# progress_path = "/home/mc5851/ray_results/GM_run_June22_PPO/PPO_gm_b10cc_00000_0_2021-06-22_11-44-12/progress.csv"
+# #print(artifact_uri)
+# progress = pd.read_csv(progress_path)
+# #progress
+# plot = sn.lineplot(data=progress, x="episodes_total", y="custom_metrics/discounted_rewards_mean")
+# progress_plot = plot.get_figure()
+# progress_plot.savefig("/home/mc5851/marketsAI/marketsai/results/sgm_progress_PPO_June21.png")
+
+""" to import the output of  GDSGE as csv file"""
+
+# Dictionary containging a list of actions for each endogenous state (the list is over ex_shocks)
+# dict = pd.read_csv(
+#     "/Users/matiascovarrubias/Documents/universidad/NYU/Research/Repositories/marketsAI/marketsai/Econ_algos/cap_planner_1hh_econ.csv",
+#     header=None,
+#     index_col=0,
+#     squeeze=True,
+#     dtype=float,
+# ).T.to_dict("list")
+
+"""
+create a linear interpolation over a ND grid
+"""
+
+# def f(x, y, z):
+#     return 2 * x ** 3 + 3 * y ** 2 - z
+
+
+# x = np.linspace(1, 4, 11)
+# y = np.linspace(4, 7, 22)
+# z = np.linspace(7, 9, 33)
+# xg, yg, zg = np.meshgrid(x, y, z, indexing="ij", sparse=True)
+# data = f(xg, yg, zg)
+
+# my_interpolating_function = RegularGridInterpolator((x, y, z), data)
+# pts = np.array([[2.1, 6.2, 8.3], [3.3, 5.2, 7.1]])
+# print(my_interpolating_function(pts))
+
+""" old compute action"""
+
+# def compute_action(obs, policy_list = s_interp, max_s: float):
+#     # to do, check encode part
+#     K = obs[0][0]
+#     shock_raw = [obs[2], obs[1][0]]
+#     shock_id = encode(shock_raw, dims=[2, 2])
+
+#     grid = list(dict.keys())
+#     grid_ar = np.asarray(list(dict.keys()), dtype=float)
+#     nearest_k_id = (np.abs(grid_ar - K)).argmin()
+#     if K > grid[nearest_k_id]:
+#         k_0 = grid[nearest_k_id]
+#         k_1 = grid[nearest_k_id + 1]
+#         s = dict[k_0][shock_id] + ((K - k_0) / (k_1 - k_0)) * (
+#             dict[k_1][shock_id] - dict[k_0][shock_id]
+#         )
+#     elif K < grid[nearest_k_id]:
+#         k_0 = grid[nearest_k_id - 1]
+#         k_1 = grid[nearest_k_id]
+#         s = dict[k_0][shock_id] + ((K - k_0) / (k_1 - k_0)) * (
+#             dict[k_1][shock_id] - dict[k_0][shock_id]
+#         )
+#     else:
+#         s = dict[K][shock_id]
+#     action = np.array([2 * s / max_s - 1])
+#     return action

@@ -82,23 +82,33 @@ GNDSGE_dummy_shock = 1;
 DEFAULT_PARAMETERS_END_HERE = true;
 beta  = 0.98;
 sigma = 1.0;
-alpha = 0.36;
+alpha = 0.3;
 delta = 0.04;
 phi = 0.5;
-shock_num = 2;
-z_low = 0.9;
-z_high = 1.1;
-Pr_ll = 0.9;
-Pr_hh  = 0.9;
-z = [z_low,z_high];
-shock_trans = [;
-Pr_ll, 1-Pr_ll;
-1-Pr_hh, Pr_hh;
+shock_num = 4;
+z_agg_low = 0.8;
+z_agg_high = 1.2;
+z_ind_low = 0.9;
+z_ind_high = 1.1;
+z_agg = [z_agg_low,z_agg_low,z_agg_high,z_agg_high];
+z_ind = [z_ind_low,z_ind_high,z_ind_low,z_ind_high];
+Pr_agg_ll = 0.95;
+Pr_agg_hh  = 0.95;
+Pr_ind_ll = 0.9;
+Pr_ind_hh  = 0.9;
+shock_trans_agg = [;
+Pr_agg_ll, 1-Pr_agg_ll;
+1-Pr_agg_hh, Pr_agg_hh;
 ];
+shock_trans_ind = [;
+Pr_ind_ll, 1-Pr_ind_ll;
+1-Pr_ind_hh, Pr_ind_hh;
+];
+shock_trans = kron(shock_trans_agg, shock_trans_ind);
 Kss  = (alpha * beta / (phi*delta*(1-beta*(1-delta))))^(1/(2-alpha));
 KPts = 101;
 KMin = Kss*0.5;
-KMax = Kss*1.2;
+KMax = Kss*1.5;
 K    = linspace(KMin,KMax,KPts);
 num_periods = 10000;
 num_samples = 6;
@@ -189,7 +199,7 @@ for GNDSGE_t=1:num_periods
     K=SimuRslt.K(:,GNDSGE_t);
 
     
-    GNDSGE_data0 = repmat([shock_num;beta(:);sigma(:);alpha(:);delta(:);phi(:);shock_trans(:);z(:); ],1,GNDSGE_NPROB);
+    GNDSGE_data0 = repmat([shock_num;beta(:);sigma(:);alpha(:);delta(:);phi(:);shock_trans(:);z_agg(:);z_ind(:); ],1,GNDSGE_NPROB);
     
     
     
