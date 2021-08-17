@@ -11,8 +11,29 @@ import random
 
 
 class Capital_planner_sa(gym.Env):
-    """An gym compatible environment consisting of a durable good consumption and production problem
-    The agent chooses how much to produce of a durable good subject to quadratci costs.
+    """A gym compatible environment of capital good markets.
+    - n_hh households prduce the consumption good using n_capital capital goods.
+
+    - Each period, each househods decide how much of production to allocate to the production of
+    new capital goods (investment). The rest is consumed and the hh's get logarithmic utility.
+
+    -The problem is formulated as a single-agent planner problem, in which the planner chooses how to much to save
+    for each household.
+
+    - All the resources saved are transformed to capital goods using a quadratic adjustment tecnologty.
+
+    - Capital goods are durable and have a depreciation rate delta.
+
+    - Each household faces two TFP shocks, an idiosyncratic shock affect only his production,
+    and an aggregate shock that affects all househods.
+
+    - The observation space includes the stock of all houeholds on all capital goods (n_hh * n_capital stocks),
+    the idiosyncratic shock of each  household (n_hh shocks), and an aggreagte shock.
+
+    - The action space is the proportion of final good that is to be investeed in each
+    capital good for each household (n_capital*n_hh actions)
+
+    - we index households with i, and capital goods with j.
 
     """
 

@@ -136,3 +136,6 @@ dmypy.json
 
 #MLFLow directory  
 mlruns/
+
+#econ_policies
+marketsai/Econ_policies
