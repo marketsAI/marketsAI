@@ -10,14 +10,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sn
 
-# Progress graph
-# progress_path = "/home/mc5851/ray_results/GM_run_June22_PPO/PPO_gm_b10cc_00000_0_2021-06-22_11-44-12/progress.csv"
-# #print(artifact_uri)
-# progress = pd.read_csv(progress_path)
-# #progress
-# plot = sn.lineplot(data=progress, x="episodes_total", y="custom_metrics/discounted_rewards_mean")
-# progress_plot = plot.get_figure()
-# progress_plot.savefig("/home/mc5851/marketsAI/marketsai/results/sgm_progress_PPO_June21.png")
+""" Step 0: Restore RL policy with original configuration"""
 
 # register_env("Durable_sgm", Durable_sgm)
 env_label = "capital_planner_ma"
@@ -25,7 +18,7 @@ register_env(env_label, Capital_planner_ma)
 
 for_public = False
 env_horizon = 1000
-n_hh = 5
+n_hh = 1
 n_capital = 1
 beta = 0.98
 env_config_analysis = {
@@ -42,6 +35,7 @@ env_config_analysis = {
     "parameters": {"delta": 0.04, "alpha": 0.3, "phi": 0.5, "beta": beta},
 }
 
+# We instantiate the environment to extract information.
 env = Capital_planner_ma(env_config_analysis)
 config_analysis = {
     "gamma": beta,
@@ -60,7 +54,7 @@ config_analysis = {
             ),
         },
         "policy_mapping_fn": (lambda agent_id: agent_id.split("_")[0]),
-        "replay_mode": "independent",  # you can change to "lockstep".
+        "replay_mode": "independent",
     },
 }
 
@@ -77,14 +71,23 @@ env = Capital_planner_ma(env_config=env_config_analysis)
 obs = env.reset()
 # env.timestep = 100000
 
+""" Step 1: Simulate an episode (MAX_steps timesteps) """
 
 shock_idtc_list = [[] for i in range(env.n_hh)]
-s_list = [[] for i in range(env.n_hh)]
 y_list = [[] for i in range(env.n_hh)]
+s_list = [[] for i in range(env.n_hh)]
 c_list = [[] for i in range(env.n_hh)]
 k_list = [[] for i in range(env.n_hh)]
+y_agg_list = []
+s_agg_list = []
+c_agg_list = []
 k_agg_list = []
+
 shock_agg_list = []
+
+# k_agg_list = [np.sum([k_list[i][j] for i in range(env.n_hh)]) for j in range(MAX_STEPS)]
+# s_agg_list = [np.sum([s_list[i][j] for i in range(env.n_hh)]) for j in range(MAX_STEPS)]
+# y_agg_list = [np.sum([y_list[i][j] for i in range(env.n_hh)]) for j in range(MAX_STEPS)]
 MAX_STEPS = env.horizon
 
 for t in range(MAX_STEPS):
@@ -97,15 +100,22 @@ for t in range(MAX_STEPS):
     obs, rew, done, info = env.step(action)
     for i in range(env.n_hh):
         shock_idtc_list[i].append(obs["hh_0"][1][i])
-        s_list[i].append(info["hh_0"]["savings"][i][0])
         y_list[i].append(info["hh_0"]["income"][i])
+        s_list[i].append(info["hh_0"]["savings"][i][0])
         c_list[i].append(info["hh_0"]["consumption"][i])
         k_list[i].append(info["hh_0"]["capital"][i][0])
 
-    #k_agg_list.append(np.sum([k_list[[j][t-1] for j in range(env.n_hh)]))
+    # k_agg_list.append(np.sum([k_list[[j][t-1] for j in range(env.n_hh)]))
     shock_agg_list.append(obs["hh_0"][2])
+    y_agg_list.append(np.sum([y_list[i][t] for i in range(env.n_hh)]))
+    s_agg_list.append(
+        np.mean([s_list[i][t] * y_list[i][t] / y_agg_list[t] for i in range(env.n_hh)])
+    )
+    c_agg_list.append(np.sum([y_list[i][t] for i in range(env.n_hh)]))
+    k_agg_list.append(np.sum([k_list[i][t] for i in range(env.n_hh)]))
 
 
+"""Step 2: Plot idiosyncractic trajectories """
 
 plt.subplot(2, 2, 1)
 for i in range(env.n_hh):
@@ -128,22 +138,64 @@ for i in range(env.n_hh):
 plt.title("Income")
 
 plt.subplot(2, 2, 4)
-#plt.plot(k_agg_list[:100])
+# plt.plot(k_agg_list[:100])
 for i in range(env.n_hh):
     plt.plot(k_list[i][:100])
 plt.title("Capital")
 
 # plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
-#plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
+# plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
 
-# when ready for publication
+
 if for_public == True:
-    plt.savefig("/home/mc5851/marketsAI/marketsai/Documents/Figures/capital_planner_ma_IR_July22_5hh.png")
+    plt.savefig(
+        "/home/mc5851/marketsAI/marketsai/Documents/Figures/cap_plan_ma_SimId_Aug18_1hh.png"
+    )  # when ready for publication
 else:
-    plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_ma_IR_July22_5hh.png")
+    plt.savefig(
+        "/home/mc5851/marketsAI/marketsai/results/capital_planner_ma_SimId_Aug10_1hh.png"
+    )
 
 plt.show()
 
+""" Aggregate Plots """
+# create aggregates
+
+
+plt.subplot(2, 2, 1)
+plt.plot(shock_agg_list[:100])
+plt.title("Aggregate Shock")
+
+plt.subplot(2, 2, 2)
+plt.plot(y_agg_list[:100])
+plt.title("Aggregate Income")
+
+
+plt.subplot(2, 2, 3)
+plt.plot(s_agg_list[:100])
+plt.title("Aggregate Savings Rate")
+
+plt.subplot(2, 2, 4)
+plt.plot(k_agg_list[:100])
+plt.title("Aggregate Capital")
+
+
+# plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
+# plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
+
+
+if for_public == True:
+    plt.savefig(
+        "/home/mc5851/marketsAI/marketsai/Documents/Figures/cap_plan_ma_SimAgg_Aug18_1hh.png"
+    )  # when ready for publication
+else:
+    plt.savefig(
+        "/home/mc5851/marketsAI/marketsai/results/capital_planner_ma_SimAgg_Aug10_1hh.png"
+    )
+
+plt.show()
+
+""" Create CSV with simulation results"""
 # IRResults_agg = {"k_agg": k_agg_list, "shock_agg": shock_agg_list}
 # IRResults_idtc = {}
 # # IRresults_idtc = {

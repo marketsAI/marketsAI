@@ -71,7 +71,7 @@ class Capital_planner_ma(MultiAgentEnv):
             {"delta": 0.04, "alpha": 0.3, "phi": 0.5, "beta": 0.98},
         )
 
-        # steady state
+        # STEAD STATE
         self.k_ss = (
             self.params["phi"]
             * self.params["delta"]
@@ -421,31 +421,37 @@ class Capital_planner_ma(MultiAgentEnv):
 
         # ADDITIONAL INFO
         # The info of the first household contain global info, to make it easy to retrieve
-        info_global = {
-            "hh_0": {
-                "savings": s_ij,
-                "reward": np.mean(utility_i),
-                "income": y_i,
-                "consumption": c_i,
-                "bgt_penalty": bgt_penalty_ind,
-                "capital": k_ij,
-                "capital_new": k_ij_new,
-            }
-        }
-        info_ind = {
-            f"hh_{i}": {
-                "savings": s_ij[i],
-                "reward": np.mean(utility_i),
-                "income": y_i[i],
-                "consumption": c_i[i],
-                "bgt_penalty": bgt_penalty_ind[i],
-                "capital": k_ij[i],
-                "capital_new": k_ij_new[i],
-            }
-            for i in range(1, self.n_hh)
-        }
 
-        info = {**info_global, **info_ind}
+        # info_aggregate = {"__all__": np.sum(y_i)}
+        if self.analysis_mode == False:
+            info = {}
+        else:
+            info_global = {
+                "hh_0": {
+                    "savings": s_ij,
+                    "reward": np.mean(utility_i),
+                    "income": y_i,
+                    "consumption": c_i,
+                    "bgt_penalty": bgt_penalty_ind,
+                    "capital": k_ij,
+                    "capital_new": k_ij_new,
+                }
+            }
+
+            info_ind = {
+                f"hh_{i}": {
+                    "savings": s_ij[i],
+                    "reward": np.mean(utility_i),
+                    "income": y_i[i],
+                    "consumption": c_i[i],
+                    "bgt_penalty": bgt_penalty_ind[i],
+                    "capital": k_ij[i],
+                    "capital_new": k_ij_new[i],
+                }
+                for i in range(1, self.n_hh)
+            }
+
+            info = {**info_global, **info_ind}
 
         # RETURN
 

@@ -4,48 +4,57 @@ from marketsai.economies.multi_agent.capital_planner_ma import Capital_planner_m
 # import ray
 from ray import tune, shutdown, init
 from ray.tune.registry import register_env
-from typing import Dict
 
-# For Callbacks
+# from ray.tune.integration.mlflow import MLflowLoggerCallback
+
+# For custom metrics (Callbacks)
 from ray.rllib.agents.callbacks import DefaultCallbacks
 from ray.rllib.env import BaseEnv
 from ray.rllib.evaluation import MultiAgentEpisode, RolloutWorker
 from ray.rllib.policy import Policy
 
-# from ray.tune.integration.mlflow import MLflowLoggerCallback
-
-import random
-import math
-import pandas as pd
+# common imports
+from typing import Dict
 import numpy as np
-import matplotlib.pyplot as plt
 import seaborn as sn
-import logging
 
-""" STEP 0: Global configs """
+# import pandas as pd
+# import matplotlib.pyplot as plt
+# import logging
+# import random
+# import math
 
-date = "August16_"
-test = False
-plot_progress = True
-algo = "PPO"
-env_label = "capital_planner_ma"
-exp_label = "native_1hh_"
+""" STEP 0: Experiment configs """
+
+# global configs
+DATE = "August1_"
+TEST = True
+PLOT_PROGRESS = True
+ALGO = "PPO"
+EXP_LABEL = "native_1hh_"
+
 # Define environment, which should be imported from a class
-register_env(env_label, Capital_planner_ma)
+ENV_LABEL = "cap_plan_ma"
+register_env(ENV_LABEL, Capital_planner_ma)
+
+# name the experiment
+if TEST == True:
+    EXP_NAMES = EXP_LABEL + ENV_LABEL + "_test_" + DATE + ALGO
+else:
+    EXP_NAMES = EXP_LABEL + ENV_LABEL + "_run_" + DATE + ALGO
 
 # Economic Hiperparameteres.
+ENV_HORIZON = 1000
+N_HH = 1
+N_CAPITAL = 1
+BETA = 0.98  # discount parameter
 
-env_horizon = 1000
-n_hh = 1
-n_capital = 1
-beta = 0.98
-
-""" STEP 1: Parallelization options """
-
+""" STEP 1: Paralleliztion and batch options"""
+# Parallelization options
 NUM_CPUS = 6
 NUM_CPUS_DRIVER = 1
 NUM_TRIALS = 1
-NUM_ROLLOUT = env_horizon * 1
+NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1
 # num_env_per_worker
 NUM_GPUS = 0
@@ -57,12 +66,15 @@ batch_size = NUM_ROLLOUT * (max(n_workers, 1)) * NUM_ENV_PW * BATCH_ROLLOUT
 
 print(n_workers, batch_size)
 
-shutdown()
-init(
-    num_cpus=NUM_CPUS,
-    num_gpus=NUM_GPUS,
-    # logging_level=logging.ERROR,
-)
+# define length of experiment (MAX_STEPS) and experiment name
+if TEST == True:
+    MAX_STEPS = 10 * batch_size
+else:
+    MAX_STEPS = 300 * batch_size
+
+CHKPT_FREQ = 2
+
+stop = {"timesteps_total": MAX_STEPS}
 
 """ STEP 2: set custom metrics such as discounted rewards to keep track of through leraning"""
 # Define custom metrics using the Callbacks class
@@ -74,7 +86,7 @@ def process_rewards(r):
     discounted_r = np.zeros_like(r)
     running_add = 0
     for t in reversed(range(0, len(r))):
-        running_add = running_add * beta + r[t]
+        running_add = running_add * BETA + r[t]
         discounted_r[t] = running_add
     return discounted_r[0]
 
@@ -132,26 +144,14 @@ class MyCallbacks(DefaultCallbacks):
         # )
 
 
-""" STEP 3: Experiment configuratios (Algorithmic Hyperparameters) """
-
-# define length of experiment (MAX_STEPS) and experiment name
-if test == True:
-    MAX_STEPS = 5 * batch_size
-    exp_name = exp_label + env_label + "_test_" + date + algo
-else:
-    MAX_STEPS = 300 * batch_size
-    exp_name = exp_label + env_label + "_run_" + date + algo
-
-CHKPT_FREQ = 2
-
-stop = {"timesteps_total": MAX_STEPS}
+""" STEP 3: Environment and Algorithm configuration """
 
 
 # environment config including evaluation environment (without exploration)
 env_config = {
     "horizon": 1000,
-    "n_hh": n_hh,
-    "n_capital": n_capital,
+    "n_hh": N_HH,
+    "n_capital": N_CAPITAL,
     "eval_mode": False,
     "max_savings": 0.6,
     "bgt_penalty": 1,
@@ -159,7 +159,7 @@ env_config = {
     "shock_idtc_transition": [[0.9, 0.1], [0.1, 0.9]],
     "shock_agg_values": [0.8, 1.2],
     "shock_agg_transition": [[0.95, 0.05], [0.05, 0.95]],
-    "parameters": {"delta": 0.04, "alpha": 0.3, "phi": 0.5, "beta": beta},
+    "parameters": {"delta": 0.04, "alpha": 0.3, "phi": 0.5, "beta": BETA},
 }
 
 env_config_eval = env_config.copy()
@@ -180,10 +180,10 @@ common_config = {
     # CUSTOM METRICS
     "callbacks": MyCallbacks,
     # ENVIRONMENT
-    "gamma": beta,
-    "env": env_label,
+    "gamma": BETA,
+    "env": ENV_LABEL,
     "env_config": env_config,
-    "horizon": env_horizon,
+    "horizon": ENV_HORIZON,
     # MODEL
     "framework": "torch",
     # "model": tune.grid_search([{"use_lstm": True}, {"use_lstm": False}]),
@@ -238,36 +238,44 @@ sac_config = {
     "prioritized_replay": True,
 }
 
-if algo == "PPO":
+if ALGO == "PPO":
     training_config = {**common_config, **ppo_config}
-elif algo == "SAC":
+elif ALGO == "SAC":
     training_config = {**common_config, **sac_config}
 else:
     training_config = common_config
 
 
-""" STEP 3 (final): run experiment """
+""" STEP 4: run experiment """
 
 checkpoints = []
 experiments = []
+# Initialize ray
+shutdown()
+init(
+    num_cpus=NUM_CPUS,
+    num_gpus=NUM_GPUS,
+    # logging_level=logging.ERROR,
+)
+
 analysis = tune.run(
-    algo,
-    name=exp_name,
+    ALGO,
+    name=EXP_NAMES,
     config=training_config,
     stop=stop,
     checkpoint_freq=CHKPT_FREQ,
-    checkpoint_at_end=True,
+    checkpoint_at_end=False,
     # metric="rewards_mean",
     metric="evaluation/custom_metrics/discounted_rewards_mean",
     mode="max",
-    num_samples=2,
+    num_samples=1,
     # resources_per_trial={"gpu": 0.5},
 )
 
-best_progress = analysis.best_dataframe
-print(type(best_progress))
-best_checkpoint = analysis.best_checkpoint
-checkpoints.append(best_checkpoint)
+best_progress_dta = analysis.best_dataframe
+print(type(best_progress_dta))
+best_checkpoint_dir = analysis.best_checkpoint
+checkpoints.append(best_checkpoint_dir)
 
 """ in case you want to run multiple experiments at once"""
 
@@ -319,17 +327,17 @@ print(checkpoints)
 # print(list(best_progress.columns))
 
 
-""" STEP 4: Plot and evaluate """
+""" STEP 5 (optional): Plot and evaluate """
 
 # Plot progress
-if plot_progress == True:
+if PLOT_PROGRESS == True:
     progress_plot = sn.lineplot(
-        data=best_progress,
+        data=best_progress_dta,
         x="episodes_total",
         y="evaluation/custom_metrics/discounted_rewards_mean",
     )
     progress_plot = progress_plot.get_figure()
-    progress_plot.savefig("marketsai/results/progress_plot_" + exp_name + ".png")
+    progress_plot.savefig("marketsai/results/progress_" + EXP_NAMES + ".png")
 
     # penalty_plot = sn.lineplot(
     #     data=best_progress,
