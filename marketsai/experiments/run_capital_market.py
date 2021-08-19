@@ -1,5 +1,5 @@
 # import environment
-from marketsai.economies.multi_agent.capital_planner_ma import Capital_planner_ma
+from marketsai.economies.multi_agent.capital_market import Capital_market
 
 # import ray
 from ray import tune, shutdown, init
@@ -22,26 +22,23 @@ import matplotlib.pyplot as plt
 import seaborn as sn
 import logging
 
-""" STEP 0: Global configs """
-
-date = "August16_"
+# STEP 0: Global configs
+date = "August17_"
 test = False
-plot_progress = True
+plot_progress = False
 algo = "PPO"
-env_label = "capital_planner_ma"
-exp_label = "native_1hh_"
-# Define environment, which should be imported from a class
-register_env(env_label, Capital_planner_ma)
+env_label = "capital_market"
+exp_label = "native_10hh_"
+register_env(env_label, Capital_market)
 
-# Economic Hiperparameteres.
+# Hiperparameteres
 
 env_horizon = 1000
-n_hh = 1
+n_hh = 10
 n_capital = 1
 beta = 0.98
 
-""" STEP 1: Parallelization options """
-
+# STEP 1: Parallelization options
 NUM_CPUS = 6
 NUM_CPUS_DRIVER = 1
 NUM_TRIALS = 1
@@ -64,11 +61,20 @@ init(
     # logging_level=logging.ERROR,
 )
 
-""" STEP 2: set custom metrics such as discounted rewards to keep track of through leraning"""
-# Define custom metrics using the Callbacks class
-# See rllib documentation on Callbacks. They are a way of inserting code in different parts of the pipeline.
+# STEP 2: Experiment configuratios
+if test == True:
+    MAX_STEPS = 10 * batch_size
+    exp_name = exp_label + env_label + "_test_" + date + algo
+else:
+    MAX_STEPS = 300 * batch_size
+    exp_name = exp_label + env_label + "_run_" + date + algo
 
-# function to get discounted rewards for analysys
+CHKPT_FREQ = 2
+
+stop = {"timesteps_total": MAX_STEPS}
+
+
+# Callbacks
 def process_rewards(r):
     """Compute discounted reward from a vector of rewards."""
     discounted_r = np.zeros_like(r)
@@ -92,12 +98,12 @@ class MyCallbacks(DefaultCallbacks):
     ):
         # Make sure this episode has just been started (only initial obs
         # logged so far).
-
         assert episode.length == 0, (
             "ERROR: `on_episode_start()` callback should be called right "
             "after env reset!"
         )
         episode.user_data["rewards"] = []
+        # episode.user_data["consumption"] = []
         # episode.user_data["bgt_penalty"] = []
 
     def on_episode_step(
@@ -109,10 +115,16 @@ class MyCallbacks(DefaultCallbacks):
         env_index: int,
         **kwargs
     ):
-        if episode.length > 1:  # at t=0, previous rewards are not defined
+        # Make sure this episode is ongoing.
+        # assert episode.length > 0, \
+        #     "ERROR: `on_episode_step()` callback should not be called right " \
+        #     "after env reset!"
+        if episode.length > 1:
             rewards = episode.prev_reward_for("hh_0")
+            # consumption = episode.last_info_for("hh_0")["consumption"]
             # bgt_penalty = episode.last_info_for("hh_0")["bgt_penalty"]
             episode.user_data["rewards"].append(rewards)
+            # episode.user_data["consumption"].append(consumption)
             # episode.user_data["bgt_penalty"].append(bgt_penalty)
 
     def on_episode_end(
@@ -127,27 +139,14 @@ class MyCallbacks(DefaultCallbacks):
     ):
         discounted_rewards = process_rewards(episode.user_data["rewards"])
         episode.custom_metrics["discounted_rewards"] = discounted_rewards
+        # episode.custom_metrics["consumption"] = np.mean(
+        #     episode.user_data["consumption"][0]
+        # )
         # episode.custom_metrics["bgt_penalty"] = np.mean(
         #    episode.user_data["bgt_penalty"][0]
         # )
 
 
-""" STEP 3: Experiment configuratios (Algorithmic Hyperparameters) """
-
-# define length of experiment (MAX_STEPS) and experiment name
-if test == True:
-    MAX_STEPS = 5 * batch_size
-    exp_name = exp_label + env_label + "_test_" + date + algo
-else:
-    MAX_STEPS = 300 * batch_size
-    exp_name = exp_label + env_label + "_run_" + date + algo
-
-CHKPT_FREQ = 2
-
-stop = {"timesteps_total": MAX_STEPS}
-
-
-# environment config including evaluation environment (without exploration)
 env_config = {
     "horizon": 1000,
     "n_hh": n_hh,
@@ -165,19 +164,8 @@ env_config = {
 env_config_eval = env_config.copy()
 env_config_eval["eval_mode"] = True
 
-# we instantiate the environment to extrac relevant info
 env = Capital_planner_ma(env_config)
-
-# common configuration
-
-"""
-NOTE: in order to do hyperparameter optimization, you can select a range of values 
-with tune.choice([0.05,1] for random choice or tune.grid_search([0.05,1]) for fix search.
-# see https://docs.ray.io/en/master/tune/key-concepts.html#search-spaces for spaces and their definition.
-# se at the bottom (Annex_env_hyp) for an explanation how to do the same with environment parameters.
-"""
 common_config = {
-    # CUSTOM METRICS
     "callbacks": MyCallbacks,
     # ENVIRONMENT
     "gamma": beta,
@@ -217,9 +205,27 @@ common_config = {
     },
 }
 
-# Configs specific to the chosel algorithms, INCLUDING THE LEARNING RATE
+
+# For environment hyperparameter tuning
+# env_configs = [env_config_0]
+# for i in range(1, 15):
+#     env_configs.append(env_config_0.copy())
+#     env_configs[i]["parameteres"] = (
+#         {
+#             "depreciation": np.random.choice([0.02, 0.04, 0.06, 0.08]),
+#             "alphaF": 0.3,
+#             "alphaC": 0.3,
+#             "gammaK": 1 / n_capitalF,
+#         },
+#     )
+#     env_configs[i]["penalty_bgt_fix"] = np.random.choice([1, 5, 10, 50])
+#     env_configs[i]["penalty_bgt_var"] = np.random.choice([0, 0.1, 1, 10])
+#     env_configs[i]["stock_init"] = np.random.choice([1, 4, 6, 8])
+#     env_configs[i]["max_q"] = np.random.choice([0.1, 0.5, 1, 3])
+
+
 ppo_config = {
-    "lr": 0.0005,
+    # "lr": tune.choice([0.00008, 0.00005, 0.00003]),
     # "lr_schedule": [[0, 0.00005], [MAX_STEPS * 1 / 2, 0.00001]],
     "sgd_minibatch_size": batch_size // NUM_MINI_BATCH,
     "num_sgd_iter": 1,
@@ -246,8 +252,7 @@ else:
     training_config = common_config
 
 
-""" STEP 3 (final): run experiment """
-
+# STEP 3: run experiment
 checkpoints = []
 experiments = []
 analysis = tune.run(
@@ -257,21 +262,16 @@ analysis = tune.run(
     stop=stop,
     checkpoint_freq=CHKPT_FREQ,
     checkpoint_at_end=True,
-    # metric="rewards_mean",
-    metric="evaluation/custom_metrics/discounted_rewards_mean",
+    metric="episode_reward_mean",
     mode="max",
     num_samples=2,
     # resources_per_trial={"gpu": 0.5},
 )
 
-best_progress = analysis.best_dataframe
-print(type(best_progress))
 best_checkpoint = analysis.best_checkpoint
 checkpoints.append(best_checkpoint)
 
-""" in case you want to run multiple experiments at once"""
-
-# # Experiment 2:
+# Planner 2:
 # exp_label = "server_100hh_"
 # if test == True:
 #     MAX_STEPS = 10 * batch_size
@@ -310,48 +310,42 @@ checkpoints.append(best_checkpoint)
 #     # resources_per_trial={"gpu": 0.5},
 # )
 
-# best_checkpoint = analysis.best_checkpoint
-# checkpoints.append(best_checkpoint)
-
 print(checkpoints)
 
 
 # print(list(best_progress.columns))
 
-
-""" STEP 4: Plot and evaluate """
-
-# Plot progress
-if plot_progress == True:
-    progress_plot = sn.lineplot(
-        data=best_progress,
-        x="episodes_total",
-        y="evaluation/custom_metrics/discounted_rewards_mean",
-    )
-    progress_plot = progress_plot.get_figure()
-    progress_plot.savefig("marketsai/results/progress_plot_" + exp_name + ".png")
-
-    # penalty_plot = sn.lineplot(
-    #     data=best_progress,
-    #     x="episodes_total",
-    #     y="custom_metrics/penalty_bgt_mean",
-    # )
-    # penalty_plot = penalty_plot.get_figure()
-    # penalty_plot.savefig("marketsai/results/excess_dd_plot_" + exp_name + ".png")
-
-
-""" Annex_env_hyp: For Environment hyperparameter tuning"""
-
-# # We create a list that contain the main config + altered copies.
-# env_configs = [env_config_main]
-# for i in range(1, 15):
-#     env_configs.append(env_config_main.copy())
-#     env_configs[i]["parameteres"] = (
-#         {
-#             "depreciation": np.random.choice([0.02, 0.04, 0.06, 0.08]),
-#             "alpha": 0.3,
-#             "phi": 0.3,
-#             "beta": 0.98
-#         },
+# # STEP 4: Plot and evaluate
+# # Plot progress
+# if plot_progress == True:
+#     progress_plotC = sn.lineplot(
+#         data=best_progress,
+#         x="episodes_total",
+#         y="custom_metrics/discounted_rewardsC_mean",
 #     )
-#     env_configs["bgt_penalty"] = np.random.choice([1, 5, 10, 50])
+#     progress_plotC = progress_plotC.get_figure()
+#     progress_plotC.savefig("marketsai/results/progress_plot_C_" + exp_name + ".png")
+
+#     progress_plotF = sn.lineplot(
+#         data=best_progress,
+#         x="episodes_total",
+#         y="custom_metrics/discounted_rewardsF_mean",
+#     )
+#     progress_plotF = progress_plotF.get_figure()
+#     progress_plotF.savefig("marketsai/results/progress_plot_F_" + exp_name + ".png")
+
+#     penalty_plot = sn.lineplot(
+#         data=best_progress,
+#         x="episodes_total",
+#         y="custom_metrics/penalty_bgt_mean",
+#     )
+#     penalty_plot = penalty_plot.get_figure()
+#     penalty_plot.savefig("marketsai/results/excess_dd_plot_" + exp_name + ".png")
+
+#     excess_dd_plot = sn.lineplot(
+#         data=best_progress,
+#         x="episodes_total",
+#         y="custom_metrics/excess_dd_mean",
+#     )
+#     excess_dd_plot = excess_dd_plot.get_figure()
+#     excess_dd_plot.savefig("marketsai/results/penalty_plot_" + exp_name + ".png")

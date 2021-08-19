@@ -90,7 +90,7 @@ for i in range(MAX_STEPS):
 
 shutdown()
 
-""" Extact policxy obtained feom Policy Iteration with GSDSGE package."""
+""" Extact policxy obtained from Policy Iteration with GSDSGE package."""
 # To do:
 # 2. check that the structure of the interpolation is done corretly.
 # 3. create return from the function.

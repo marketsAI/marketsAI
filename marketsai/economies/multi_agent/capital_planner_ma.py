@@ -2,7 +2,6 @@ import gym
 from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
 
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
-from marketsai.functions.functions import MarkovChain, CRRA
 import numpy as np
 import random
 
