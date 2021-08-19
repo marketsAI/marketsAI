@@ -3,6 +3,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 marketsAI is a modular framework designed to simulate economies and markets. Each economy or market is an OpenAI Gym compatible environment.
+change
 
 ## Installation
 
