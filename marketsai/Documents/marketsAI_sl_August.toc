@@ -1,5 +1,0 @@
-\beamer@endinputifotherversion {3.36pt}
-\beamer@sectionintoc {1}{Introduction}{2}{0}{1}
-\beamer@sectionintoc {2}{Framework}{7}{0}{2}
-\beamer@sectionintoc {3}{Learning Algorithms}{16}{0}{3}
-\beamer@sectionintoc {4}{Results}{22}{0}{4}

@@ -13,8 +13,8 @@ import seaborn as sn
 """ Step 0: Restore RL policy with original configuration"""
 
 # global config
-for_public = False
-save_csv = False
+FOR_PUBLIC = False
+SAVE_CSV = False
 
 # import policy from checkpoint
 checkpoint_path = "/home/mc5851/ray_results/server_5hh_capital_planner_ma_run_July21_PPO/PPO_capital_planner_ma_46ca2_00006_6_2021-07-21_14-27-16/checkpoint_225/checkpoint-225"
@@ -139,7 +139,7 @@ for i in range(env.n_hh):
     plt.plot(k_list[i][:100])
 plt.title("Capital")
 
-if for_public == True:
+if FOR_PUBLIC == True:
     plt.savefig(
         "/home/mc5851/marketsAI/marketsai/Documents/Figures/cap_plan_ma_SimId_Aug18_1hh.png"
     )  # when ready for publication
@@ -169,7 +169,7 @@ plt.subplot(2, 2, 4)
 plt.plot(k_agg_list[:100])
 plt.title("Aggregate Capital")
 
-if for_public == True:
+if FOR_PUBLIC == True:
     plt.savefig(
         "/home/mc5851/marketsAI/marketsai/Documents/Figures/cap_plan_ma_SimAgg_Aug18_1hh.png"
     )  # when ready for publication
@@ -182,7 +182,7 @@ plt.show()
 
 """ Create CSV with simulation results """
 
-if save_csv == True:
+if SAVE_CSV == True:
 
     IRResults_agg = {"k_agg": k_agg_list, "shock_agg": shock_agg_list}
     IRResults_idtc = {}
@@ -197,7 +197,7 @@ if save_csv == True:
     df_IR = pd.DataFrame(IRResults)
 
     # when ready for publication
-    if for_public == True:
+    if FOR_PUBLIC == True:
         df_IR.to_csv(
             "/home/mc5851/marketsAI/marketsai/Documents/Figures/capital_planner_IR_July20_2hh.csv"
         )
