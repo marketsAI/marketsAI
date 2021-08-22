@@ -137,5 +137,8 @@ dmypy.json
 #MLFLow directory  
 mlruns/
 
+# obsoletes
+marketsai/obsolete
+
 #econ_policies
 marketsai/Econ_policies

@@ -153,11 +153,10 @@ class Capital_planner_ma(MultiAgentEnv):
 
         self.timestep = None
 
-    """ RESET FUNCTION 
-    it specifies three types of initial obs. Random (default),
-    for evaluation, and for posterior analysis"""
-
     def reset(self):
+        """Rreset function
+        it specifies three types of initial obs. Random (default),
+        for evaluation, and for posterior analysis"""
 
         self.timestep = 0
 
@@ -234,17 +233,16 @@ class Capital_planner_ma(MultiAgentEnv):
         }
         return self.obs_
 
-    """ STEP FUNCTION
-    0. update recursive structure (e.g. k=k_next)
-    1. Preprocess acrion space (e.g. unsquash and create useful variables such as production y)
-    2. Calculate obs_next (e.g. calculate k_next and update shocks by evaluation a markoc chain)
-    3. Calculate Rewards (e.g., calculate the logarithm of consumption and budget penalties)
-    4. Create Info (e.g., create a dictionary with useful data per agent)
-
-    """
-
     def step(self, action_dict):  # INPUT: Action Dictionary
+        """
+        STEP FUNCTION
+        0. update recursive structure (e.g. k=k_next)
+        1. Preprocess acrion space (e.g. unsquash and create useful variables such as production y)
+        2. Calculate obs_next (e.g. calculate k_next and update shocks by evaluation a markoc chain)
+        3. Calculate Rewards (e.g., calculate the logarithm of consumption and budget penalties)
+        4. Create Info (e.g., create a dictionary with useful data per agent)
 
+        """
         # 0. UPDATE recursive structure
 
         self.timestep += 1

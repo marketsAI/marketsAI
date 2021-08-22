@@ -2,3 +2,4 @@
 extend-ignore = E203, E266, E501
 max-line-length = 95
 select = B,C,E,F,W,T4,B9
+exclude = marketsai/obsolete

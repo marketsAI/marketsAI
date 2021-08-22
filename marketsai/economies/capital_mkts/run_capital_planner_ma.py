@@ -37,7 +37,6 @@ SAVE_PROGRESS_CSV = True
 ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native"  # either "native" or "server"
 N_HH_LIST = [1]  # number of agents more generally
-
 ITERS_TEST = 4
 ITERS_RUN = 300
 # Define environment, which should be imported from a class
