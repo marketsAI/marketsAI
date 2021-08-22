@@ -1,5 +1,5 @@
 # import environment
-from marketsai.economies.multi_agent.capital_planner_ma import Capital_planner_ma
+from marketsai.economies.capital_mkts.capital_planner_ma import Capital_planner_ma
 
 # import ray
 from ray import tune, shutdown, init

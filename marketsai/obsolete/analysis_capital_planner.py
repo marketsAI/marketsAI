@@ -53,7 +53,7 @@ init()
 
 # checkpoint_path = results.best_checkpoint
 checkpoint_path = "/home/mc5851/ray_results/server_1h_finetune_capital_planner_run_July19_PPO/PPO_capital_planner_7be30_00001_1_lr=5e-05_2021-07-19_14-23-58/checkpoint_70/checkpoint-70"
-#checkpoint_path = "/Users/matiascovarrubias/ray_results/native_multi_capital_planner_test_July17_PPO/PPO_capital_planner_3e5e9_00000_0_2021-07-18_14-01-58/checkpoint_000050/checkpoint-50"
+# checkpoint_path = "/Users/matiascovarrubias/ray_results/native_multi_capital_planner_test_July17_PPO/PPO_capital_planner_3e5e9_00000_0_2021-07-18_14-01-58/checkpoint_000050/checkpoint-50"
 
 trained_trainer = PPOTrainer(env=env_label, config=config_analysis)
 trained_trainer.restore(checkpoint_path)
@@ -109,13 +109,17 @@ for i in range(env.n_hh):
 plt.title("Capital")
 
 # plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
-#plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
+# plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
 
 # when ready for publication
 if for_public == True:
-    plt.savefig("/home/mc5851/marketsAI/marketsai/Documents/Figures/capital_planner_IR_July17_1.png")
+    plt.savefig(
+        "/home/mc5851/marketsAI/marketsai/Documents/Figures/capital_planner_IR_July17_1.png"
+    )
 else:
-    plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
+    plt.savefig(
+        "/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png"
+    )
 
 plt.show()
 
@@ -124,19 +128,23 @@ IRresults = {
     f"s_{i}": s_list[i],
     f"k_{i}": k_list[i],
     f"y_{i}": y_list[i],
-    f"c_{i}": c_list[i]
+    f"c_{i}": c_list[i],
 }
 
 # df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/xapital_planner_IR_July17_1.csv")
 df_IR = pd.DataFrame(IRresults)
 
-#df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.csv")
+# df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.csv")
 
-#when ready for publication
+# when ready for publication
 if for_public == True:
-    df_IR.to_csv("/home/mc5851/marketsAI/marketsai/Documents/Figures/capital_planner_IR_July17_1.csv")
+    df_IR.to_csv(
+        "/home/mc5851/marketsAI/marketsai/Documents/Figures/capital_planner_IR_July17_1.csv"
+    )
 else:
-    df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.csv")
+    df_IR.to_csv(
+        "/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.csv"
+    )
 
 
 shutdown()

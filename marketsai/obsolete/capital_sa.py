@@ -66,12 +66,12 @@ class Capital_planner(gym.Env):
 
         # non-stochastic shocks for evaluation:
         if self.eval_mode == True:
-            self.shocks_eval = {0: [1-(i % 2) for i in range(self.n_hh)]}
+            self.shocks_eval = {0: [1 - (i % 2) for i in range(self.n_hh)]}
             for i in range(1, self.horizon + 1):
                 self.shocks_eval[i] = (
                     [(i % 2) for i in range(self.n_hh)]
                     if (i // (1 / self.shock_transition[0][1]) + 1) % 2 == 0
-                    else [1-(i % 2) for i in range(self.n_hh)]
+                    else [1 - (i % 2) for i in range(self.n_hh)]
                 )
 
         # CREATE SPACES

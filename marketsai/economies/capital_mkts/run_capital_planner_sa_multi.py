@@ -227,7 +227,7 @@ analysis = tune.run(
     checkpoint_at_end=True,
     metric="episode_reward_mean",
     mode="max",
-    num_samples=NUM_TRIALS*2,
+    num_samples=NUM_TRIALS * 2,
     # resources_per_trial={"gpu": 0.5},
 )
 

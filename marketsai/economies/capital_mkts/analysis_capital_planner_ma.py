@@ -4,7 +4,7 @@ from ray.rllib.agents.ppo import PPOTrainer
 # from ray.rllib.agents.sac import SACTrainer
 from ray.tune.registry import register_env
 from ray import shutdown, init
-from marketsai.economies.multi_agent.capital_planner_ma import Capital_planner_ma
+from marketsai.economies.capital_mkts.capital_planner_ma import Capital_planner_ma
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
