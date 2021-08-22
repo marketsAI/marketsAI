@@ -17,9 +17,10 @@ from ray.rllib.policy import Policy
 from typing import Dict
 import numpy as np
 import seaborn as sn
+import sys
+import pandas as pd
+import matplotlib.pyplot as plt
 
-# import pandas as pd
-# import matplotlib.pyplot as plt
 # import logging
 # import random
 # import math
@@ -27,25 +28,23 @@ import seaborn as sn
 """ STEP 0: Experiment configs """
 
 # global configs
-DATE = "August1_"
+DATE = "Aug22_"
 TEST = True
 PLOT_PROGRESS = True
-ALGO = "PPO"
-EXP_LABEL = "native_1hh_"
+sn.color_palette("Set2")
+SAVE_PROGRESS_CSV = True
+ALGO = "PPO"  # either PPO" or "SAC"
+DEVICE = "native"  # either "native" or "server"
+N_HH_LIST = [1]  # number of agents more generally
 
+ITERS_TEST = 4
+ITERS_RUN = 300
 # Define environment, which should be imported from a class
 ENV_LABEL = "cap_plan_ma"
 register_env(ENV_LABEL, Capital_planner_ma)
 
-# name the experiment
-if TEST == True:
-    EXP_NAMES = EXP_LABEL + ENV_LABEL + "_test_" + DATE + ALGO
-else:
-    EXP_NAMES = EXP_LABEL + ENV_LABEL + "_run_" + DATE + ALGO
-
-# Economic Hiperparameteres.
+# Other economic Hiperparameteres.
 ENV_HORIZON = 1000
-N_HH = 1
 N_CAPITAL = 1
 BETA = 0.98  # discount parameter
 
@@ -55,22 +54,21 @@ NUM_CPUS = 6
 NUM_CPUS_DRIVER = 1
 NUM_TRIALS = 1
 NUM_ROLLOUT = ENV_HORIZON * 1
-NUM_ENV_PW = 1
-# num_env_per_worker
+NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
 NUM_MINI_BATCH = NUM_CPUS_DRIVER
 
-n_workers = (NUM_CPUS - NUM_TRIALS * NUM_CPUS_DRIVER) // NUM_TRIALS
-batch_size = NUM_ROLLOUT * (max(n_workers, 1)) * NUM_ENV_PW * BATCH_ROLLOUT
+N_WORKERS = (NUM_CPUS - NUM_TRIALS * NUM_CPUS_DRIVER) // NUM_TRIALS
+BATCH_SIZE = NUM_ROLLOUT * (max(N_WORKERS, 1)) * NUM_ENV_PW * BATCH_ROLLOUT
 
-print(n_workers, batch_size)
+print(N_WORKERS, BATCH_SIZE)
 
 # define length of experiment (MAX_STEPS) and experiment name
 if TEST == True:
-    MAX_STEPS = 10 * batch_size
+    MAX_STEPS = ITERS_TEST * BATCH_SIZE
 else:
-    MAX_STEPS = 300 * batch_size
+    MAX_STEPS = ITERS_RUN * BATCH_SIZE
 
 CHKPT_FREQ = 2
 
@@ -100,7 +98,7 @@ class MyCallbacks(DefaultCallbacks):
         policies: Dict[str, Policy],
         episode: MultiAgentEpisode,
         env_index: int,
-        **kwargs
+        **kwargs,
     ):
         # Make sure this episode has just been started (only initial obs
         # logged so far).
@@ -119,7 +117,7 @@ class MyCallbacks(DefaultCallbacks):
         base_env: BaseEnv,
         episode: MultiAgentEpisode,
         env_index: int,
-        **kwargs
+        **kwargs,
     ):
         if episode.length > 1:  # at t=0, previous rewards are not defined
             rewards = episode.prev_reward_for("hh_0")
@@ -135,7 +133,7 @@ class MyCallbacks(DefaultCallbacks):
         policies: Dict[str, Policy],
         episode: MultiAgentEpisode,
         env_index: int,
-        **kwargs
+        **kwargs,
     ):
         discounted_rewards = process_rewards(episode.user_data["rewards"])
         episode.custom_metrics["discounted_rewards"] = discounted_rewards
@@ -150,7 +148,6 @@ class MyCallbacks(DefaultCallbacks):
 # environment config including evaluation environment (without exploration)
 env_config = {
     "horizon": 1000,
-    "n_hh": N_HH,
     "n_capital": N_CAPITAL,
     "eval_mode": False,
     "max_savings": 0.6,
@@ -188,13 +185,13 @@ common_config = {
     "framework": "torch",
     # "model": tune.grid_search([{"use_lstm": True}, {"use_lstm": False}]),
     # TRAINING CONFIG
-    "num_workers": n_workers,
+    "num_workers": N_WORKERS,
     "create_env_on_driver": False,
     "num_gpus": NUM_GPUS / NUM_TRIALS,
     "num_envs_per_worker": NUM_ENV_PW,
     "num_cpus_for_driver": NUM_CPUS_DRIVER,
     "rollout_fragment_length": NUM_ROLLOUT,
-    "train_batch_size": batch_size,
+    "train_batch_size": BATCH_SIZE,
     # EVALUATION
     "evaluation_interval": 1,
     "evaluation_num_episodes": 1,
@@ -221,7 +218,7 @@ common_config = {
 ppo_config = {
     "lr": 0.0005,
     # "lr_schedule": [[0, 0.00005], [MAX_STEPS * 1 / 2, 0.00001]],
-    "sgd_minibatch_size": batch_size // NUM_MINI_BATCH,
+    "sgd_minibatch_size": BATCH_SIZE // NUM_MINI_BATCH,
     "num_sgd_iter": 1,
     "batch_mode": "complete_episodes",
     "lambda": 0.98,
@@ -248,8 +245,12 @@ else:
 
 """ STEP 4: run experiment """
 
+exp_names = []
+exp_dirs = []
 checkpoints = []
-experiments = []
+best_rewards = []
+learning_dta = []
+
 # Initialize ray
 shutdown()
 init(
@@ -258,95 +259,99 @@ init(
     # logging_level=logging.ERROR,
 )
 
-analysis = tune.run(
-    ALGO,
-    name=EXP_NAMES,
-    config=training_config,
-    stop=stop,
-    checkpoint_freq=CHKPT_FREQ,
-    checkpoint_at_end=False,
-    # metric="rewards_mean",
-    metric="evaluation/custom_metrics/discounted_rewards_mean",
-    mode="max",
-    num_samples=1,
-    # resources_per_trial={"gpu": 0.5},
-)
-
-best_progress_dta = analysis.best_dataframe
-print(type(best_progress_dta))
-best_checkpoint_dir = analysis.best_checkpoint
-checkpoints.append(best_checkpoint_dir)
-
+# RUN TRAINER
 """ in case you want to run multiple experiments at once"""
 
-# # Experiment 2:
-# exp_label = "server_100hh_"
-# if test == True:
-#     MAX_STEPS = 10 * batch_size
-#     exp_name = exp_label + env_label + "_test_" + date + algo
-# else:
-#     MAX_STEPS = 1000 * batch_size
-#     exp_name = exp_label + env_label + "_run_" + date + algo
+for n_hh in N_HH_LIST:
+    EXP_LABEL = DEVICE + f"_{n_hh}hh_"
+    if TEST == True:
+        EXP_NAME = EXP_LABEL + ENV_LABEL + "_test_" + DATE + ALGO
+    else:
+        EXP_NAME = EXP_LABEL + ENV_LABEL + "_run_" + DATE + ALGO
 
-# env_config["n_hh"] = 100
-# env_config_eval["n_hh"] = 100
-# env = Capital_planner_ma(env_config)
-# training_config["env_config"] = env_config
-# training_config["evaluation_config"]["env_config"] = env_config_eval
-# training_config["multiagent"] = {
-#         "policies": {
-#             "hh": (
-#                 None,
-#                 env.observation_space["hh_0"],
-#                 env.action_space["hh_0"],
-#                 {},
-#             ),
-#         },
-#         "policy_mapping_fn": (lambda agent_id: agent_id.split("_")[0]),
-#         "replay_mode": "independent",  # you can change to "lockstep".
-#     },
-# analysis = tune.run(
-#     algo,
-#     name=exp_name,
-#     config=training_config,
-#     stop=stop,
-#     checkpoint_freq=CHKPT_FREQ,
-#     checkpoint_at_end=True,
-#     metric="episode_reward_mean",
-#     mode="max",
-#     num_samples=1,
-#     # resources_per_trial={"gpu": 0.5},
-# )
+    env_config["n_hh"] = n_hh
+    env_config_eval["n_hh"] = n_hh
+    env = Capital_planner_ma(env_config)
+    training_config["env_config"] = env_config
+    training_config["evaluation_config"]["env_config"] = env_config_eval
+    training_config["multiagent"] = {
+        "policies": {
+            "hh": (
+                None,
+                env.observation_space["hh_0"],
+                env.action_space["hh_0"],
+                {},
+            ),
+        },
+        "policy_mapping_fn": (lambda agent_id: agent_id.split("_")[0]),
+        "replay_mode": "independent",  # you can change to "lockstep".
+    }
 
-# best_checkpoint = analysis.best_checkpoint
-# checkpoints.append(best_checkpoint)
-
-print(checkpoints)
-
-
-# print(list(best_progress.columns))
-
-
-""" STEP 5 (optional): Plot and evaluate """
-
-# Plot progress
-if PLOT_PROGRESS == True:
-    progress_plot = sn.lineplot(
-        data=best_progress_dta,
-        x="episodes_total",
-        y="evaluation/custom_metrics/discounted_rewards_mean",
+    analysis = tune.run(
+        ALGO,
+        name=EXP_NAME,
+        config=training_config,
+        stop=stop,
+        checkpoint_freq=CHKPT_FREQ,
+        checkpoint_at_end=True,
+        metric="evaluation/custom_metrics/discounted_rewards_mean",
+        mode="max",
+        num_samples=1,
+        # resources_per_trial={"gpu": 0.5},
     )
-    progress_plot = progress_plot.get_figure()
-    progress_plot.savefig("marketsai/results/progress_" + EXP_NAMES + ".png")
 
-    # penalty_plot = sn.lineplot(
-    #     data=best_progress,
-    #     x="episodes_total",
-    #     y="custom_metrics/penalty_bgt_mean",
-    # )
-    # penalty_plot = penalty_plot.get_figure()
-    # penalty_plot.savefig("marketsai/results/excess_dd_plot_" + exp_name + ".png")
+    exp_names.append(EXP_NAME)
+    checkpoints.append(analysis.best_checkpoint)
+    best_rewards.append(
+        analysis.best_result["evaluation"]["custom_metrics"]["discounted_rewards_mean"]
+    )
+    exp_dirs.append(analysis.best_logdir)
+    learning_dta.append(
+        analysis.best_dataframe[
+            ["episodes_total", "evaluation/custom_metrics/discounted_rewards_mean"]
+        ]
+    )
+    learning_dta[n_hh - 1].columns = ["episodes_total", f"{n_hh} households"]
+    print("size", sys.getsizeof(learning_dta[n_hh - 1]))
 
+""" STEP 5 (optional): Organize and Plot """
+if len(exp_names) > 1:
+    EXP_LABEL = DEVICE + f"_multi_hh_"
+    if TEST == True:
+        EXP_NAME = EXP_LABEL + ENV_LABEL + "_test_" + DATE + ALGO
+    else:
+        EXP_NAME = EXP_LABEL + ENV_LABEL + "_run_" + DATE + ALGO
+
+# Create CSV with economy level
+exp_dict = {
+    "exp_names": exp_names,
+    "exp_dirs": exp_dirs,
+    "best_rewards": best_rewards,
+    "checkpoints": checkpoints,
+}
+exp_df = pd.DataFrame(exp_dict)
+exp_df.to_csv("marketsai/results/exp_" + EXP_NAME + ".csv")
+
+# Plot and save progress
+if PLOT_PROGRESS == True:
+    for i in range(len(exp_names)):
+        learning_plot = sn.lineplot(
+            data=learning_dta[i],
+            y=f"{i+1} households",
+            x="episodes_total",
+        )
+    learning_plot = learning_plot.get_figure()
+    plt.ylabel("Discounted utility")
+    plt.xlabel("Timesteps (thousands)")
+    plt.legend(labels=[f"{i+1} households" for i in range(len(learning_dta))])
+    learning_plot.savefig("marketsai/results/progress_" + EXP_NAME + ".png")
+
+# Save progress as CSV
+if SAVE_PROGRESS_CSV == True:
+    # merge data
+    learning_dta = [df.set_index("episodes_total") for df in learning_dta]
+    learning_dta_merged = pd.concat(learning_dta, axis=1)
+    learning_dta_merged.to_csv("marketsai/results/progress_" + EXP_NAME + ".csv")
 
 """ Annex_env_hyp: For Environment hyperparameter tuning"""
 

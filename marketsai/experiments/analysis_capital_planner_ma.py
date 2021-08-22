@@ -12,11 +12,17 @@ import seaborn as sn
 
 """ Step 0: Restore RL policy with original configuration"""
 
-# register_env("Durable_sgm", Durable_sgm)
+# global config
+for_public = False
+save_csv = False
+
+# import policy from checkpoint
+checkpoint_path = "/home/mc5851/ray_results/server_5hh_capital_planner_ma_run_July21_PPO/PPO_capital_planner_ma_46ca2_00006_6_2021-07-21_14-27-16/checkpoint_225/checkpoint-225"
+# checkpoint_path = "/Users/matiascovarrubias/ray_results/native_multi_capital_planner_test_July17_PPO/PPO_capital_planner_3e5e9_00000_0_2021-07-18_14-01-58/checkpoint_000050/checkpoint-50"
+
+# create environment
 env_label = "capital_planner_ma"
 register_env(env_label, Capital_planner_ma)
-
-for_public = False
 env_horizon = 1000
 n_hh = 1
 n_capital = 1
@@ -58,21 +64,16 @@ config_analysis = {
     },
 }
 
-init()
+init()  # initialize ray
 
-# checkpoint_path = results.best_checkpoint
-checkpoint_path = "/home/mc5851/ray_results/server_5hh_capital_planner_ma_run_July21_PPO/PPO_capital_planner_ma_46ca2_00006_6_2021-07-21_14-27-16/checkpoint_225/checkpoint-225"
-# checkpoint_path = "/Users/matiascovarrubias/ray_results/native_multi_capital_planner_test_July17_PPO/PPO_capital_planner_3e5e9_00000_0_2021-07-18_14-01-58/checkpoint_000050/checkpoint-50"
-
+# restore the trainer
 trained_trainer = PPOTrainer(env=env_label, config=config_analysis)
 trained_trainer.restore(checkpoint_path)
 
-env = Capital_planner_ma(env_config=env_config_analysis)
-obs = env.reset()
-# env.timestep = 100000
 
 """ Step 1: Simulate an episode (MAX_steps timesteps) """
 
+env = Capital_planner_ma(env_config=env_config_analysis)
 shock_idtc_list = [[] for i in range(env.n_hh)]
 y_list = [[] for i in range(env.n_hh)]
 s_list = [[] for i in range(env.n_hh)]
@@ -82,14 +83,12 @@ y_agg_list = []
 s_agg_list = []
 c_agg_list = []
 k_agg_list = []
-
 shock_agg_list = []
 
-# k_agg_list = [np.sum([k_list[i][j] for i in range(env.n_hh)]) for j in range(MAX_STEPS)]
-# s_agg_list = [np.sum([s_list[i][j] for i in range(env.n_hh)]) for j in range(MAX_STEPS)]
-# y_agg_list = [np.sum([y_list[i][j] for i in range(env.n_hh)]) for j in range(MAX_STEPS)]
 MAX_STEPS = env.horizon
 
+# loop
+obs = env.reset()
 for t in range(MAX_STEPS):
     action = {}
     for i in range(env.n_hh):
@@ -114,18 +113,15 @@ for t in range(MAX_STEPS):
     c_agg_list.append(np.sum([y_list[i][t] for i in range(env.n_hh)]))
     k_agg_list.append(np.sum([k_list[i][t] for i in range(env.n_hh)]))
 
+shutdown()
 
-"""Step 2: Plot idiosyncractic trajectories """
+""" Step 2: Plot trajectories """
 
+# Idiosyncratic trajectories
 plt.subplot(2, 2, 1)
 for i in range(env.n_hh):
     plt.plot(shock_idtc_list[i][:100])
 plt.title("Shock")
-
-# plt.subplot(2, 2, 1)
-# plt.plot(c_list_0[:200])
-# plt.plot(c_list_1[:100])
-# plt.title("Consumption")
 
 plt.subplot(2, 2, 2)
 for i in range(env.n_hh):
@@ -143,10 +139,6 @@ for i in range(env.n_hh):
     plt.plot(k_list[i][:100])
 plt.title("Capital")
 
-# plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
-# plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
-
-
 if for_public == True:
     plt.savefig(
         "/home/mc5851/marketsAI/marketsai/Documents/Figures/cap_plan_ma_SimId_Aug18_1hh.png"
@@ -158,10 +150,8 @@ else:
 
 plt.show()
 
-""" Aggregate Plots """
-# create aggregates
 
-
+# Aggregat Trajectories
 plt.subplot(2, 2, 1)
 plt.plot(shock_agg_list[:100])
 plt.title("Aggregate Shock")
@@ -179,11 +169,6 @@ plt.subplot(2, 2, 4)
 plt.plot(k_agg_list[:100])
 plt.title("Aggregate Capital")
 
-
-# plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
-# plt.savefig("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.png")
-
-
 if for_public == True:
     plt.savefig(
         "/home/mc5851/marketsAI/marketsai/Documents/Figures/cap_plan_ma_SimAgg_Aug18_1hh.png"
@@ -195,28 +180,36 @@ else:
 
 plt.show()
 
-""" Create CSV with simulation results"""
-# IRResults_agg = {"k_agg": k_agg_list, "shock_agg": shock_agg_list}
-# IRResults_idtc = {}
-# # IRresults_idtc = {
-# #     f"shock_idtc_{i}": shock_idtc_list[i] for i in range(env.n_hh) ,
-# #     f"s_{i}": s_list[i] for i in range(env.n_hh) ,
-# #     f"k_{i}": k_list[i] for i in range(env.n_hh) ,
-# #     f"y_{i}": y_list[i] for i in range(env.n_hh) ,
-# #     f"c_{i}": c_list[i] for i in range(env.n_hh) }
+""" Create CSV with simulation results """
 
-# IRResults = {**IRResults_agg, **IRResults_idtc}
+if save_csv == True:
 
-# # df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/xapital_planner_IR_July17_1.csv")
-# df_IR = pd.DataFrame(IRResults)
+    IRResults_agg = {"k_agg": k_agg_list, "shock_agg": shock_agg_list}
+    IRResults_idtc = {}
+    for i in range(env.n_hh):
+        IRResults_idtc[f"shock_idtc_{i}"] = shock_idtc_list[i]
+        IRResults_idtc[f"s_{i}"] = s_list[i]
+        IRResults_idtc[f"k_{i}"] = k_list[i]
+        IRResults_idtc[f"y_{i}"] = y_list[i]
+        IRResults_idtc[f"c_{i}"] = c_list[i]
 
-# #df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July17_1.csv")
+    IRResults = {**IRResults_agg, **IRResults_idtc}
+    df_IR = pd.DataFrame(IRResults)
 
-# #when ready for publication
-# if for_public == True:
-#     df_IR.to_csv("/home/mc5851/marketsAI/marketsai/Documents/Figures/capital_planner_IR_July20_2hh.csv")
-# else:
-#     df_IR.to_csv("/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July20_2hh.csv")
+    # when ready for publication
+    if for_public == True:
+        df_IR.to_csv(
+            "/home/mc5851/marketsAI/marketsai/Documents/Figures/capital_planner_IR_July20_2hh.csv"
+        )
+    else:
+        df_IR.to_csv(
+            "/home/mc5851/marketsAI/marketsai/results/capital_planner_IR_July20_2hh.csv"
+        )
+
+""" LEARNING GRAPH
+
+Now we import the trials_id for the trials we want to compare and graph them
 
 
-shutdown()
+
+"""
