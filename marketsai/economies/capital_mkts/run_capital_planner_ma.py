@@ -20,6 +20,7 @@ import seaborn as sn
 import sys
 import pandas as pd
 import matplotlib.pyplot as plt
+import json
 
 # import logging
 # import random
@@ -28,17 +29,25 @@ import matplotlib.pyplot as plt
 """ STEP 0: Experiment configs """
 
 # global configs
-DATE = "Aug22_"
-TEST = True
+DATE = "Aug24_"
+TEST = False
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = True
 sn.color_palette("Set2")
 SAVE_PROGRESS_CSV = True
+
+if TEST:
+    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
+    OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
+else:
+    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/"
+    OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/"
+
 ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native"  # either "native" or "server"
-N_HH_LIST = [1]  # number of agents more generally
-ITERS_TEST = 4
-ITERS_RUN = 300
+N_HH_LIST = [1, 2]  # number of agents more generally
+ITERS_TEST = 2
+ITERS_RUN = 100
 # Define environment, which should be imported from a class
 ENV_LABEL = "cap_plan_ma"
 register_env(ENV_LABEL, Capital_planner_ma)
@@ -312,7 +321,7 @@ for n_hh in N_HH_LIST:
         ]
     )
     learning_dta[n_hh - 1].columns = ["episodes_total", f"{n_hh} households"]
-    print("size", sys.getsizeof(learning_dta[n_hh - 1]))
+
 
 """ STEP 5 (optional): Organize and Plot """
 
@@ -324,23 +333,47 @@ if len(exp_names) > 1:
     else:
         EXP_NAME = EXP_LABEL + ENV_LABEL + "_run_" + DATE + ALGO
 
-print(EXP_LABEL)
+
 # create CSV with information on each experiment
-if SAVE_EXP_INFO == True:
+if SAVE_EXP_INFO:
+    progress_csv_dirs = [exp_dirs[i] + "/progress.csv" for i in range(len(exp_dirs))]
 
     # Create CSV with economy level
     exp_dict = {
+        "n_agents": N_HH_LIST,
         "exp_names": exp_names,
         "exp_dirs": exp_dirs,
+        "progress_csv_dirs": progress_csv_dirs,
         "best_rewards": best_rewards,
         "checkpoints": checkpoints,
-        "best_config": best_configs,
+        # "best_config": best_configs,
     }
-    exp_df = pd.DataFrame(exp_dict)
-    exp_df.to_csv("marketsai/results/exp_INFO_" + EXP_NAME + ".csv")
+    # for i in range(len(exp_dict.values())):
+    #     print(type(exp_dict.values()[i]))
+    print(
+        "exp_names =",
+        exp_names,
+        "\n" "exp_dirs =",
+        exp_dirs,
+        "\n" "progress_csv_dirs =",
+        progress_csv_dirs,
+        "\n" "best_rewards =",
+        best_rewards,
+        "\n" "checkpoints =",
+        checkpoints,
+        # "\n" "best_config =",
+        # best_configs,
+    )
+
+    with open(OUTPUT_PATH_EXPERS + "expINFO_" + EXP_NAME + ".json", "w+") as f:
+        json.dump(exp_dict, f)
+
+    # exp_df = pd.DataFrame(exp_dict)
+    # exp_df.to_csv(OUTPUT_PATH_EXPERS + "exp_info" + EXP_NAME + ".csv")
+    print(OUTPUT_PATH_EXPERS + "expINFO" + EXP_NAME + ".json")
 
 # Plot and save progress
-if PLOT_PROGRESS == True:
+if PLOT_PROGRESS:
     for i in range(len(exp_names)):
         learning_plot = sn.lineplot(
             data=learning_dta[i],
@@ -351,27 +384,27 @@ if PLOT_PROGRESS == True:
     plt.ylabel("Discounted utility")
     plt.xlabel("Timesteps (thousands)")
     plt.legend(labels=[f"{i+1} households" for i in range(len(learning_dta))])
-    learning_plot.savefig("marketsai/results/progress_" + EXP_NAME + ".png")
+    learning_plot.savefig(OUTPUT_PATH_FIGURES + "progress_" + EXP_NAME + ".png")
 
 # Save progress as CSV
-if SAVE_PROGRESS_CSV == True:
+if SAVE_PROGRESS_CSV:
     # merge data
     learning_dta = [df.set_index("episodes_total") for df in learning_dta]
     learning_dta_merged = pd.concat(learning_dta, axis=1)
-    learning_dta_merged.to_csv("marketsai/results/progress_" + EXP_NAME + ".csv")
+    learning_dta_merged.to_csv(OUTPUT_PATH_EXPERS + "progress_" + EXP_NAME + ".csv")
 
 """ Annex_env_hyp: For Environment hyperparameter tuning"""
 
 # # We create a list that contain the main config + altered copies.
-# env_configs = [env_config_main]
-# for i in range(1, 15):
-#     env_configs.append(env_config_main.copy())
-#     env_configs[i]["parameteres"] = (
-#         {
-#             "depreciation": np.random.choice([0.02, 0.04, 0.06, 0.08]),
-#             "alpha": 0.3,
-#             "phi": 0.3,
-#             "beta": 0.98
-#         },
-#     )
-#     env_configs["bgt_penalty"] = np.random.choice([1, 5, 10, 50])
+env_configs = [env_config]
+for i in range(1, 15):
+    env_configs.append(env_config.copy())
+    env_configs[i]["parameteres"] = (
+        {
+            "depreciation": np.random.choice([0.02, 0.04, 0.06, 0.08]),
+            "alpha": 0.3,
+            "phi": 0.3,
+            "beta": 0.98,
+        },
+    )
+    env_configs[i]["bgt_penalty"] = np.random.choice([1, 5, 10, 50])
