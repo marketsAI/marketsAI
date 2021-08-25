@@ -2,7 +2,6 @@ import gym
 from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
 
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
-from marketsai.functions.functions import MarkovChain, CRRA
 import numpy as np
 import random
 
@@ -10,20 +9,25 @@ import random
 # import math
 
 
-class Capital_market(MultiAgentEnv):
-    """A gym compatible environment of capital good markets.
+class CapitalMarket(MultiAgentEnv):
+    """An Rllib compatible environment of a market for capital goods
+
     - n_hh households prduce the consumption good using n_capital capital goods.
 
-    - Each period, each househods decide how much of production to spen on new capital matket goods (investment).
-    The rest is consumed and the hh's get logarithmic utility.
+    - Each period, each househods decide how much of production to allocate to investment in
+    new capital goods. The rest is consumed and the hh's get logarithmic utility.
 
-    -The problem is formulated as a multi-agent planner problem, in which one policy control all agents
-    (descentralized execution, centralized learning).
+    - Competitive firms produce each capital good $j$ and price it at marginal cost:  p_{j,t} = \phi I_{j,t}
 
-    - Capital goods are durable and have a depreciation rate delta.
+    -The problem is formulated as a multi-agent problem with centralized learning and decentralized execution.
+     Since the problem of all households is symmetric, one neural net learns from the experuence of all agents,
+     so the policy is shared.
+
+    - Capital goods are durable and have a depreciation rate delta. THe n_capital goods are boundled
+    in a Coob-Douglas aggregate. In latex math, $ K = \Pi_{j=0}^{n_h-1} K_j^(1/n_capital) $
 
     - Each household faces two TFP shocks, an idiosyncratic shock affect only his production,
-    and an aggregate shock that affects all househods.
+    and an aggregate shock that affects all househods.  In latex math, $ Y_i = Z^{agg} Z_i^{ind} \Pi_{j=0}^{n_h-1} K_j^(1/n_capital) $
 
     - The observation space includes the stock of all houeholds on all capital goods (n_hh * n_capital stocks),
     the idiosyncratic shock of each  household (n_hh shocks), and an aggreagte shock.
@@ -39,11 +43,6 @@ class Capital_market(MultiAgentEnv):
         self,
         env_config={},
     ):
-
-        # to do:
-
-        # check inner workings of Tuple and MultiDiscrete
-        # Do I want dictionary obs?
 
         # UNPACK CONFIG
         self.env_config = env_config
@@ -72,7 +71,7 @@ class Capital_market(MultiAgentEnv):
             {"delta": 0.04, "alpha": 0.3, "phi": 0.5, "beta": 0.98},
         )
 
-        # steady state
+        # STEADY STATE
         self.k_ss = (
             self.params["phi"]
             * self.params["delta"]
@@ -85,10 +84,10 @@ class Capital_market(MultiAgentEnv):
             )
         ) ** (1 / (self.params["alpha"] - 2))
 
-        # max_s_per_j
+        # MAX SAVING RATE PER CAPITAL GOOD
         self.max_s_ij = self.max_savings / self.n_capital * 1.5
 
-        # non-stochastic shocks for evaluation (shocks change at their expected duration):
+        # SPECIFIC SHOCK VALUES THAT ARE USEFUL FOR EVALUATION
         if self.eval_mode == True:
             self.shocks_eval_agg = {0: 0}
             for t in range(1, self.horizon + 1):
@@ -104,6 +103,7 @@ class Capital_market(MultiAgentEnv):
                     if (t // (1 / self.shock_idtc_transition[0][1]) + 1) % 2 == 0
                     else [1 - (i % 2) for i in range(self.n_hh)]
                 )
+        # SPECIFIC SHOCK VALUES THAT ARE USEFUL FOR EVALUATION
         if self.analysis_mode == True:
             self.shocks_analysis_agg = {0: 0}
             for t in range(1, self.horizon + 1):
@@ -119,33 +119,12 @@ class Capital_market(MultiAgentEnv):
                     if (t // (1 / self.shock_idtc_transition[0][1]) + 1) % 2 == 0
                     else [0 for i in range(self.n_hh)]
                 )
-            # self.shocks_analysis_idtc = {0: [1 - (i % 2) for i in range(self.n_hh)]}
-            # for t in range(1, self.horizon + 1):
-            #     self.shocks_analysis_idtc[t] = (
-            #         [(i % 2) for i in range(self.n_hh)]
-            #         if (t // (1 / self.shock_idtc_transition[0][1]) + 1) % 2 == 0
-            #         else [1 - (i % 2) for i in range(self.n_hh)]
-            #     )
-
-        # if self.eval_mode == True:
-        #     self.shocks_eval_agg = {0: 0}
-        #     for t in range(1, self.horizon + 1):
-        #         self.shocks_eval_agg[t] = (
-        #             1
-        #             if (t // (1 / self.shock_agg_transition[0][1]) + 1) % 2 == 0
-        #             else 0
-        #         )
-        #     self.shocks_eval_idtc = {0: [0 for i in range(self.n_hh)]}
-        #     for t in range(1, self.horizon + 1):
-        #         self.shocks_eval_idtc[t] = (
-        #             [1 for i in range(self.n_hh)]
-        #             if (t // (1 / self.shock_idtc_transition[0][1]) + 1) % 2 == 0
-        #             else [0 for i in range(self.n_hh)]
-        #         )
 
         # CREATE SPACES
+
+        # n_actions: for each households, decide expenditure on each capital type
         self.n_actions = self.n_hh * self.n_capital
-        # for each households, decide expenditure on each capital type
+        # boundaries: actions are normalized to be between -1 and 1 (and then unsquashed)
         self.action_space = {
             f"hh_{i}": Box(low=-1.0, high=1.0, shape=(self.n_capital,))
             for i in range(self.n_hh)
@@ -178,6 +157,9 @@ class Capital_market(MultiAgentEnv):
         self.timestep = None
 
     def reset(self):
+        """Rreset function
+        it specifies three types of initial obs. Random (default),
+        for evaluation, and for posterior analysis"""
 
         self.timestep = 0
 
@@ -189,15 +171,7 @@ class Capital_market(MultiAgentEnv):
                     for i in range(self.n_hh * self.n_capital)
                 ],
                 dtype=float,
-            )  # we may not want this when we have more than 1 j
-
-            # k_init = np.array(
-            #     [
-            #         self.k_ss * 0.8 if i % 2 == 0 else self.k_ss * 0.8
-            #         for i in range(self.n_hh * self.n_capital)
-            #     ],
-            #     dtype=float,
-            # )  # we may not want this when we have more than 1 j
+            )
 
             shocks_idtc_init = self.shocks_eval_idtc[0]
             shock_agg_init = self.shocks_eval_agg[0]
@@ -209,20 +183,12 @@ class Capital_market(MultiAgentEnv):
                     for i in range(self.n_hh * self.n_capital)
                 ],
                 dtype=float,
-            )  # we may not want this when we have more than 1 j
-
-            # k_init = np.array(
-            #     [
-            #         self.k_ss * 0.8 if i % 2 == 0 else self.k_ss * 0.8
-            #         for i in range(self.n_hh * self.n_capital)
-            #     ],
-            #     dtype=float,
-            # )  # we may not want this when we have more than 1 j
+            )
 
             shocks_idtc_init = self.shocks_analysis_idtc[0]
             shock_agg_init = self.shocks_analysis_agg[0]
 
-        # when learning, we randomize the initial observations
+        # DEFAULT: when learning, we randomize the initial observations
         else:
             k_init = np.array(
                 [
@@ -240,7 +206,7 @@ class Capital_market(MultiAgentEnv):
             )
             shock_agg_init = random.choices(list(range(len(self.shock_idtc_values))))[0]
 
-        # Now we need to reorganize the state so each firm observes his own state first
+        # Now we need to reorganize the state so each firm observes his own state first.
         # First, organize stocks as list of lists, where inner list [i] reflect stocks for  hh with index i.
         k_ij_init = [
             list(k_init[i * self.n_capital : i * self.n_capital + self.n_capital])
@@ -250,8 +216,8 @@ class Capital_market(MultiAgentEnv):
         k_ij_init_perfirm = [[] for i in range(self.n_hh)]
         k_init_perfirm = [[] for i in range(self.n_hh)]
         shocks_idtc_init_perfirm = [[] for i in range(self.n_hh)]
-        # put your own state first
 
+        # put your own state first
         for i in range(self.n_hh):
             k_ij_init_perfirm[i] = [k_ij_init[i]] + [
                 x for z, x in enumerate(k_ij_init) if z != i
@@ -263,7 +229,7 @@ class Capital_market(MultiAgentEnv):
                 x for z, x in enumerate(shocks_idtc_init) if z != i
             ]
 
-        # create Dictionary wtih agents as keys with Tuple spaces as values
+        # create Dictionary wtih agents as keys and with Tuple spaces as values
         self.obs_ = {
             f"hh_{i}": (k_init_perfirm[i], shocks_idtc_init_perfirm[i], shock_agg_init)
             for i in range(self.n_hh)
@@ -271,8 +237,16 @@ class Capital_market(MultiAgentEnv):
         return self.obs_
 
     def step(self, action_dict):  # INPUT: Action Dictionary
+        """
+        STEP FUNCTION
+        0. update recursive structure (e.g. k=k_next)
+        1. Preprocess acrion space (e.g. unsquash and create useful variables such as production y)
+        2. Calculate obs_next (e.g. calculate k_next and update shocks by evaluation a markoc chain)
+        3. Calculate Rewards (e.g., calculate the logarithm of consumption and budget penalties)
+        4. Create Info (e.g., create a dictionary with useful data per agent)
 
-        # UPDATE recursive structure
+        """
+        # 0. UPDATE recursive structure
 
         self.timestep += 1
         k = self.obs_["hh_0"][
@@ -287,7 +261,7 @@ class Capital_market(MultiAgentEnv):
         ]
         shock_agg = self.shock_agg_values[shock_agg_id]
 
-        # PREPROCESS action and state
+        # 1. PREPROCESS action and state
 
         # unsquash action
         s_ij = [
@@ -305,6 +279,7 @@ class Capital_market(MultiAgentEnv):
                 s_ij[i] = [s_ij[i][j] / np.sum(s_ij[i]) for j in range(self.n_capital)]
                 bgt_penalty_ind[i] = 1
 
+        # organize per houehold per firm and create capital bundle
         k_ij = [
             list(k[i * self.n_capital : i * self.n_capital + self.n_capital])
             for i in range(self.n_hh)
@@ -314,7 +289,7 @@ class Capital_market(MultiAgentEnv):
             for j in range(self.n_capital):
                 k_bundle_i[i] *= k_ij[i][j] ** (1 / self.n_capital)
 
-        # INTERMEDIATE VARS
+        # Useful variables
         y_i = [
             shocks_idtc[i] * shock_agg * k_bundle_i[i] ** self.params["alpha"]
             for i in range(self.n_hh)
@@ -336,23 +311,23 @@ class Capital_market(MultiAgentEnv):
             np.sum([inv_exp_ij[i][j] for i in range(self.n_hh)])
             for j in range(self.n_capital)
         ]
-        inv_j = [
-            np.sqrt((2 / self.params["phi"]) * inv_exp_j[j])
+
+        p_j = [
+            (self.params["phi"] * inv_exp_j[j]) ** (1 / 2)
             for j in range(self.n_capital)
         ]
 
+        # inv_j = [
+        #     np.sqrt((2 / self.params["phi"]) * inv_exp_j[j])
+        #     for j in range(self.n_capital)
+        # ]
+
         inv_ij = [
-            [
-                (inv_exp_ij[i][j] / max(inv_exp_j[j], 0.0001)) * inv_j[j]
-                for j in range(self.n_capital)
-            ]
+            [inv_exp_ij[i][j] / max(p_j[j], 0.0001) for j in range(self.n_capital)]
             for i in range(self.n_hh)
         ]
 
-        # cost_j = [
-        #     (self.params["phi"] / 2) * inv_j[j] ** 2 for j in range(self.n_capital)
-        # ]
-
+        # 2. NEXT OBS
         k_ij_new = [
             [
                 k_ij[i][j] * (1 - self.params["delta"]) + inv_ij[i][j]
@@ -360,9 +335,6 @@ class Capital_market(MultiAgentEnv):
             ]
             for i in range(self.n_hh)
         ]
-
-        # NEXT OBS
-
         # update shock
         if self.eval_mode == True:
             shocks_idtc_id_new = np.array(self.shocks_eval_idtc[self.timestep])
@@ -411,8 +383,8 @@ class Capital_market(MultiAgentEnv):
             for i in range(self.n_hh)
         }
 
-        # REWARD
-        rew = {f"hh_{i}": np.mean(utility_i) for i in range(self.n_hh)}
+        # 3. CALCUALTE REWARD
+        rew = {f"hh_{i}": utility_i[i] for i in range(self.n_hh)}
 
         # DONE FLAGS
         if self.timestep < self.horizon:
@@ -420,83 +392,82 @@ class Capital_market(MultiAgentEnv):
         else:
             done = {"__all__": True}
 
-        # ADDITIONAL INFO
-        # The info of the first household contain global info, to make it easy to retrieve
-        info_global = {
-            "hh_0": {
-                "savings": s_ij,
-                "reward": np.mean(utility_i),
-                "income": y_i,
-                "consumption": c_i,
-                "bgt_penalty": bgt_penalty_ind,
-                "capital": k_ij,
-                "capital_new": k_ij_new,
-            }
-        }
-        info_ind = {
-            f"hh_{i}": {
-                "savings": s_ij[i],
-                "reward": np.mean(utility_i),
-                "income": y_i[i],
-                "consumption": c_i[i],
-                "bgt_penalty": bgt_penalty_ind[i],
-                "capital": k_ij[i],
-                "capital_new": k_ij_new[i],
-            }
-            for i in range(1, self.n_hh)
-        }
+        # 4. CREATE INFO
 
-        info = {**info_global, **info_ind}
+        # The info of the first household contain global info, to make it easy to retrieve
+        if self.analysis_mode == False:
+            info = {}
+        else:
+            info_global = {
+                "hh_0": {
+                    "savings": s_ij,
+                    "reward": utility_i,
+                    "income": y_i,
+                    "consumption": c_i,
+                    "bgt_penalty": bgt_penalty_ind,
+                    "capital": k_ij,
+                    "capital_new": k_ij_new,
+                }
+            }
+
+            info_ind = {
+                f"hh_{i}": {
+                    "savings": s_ij[i],
+                    "reward": utility_i[i],
+                    "income": y_i[i],
+                    "consumption": c_i[i],
+                    "bgt_penalty": bgt_penalty_ind[i],
+                    "capital": k_ij[i],
+                    "capital_new": k_ij_new[i],
+                }
+                for i in range(1, self.n_hh)
+            }
+
+            info = {**info_global, **info_ind}
 
         # RETURN
 
         return self.obs_, rew, done, info
 
 
-# Manual test for debugging
+""" TEST AND DEBUG CODE """
 
-# env = Capital_market(
-#     env_config={
-#         "horizon": 200,
-#         "n_hh": 2,
-#         "n_capital": 2,
-#         "eval_mode": False,
-#         "max_savings": 0.6,
-#         "bgt_penalty": 100,
-#         "shock_idtc_values": [0.9, 1.1],
-#         "shock_idtc_transition": [[0.9, 0.1], [0.1, 0.9]],
-#         "shock_agg_values": [0.8, 1.2],
-#         "shock_agg_transition": [[0.95, 0.05], [0.05, 0.95]],
-#         "parameters": {"delta": 0.04, "alpha": 0.33, "phi": 0.5, "beta": 0.98},
-#     },
-# )
 
-# env.reset()
-# print("k_ss:", env.k_ss, "y_ss:", env.k_ss ** env.params["alpha"])
-# print("obs", env.obs_)
-# # print("obs:", env.obs_)
+def main():
+    env = CapitalMarket(
+        env_config={
+            "horizon": 200,
+            "n_hh": 2,
+            "n_capital": 2,
+            "eval_mode": False,
+            "max_savings": 0.6,
+            "bgt_penalty": 100,
+            "shock_idtc_values": [0.9, 1.1],
+            "shock_idtc_transition": [[0.9, 0.1], [0.1, 0.9]],
+            "shock_agg_values": [0.8, 1.2],
+            "shock_agg_transition": [[0.95, 0.05], [0.05, 0.95]],
+            "parameters": {"delta": 0.04, "alpha": 0.33, "phi": 0.5, "beta": 0.98},
+        },
+    )
 
-# # obs, rew, done, info = env.step(
-# #     {
-# #         f"hh_{i}": np.array([np.random.uniform(-1, 1) for i in range(env.n_capital)])
-# #         for i in range(env.n_actions)
-# #     }
-# # )
+    env.reset()
+    print("k_ss:", env.k_ss, "y_ss:", env.k_ss ** env.params["alpha"])
+    print("obs", env.obs_)
 
-# # print("obs", obs)
-# # print("rew", rew)
-# # print("info", info)
+    for i in range(20):
+        obs, rew, done, info = env.step(
+            {
+                f"hh_{i}": np.array(
+                    [np.random.uniform(-1, 1) for i in range(env.n_capital)]
+                )
+                for i in range(env.n_hh)
+            }
+        )
 
-# for i in range(20):
-#     obs, rew, done, info = env.step(
-#         {
-#             f"hh_{i}": np.array(
-#                 [np.random.uniform(-1, 1) for i in range(env.n_capital)]
-#             )
-#             for i in range(env.n_hh)
-#         }
-#     )
+        print("obs", obs)
+        # print("rew", rew)
+        # print("info", info)
 
-#     print("obs", obs)
-#     # print("rew", rew)
-#     # print("info", info)
+
+if __name__ == "__main__":
+    main()
