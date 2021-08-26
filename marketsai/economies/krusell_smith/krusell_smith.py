@@ -9,29 +9,33 @@ import random
 # import math
 
 
-class KrusellSmith(MultiAgentEnv):
-    """An Rllib compatible environment of a market for the krusell and smith economy.
+class CapitalMarket(MultiAgentEnv):
+    """An Rllib compatible environment of a market for capital goods
 
-    - n_hh decide how much capital to acumualte and how much to consume. THey receive labor income
-    and rental income from renting the capital to firms
+    - n_hh households prduce the consumption good using n_capital capital goods.
 
-    - Competitive firms produce the final good using a CRS cobb-douglas technology.
+    - Each period, each househods decide how much of production to allocate to investment in
+    new capital goods. The rest is consumed and the hh's get logarithmic utility.
+
+    - Competitive firms produce each capital good $j$ and price it at marginal cost:  p_{j,t} = \phi I_{j,t}
 
     -The problem is formulated as a multi-agent problem with centralized learning and decentralized execution.
      Since the problem of all households is symmetric, one neural net learns from the experuence of all agents,
      so the policy is shared.
 
-    - Capital goods are durable and have a depreciation rate delta.
+    - Capital goods are durable and have a depreciation rate delta. THe n_capital goods are boundled
+    in a Coob-Douglas aggregate. In latex math, $ K = \Pi_{j=0}^{n_h-1} K_j^(1/n_capital) $
 
-    - Each household faces two TFP shocks, an idiosyncratic shock affect only his labor productivity,
-    and an aggregate shock that affects the labor productivity of all households.
+    - Each household faces two TFP shocks, an idiosyncratic shock affect only his production,
+    and an aggregate shock that affects all househods.  In latex math, $ Y_i = Z^{agg} Z_i^{ind} \Pi_{j=0}^{n_h-1} K_j^(1/n_capital) $
 
-    - The observation space includes the stock of all houeholds on all capital goods (n_hh),
+    - The observation space includes the stock of all houeholds on all capital goods (n_hh * n_capital stocks),
     the idiosyncratic shock of each  household (n_hh shocks), and an aggreagte shock.
 
-    - The action space for each houeholds is the proportion of their wealth that is to be invested.
+    - The action space for each houeholds is the proportion of final good that is to be investeed in each
+    capital good (n_capital actions)
 
-    - we index households with i
+    - we index households with i, and capital goods with j.
 
     """
 
@@ -46,9 +50,11 @@ class KrusellSmith(MultiAgentEnv):
         # GLOBAL ENV CONFIGS
         self.horizon = self.env_config.get("horizon", 1000)
         self.n_hh = self.env_config.get("n_hh", 1)
+        self.n_capital = self.env_config.get("n_capital", 1)
         self.eval_mode = self.env_config.get("eval_mode", False)
         self.analysis_mode = self.env_config.get("analysis_mode", False)
         self.max_savings = self.env_config.get("max_savings", 0.6)
+        self.bgt_penalty = self.env_config.get("bgt_penalty", 1)
 
         self.shock_idtc_values = self.env_config.get("shock_idtc_values", [0.9, 1.1])
         self.shock_idtc_transition = self.env_config.get(
@@ -62,24 +68,24 @@ class KrusellSmith(MultiAgentEnv):
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
-            {"delta": 0.04, "alpha": 0.3, "beta": 0.98},
+            {"delta": 0.04, "alpha": 0.3, "phi": 0.5, "beta": 0.98},
         )
 
         # STEADY STATE
-        # self.k_ss = (
-        #     self.params["phi"]
-        #     * self.params["delta"]
-        #     * self.n_hh
-        #     * self.n_capital
-        #     * (
-        #         (1 - self.params["beta"] * (1 - self.params["delta"]))
-        #         / (self.params["alpha"] * self.params["beta"])
-        #         + self.params["delta"] * (self.n_capital - 1) / self.n_capital
-        #     )
-        # ) ** (1 / (self.params["alpha"] - 2))
+        self.k_ss = (
+            self.params["phi"]
+            * self.params["delta"]
+            * self.n_hh
+            * self.n_capital
+            * (
+                (1 - self.params["beta"] * (1 - self.params["delta"]))
+                / (self.params["alpha"] * self.params["beta"])
+                + self.params["delta"] * (self.n_capital - 1) / self.n_capital
+            )
+        ) ** (1 / (self.params["alpha"] - 2))
 
         # MAX SAVING RATE PER CAPITAL GOOD
-        # self.max_s_ij = self.max_savings / self.n_capital * 1.5
+        self.max_s_ij = self.max_savings / self.n_capital * 1.5
 
         # SPECIFIC SHOCK VALUES THAT ARE USEFUL FOR EVALUATION
         if self.eval_mode == True:
@@ -258,44 +264,76 @@ class KrusellSmith(MultiAgentEnv):
         # 1. PREPROCESS action and state
 
         # unsquash action
-        s_i = [
-            (action_dict[f"hh_{i}"] + 1) / 2 * self.max_savings
+        s_ij = [
+            [
+                (action_dict[f"hh_{i}"][j] + 1) / 2 * self.max_s_ij
+                for j in range(self.n_capital)
+            ]
             for i in range(self.n_hh)
         ]
+
+        # coorect if bgt constraint is violated
+        bgt_penalty_ind = [0 for i in range(self.n_hh)]  # only for info
+        for i in range(self.n_hh):
+            if np.sum(s_ij[i]) > 1:
+                s_ij[i] = [s_ij[i][j] / np.sum(s_ij[i]) for j in range(self.n_capital)]
+                bgt_penalty_ind[i] = 1
+
+        # organize per houehold per firm and create capital bundle
+        k_ij = [
+            list(k[i * self.n_capital : i * self.n_capital + self.n_capital])
+            for i in range(self.n_hh)
+        ]
+        k_bundle_i = [1 for i in range(self.n_hh)]
+        for i in range(self.n_hh):
+            for j in range(self.n_capital):
+                k_bundle_i[i] *= k_ij[i][j] ** (1 / self.n_capital)
 
         # Useful variables
-        income_i = [
-            shocks_idtc[i] * shock_agg * k[i] ** self.params["alpha"]
+        y_i = [
+            shocks_idtc[i] * shock_agg * k_bundle_i[i] ** self.params["alpha"]
             for i in range(self.n_hh)
         ]
 
-        c_i = [income_i[i] * s_i[i] for i in range(self.n_hh)]
+        c_i = [y_i[i] * (1 - np.sum(s_ij[i])) for i in range(self.n_hh)]
 
         utility_i = [
             np.log(c_i[i]) if c_i[i] > 0 else -self.bgt_penalty
             for i in range(self.n_hh)
         ]
 
-        inv_exp_i = [
-            [s_i[i] * income_i[i] for j in range(self.n_capital)]
+        inv_exp_ij = [
+            [s_ij[i][j] * y_i[i] for j in range(self.n_capital)]
             for i in range(self.n_hh)
         ]  # in utility, if bgt constraint is violated, c[i]=0, so penalty
 
-        inv_exp_tot = np.sum([inv_exp_i[i] for i in range(self.n_hh)])
+        inv_exp_j = [
+            np.sum([inv_exp_ij[i][j] for i in range(self.n_hh)])
+            for j in range(self.n_capital)
+        ]
 
-        # p_j = [
-        #     (self.params["phi"] * inv_exp_tot[j]) ** (1 / 2)
-        #     for j in range(self.n_capital)
-        # ]
+        p_j = [
+            (self.params["phi"] * inv_exp_j[j]) ** (1 / 2)
+            for j in range(self.n_capital)
+        ]
 
         # inv_j = [
         #     np.sqrt((2 / self.params["phi"]) * inv_exp_j[j])
         #     for j in range(self.n_capital)
         # ]
 
+        inv_ij = [
+            [inv_exp_ij[i][j] / max(p_j[j], 0.0001) for j in range(self.n_capital)]
+            for i in range(self.n_hh)
+        ]
+
         # 2. NEXT OBS
-        k_new = [
-            k[i] * (1 - self.params["delta"]) + inv_exp_i[i] for i in range(self.n_hh)
+        k_ij_new = [
+            [
+                k_ij[i][j] * (1 - self.params["delta"]) + inv_ij[i][j]
+                for j in range(self.n_capital)
+            ]
+            for i in range(self.n_hh)
         ]
         # update shock
         if self.eval_mode == True:
@@ -326,7 +364,12 @@ class KrusellSmith(MultiAgentEnv):
         # put your own state first
 
         for i in range(self.n_hh):
-            k_new_perfirm[i] = [k_new[i]] + [x for z, x in enumerate(k_new) if z != i]
+            k_ij_new_perfirm[i] = [k_ij_new[i]] + [
+                x for z, x in enumerate(k_ij_new) if z != i
+            ]
+            k_new_perfirm[i] = [
+                item for sublist in k_ij_new_perfirm[i] for item in sublist
+            ]
             shocks_idtc_id_new_perfirm[i] = [shocks_idtc_id_new[i]] + [
                 x for z, x in enumerate(shocks_idtc_id_new) if z != i
             ]
@@ -357,23 +400,25 @@ class KrusellSmith(MultiAgentEnv):
         else:
             info_global = {
                 "hh_0": {
-                    "savings": s_i,
+                    "savings": s_ij,
                     "reward": utility_i,
-                    "income": income_i,
+                    "income": y_i,
                     "consumption": c_i,
-                    "capital": k,
-                    "capital_new": k_new,
+                    "bgt_penalty": bgt_penalty_ind,
+                    "capital": k_ij,
+                    "capital_new": k_ij_new,
                 }
             }
 
             info_ind = {
                 f"hh_{i}": {
-                    "savings": s_i[i],
+                    "savings": s_ij[i],
                     "reward": utility_i[i],
-                    "income": income_i[i],
+                    "income": y_i[i],
                     "consumption": c_i[i],
-                    "capital": k[i],
-                    "capital_new": k_new[i],
+                    "bgt_penalty": bgt_penalty_ind[i],
+                    "capital": k_ij[i],
+                    "capital_new": k_ij_new[i],
                 }
                 for i in range(1, self.n_hh)
             }
@@ -389,7 +434,7 @@ class KrusellSmith(MultiAgentEnv):
 
 
 def main():
-    env = KrusellSmith(
+    env = CapitalMarket(
         env_config={
             "horizon": 200,
             "n_hh": 2,
