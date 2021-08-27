@@ -1,5 +1,5 @@
 # import environment
-from marketsai.economies.capital_mkts.capital_market import CapitalMarket
+from marketsai.economies.capital_mkts.capital_const_plan import CapitalConstPlan
 
 # import ray
 from ray import tune, shutdown, init
@@ -29,7 +29,7 @@ import json
 """ STEP 0: Experiment configs """
 
 # global configs
-DATE = "Aug25_"
+DATE = "Aug26_"
 TEST = False
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = True
@@ -46,11 +46,11 @@ else:
 ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native"  # either "native" or "server"
 N_HH_LIST = [1, 2, 3, 4, 5]  # number of agents more generally
-ITERS_TEST = 10
+ITERS_TEST = 2
 ITERS_RUN = 300
 # Define environment, which should be imported from a class
-ENV_LABEL = "cap_market"
-register_env(ENV_LABEL, CapitalMarket)
+ENV_LABEL = "cap_const_plan"
+register_env(ENV_LABEL, CapitalConstPlan)
 
 # Other economic Hiperparameteres.
 ENV_HORIZON = 1000
@@ -59,9 +59,9 @@ BETA = 0.98  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 6
+NUM_CPUS = 12
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 1
+NUM_TRIALS = 2
 NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
@@ -172,7 +172,7 @@ env_config_eval = env_config.copy()
 env_config_eval["eval_mode"] = True
 
 # we instantiate the environment to extrac relevant info
-env = CapitalMarket(env_config)
+env = CapitalConstPlan(env_config)
 
 # common configuration
 
@@ -279,7 +279,7 @@ for n_hh in N_HH_LIST:
 
     env_config["n_hh"] = n_hh
     env_config_eval["n_hh"] = n_hh
-    env = CapitalMarket(env_config)
+    env = CapitalConstPlan(env_config)
     training_config["env_config"] = env_config
     training_config["evaluation_config"]["env_config"] = env_config_eval
     training_config["multiagent"] = {
@@ -304,7 +304,7 @@ for n_hh in N_HH_LIST:
         checkpoint_at_end=True,
         metric="evaluation/custom_metrics/discounted_rewards_mean",
         mode="max",
-        num_samples=1,
+        num_samples=NUM_TRIALS * 2,
         # resources_per_trial={"gpu": 0.5},
     )
 

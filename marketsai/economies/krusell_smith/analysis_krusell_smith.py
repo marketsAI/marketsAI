@@ -4,7 +4,7 @@ from ray.rllib.agents.ppo import PPOTrainer
 # from ray.rllib.agents.sac import SACTrainer
 from ray.tune.registry import register_env
 from ray import shutdown, init
-from marketsai.economies.capital_mkts.capital_market import KrusellSmith
+from marketsai.economies.capital_mkts.capital_market import CapitalMarket
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -91,7 +91,7 @@ init()
 for ind, n_hh in enumerate(n_agents_list):
     """ Step 2.0: replicate original environemnt and config """
     env_label = "cap_market"
-    register_env(env_label, KrusellSmith)
+    register_env(env_label, CapitalMarket)
     env_horizon = 1000
     n_hh = n_hh
     n_capital = 1
@@ -112,7 +112,7 @@ for ind, n_hh in enumerate(n_agents_list):
     }
 
     # We instantiate the environment to extract information.
-    env = KrusellSmith(env_config_analysis)
+    env = CapitalMarket(env_config_analysis)
     config_analysis = {
         "gamma": beta,
         "env": env_label,
@@ -142,7 +142,7 @@ for ind, n_hh in enumerate(n_agents_list):
 
     """ Step 2: Simulate an episode (MAX_steps timesteps) """
 
-    env = KrusellSmith(env_config=env_config_analysis)
+    env = CapitalMarket(env_config=env_config_analysis)
     shock_idtc_list = [[] for i in range(env.n_hh)]
     y_list = [[] for i in range(env.n_hh)]
     s_list = [[] for i in range(env.n_hh)]

@@ -45,7 +45,7 @@ class KrusellSmith(MultiAgentEnv):
 
         # GLOBAL ENV CONFIGS
         self.horizon = self.env_config.get("horizon", 1000)
-        self.n_hh = self.env_config.get("n_hh", 1)
+        self.n_hh = self.env_config.get("n_hh", 2)
         self.eval_mode = self.env_config.get("eval_mode", False)
         self.analysis_mode = self.env_config.get("analysis_mode", False)
         self.max_savings = self.env_config.get("max_savings", 0.6)
@@ -97,7 +97,7 @@ class KrusellSmith(MultiAgentEnv):
                     if (t // (1 / self.shock_idtc_transition[0][1]) + 1) % 2 == 0
                     else [1 - (i % 2) for i in range(self.n_hh)]
                 )
-        # SPECIFIC SHOCK VALUES THAT ARE USEFUL FOR EVALUATION
+        # SPECIFIC SHOCK VALUES THAT ARE USEFUL FOR ANALYSIS
         if self.analysis_mode == True:
             self.shocks_analysis_agg = {0: 0}
             for t in range(1, self.horizon + 1):
@@ -116,16 +116,13 @@ class KrusellSmith(MultiAgentEnv):
 
         # CREATE SPACES
 
-        # n_actions: for each households, decide expenditure on each capital type
-        self.n_actions = self.n_hh * self.n_capital
         # boundaries: actions are normalized to be between -1 and 1 (and then unsquashed)
         self.action_space = {
-            f"hh_{i}": Box(low=-1.0, high=1.0, shape=(self.n_capital,))
-            for i in range(self.n_hh)
+            f"hh_{i}": Box(low=-1.0, high=1.0, shape=(1,)) for i in range(self.n_hh)
         }
 
         # n_hh ind have stocks of n_capital goods.
-        self.n_obs_stock = self.n_hh * self.n_capital
+        self.n_obs_stock = self.n_hh
         # n_hh idtc shocks and 1 aggregate shock
         self.n_obs_shock_idtc = self.n_hh
         self.observation_space = {
@@ -162,7 +159,7 @@ class KrusellSmith(MultiAgentEnv):
             k_init = np.array(
                 [
                     self.k_ss * 0.9 if i % 2 == 0 else self.k_ss * 0.8
-                    for i in range(self.n_hh * self.n_capital)
+                    for i in range(self.n_hh)
                 ],
                 dtype=float,
             )
@@ -174,7 +171,7 @@ class KrusellSmith(MultiAgentEnv):
             k_init = np.array(
                 [
                     self.k_ss * 0.9 if i % 2 == 0 else self.k_ss * 0.8
-                    for i in range(self.n_hh * self.n_capital)
+                    for i in range(self.n_hh)
                 ],
                 dtype=float,
             )
@@ -202,22 +199,14 @@ class KrusellSmith(MultiAgentEnv):
 
         # Now we need to reorganize the state so each firm observes his own state first.
         # First, organize stocks as list of lists, where inner list [i] reflect stocks for  hh with index i.
-        k_ij_init = [
-            list(k_init[i * self.n_capital : i * self.n_capital + self.n_capital])
-            for i in range(self.n_hh)
-        ]
 
-        k_ij_init_perfirm = [[] for i in range(self.n_hh)]
         k_init_perfirm = [[] for i in range(self.n_hh)]
         shocks_idtc_init_perfirm = [[] for i in range(self.n_hh)]
 
         # put your own state first
         for i in range(self.n_hh):
-            k_ij_init_perfirm[i] = [k_ij_init[i]] + [
-                x for z, x in enumerate(k_ij_init) if z != i
-            ]
-            k_init_perfirm[i] = [
-                item for sublist in k_ij_init_perfirm[i] for item in sublist
+            k_init_perfirm[i] = [k_init[i]] + [
+                x for z, x in enumerate(k_init) if z != i
             ]
             shocks_idtc_init_perfirm[i] = [shocks_idtc_init[i]] + [
                 x for z, x in enumerate(shocks_idtc_init) if z != i
@@ -248,7 +237,7 @@ class KrusellSmith(MultiAgentEnv):
         ]  # we take the ordering of the first agents as the global ordering.
         shocks_idtc_id = self.obs_["hh_0"][1]
         shock_agg_id = self.obs_["hh_0"][2]
-
+        k_tot = np.sum(k)
         # go from shock_id (e.g. 0) to shock value (e.g. 0.8)
         shocks_idtc = [
             self.shock_idtc_values[shocks_idtc_id[i]] for i in range(self.n_hh)
@@ -262,14 +251,19 @@ class KrusellSmith(MultiAgentEnv):
             (action_dict[f"hh_{i}"] + 1) / 2 * self.max_savings
             for i in range(self.n_hh)
         ]
+        # Define prices
+        R = (
+            1
+            - self.params["delta"]
+            + self.params["alpha"] * shock_agg * k_tot ** (self.params["alpha"] - 1)
+        )
 
+        W = (1 - self.params["alpha"]) * shock_agg * k_tot ** (self.params["alpha"] - 1)
         # Useful variables
-        income_i = [
-            shocks_idtc[i] * shock_agg * k[i] ** self.params["alpha"]
-            for i in range(self.n_hh)
-        ]
+        # income = R_t K_t + W_t z_t
+        income_i = [R * k[i] + W * shocks_idtc[i] for i in range(self.n_hh)]
 
-        c_i = [income_i[i] * s_i[i] for i in range(self.n_hh)]
+        c_i = [income_i[i] * (1 - s_i[i]) for i in range(self.n_hh)]
 
         utility_i = [
             np.log(c_i[i]) if c_i[i] > 0 else -self.bgt_penalty
@@ -294,9 +288,7 @@ class KrusellSmith(MultiAgentEnv):
         # ]
 
         # 2. NEXT OBS
-        k_new = [
-            k[i] * (1 - self.params["delta"]) + inv_exp_i[i] for i in range(self.n_hh)
-        ]
+        k_new = [s_i[i] * income_i[i] for i in range(self.n_hh)]
         # update shock
         if self.eval_mode == True:
             shocks_idtc_id_new = np.array(self.shocks_eval_idtc[self.timestep])
@@ -320,7 +312,6 @@ class KrusellSmith(MultiAgentEnv):
             )[0]
 
         # reorganize state so each hh sees his state first
-        k_ij_new_perfirm = [[] for i in range(self.n_hh)]
         k_new_perfirm = [[] for i in range(self.n_hh)]
         shocks_idtc_id_new_perfirm = [[] for i in range(self.n_hh)]
         # put your own state first

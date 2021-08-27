@@ -1,5 +1,5 @@
 # import environment
-from marketsai.economies.capital_mkts.capital_market import KrusellSmith
+from marketsai.economies.capital_mkts.capital_market import CapitalMarket
 
 # import ray
 from ray import tune, shutdown, init
@@ -50,7 +50,7 @@ ITERS_TEST = 10
 ITERS_RUN = 300
 # Define environment, which should be imported from a class
 ENV_LABEL = "cap_market"
-register_env(ENV_LABEL, KrusellSmith)
+register_env(ENV_LABEL, CapitalMarket)
 
 # Other economic Hiperparameteres.
 ENV_HORIZON = 1000
@@ -172,7 +172,7 @@ env_config_eval = env_config.copy()
 env_config_eval["eval_mode"] = True
 
 # we instantiate the environment to extrac relevant info
-env = KrusellSmith(env_config)
+env = CapitalMarket(env_config)
 
 # common configuration
 
@@ -279,7 +279,7 @@ for n_hh in N_HH_LIST:
 
     env_config["n_hh"] = n_hh
     env_config_eval["n_hh"] = n_hh
-    env = KrusellSmith(env_config)
+    env = CapitalMarket(env_config)
     training_config["env_config"] = env_config
     training_config["evaluation_config"]["env_config"] = env_config_eval
     training_config["multiagent"] = {

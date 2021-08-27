@@ -9,7 +9,7 @@ import random
 # import math
 
 
-class CapitalMarket(MultiAgentEnv):
+class CapitalConstPlan(MultiAgentEnv):
     """An Rllib compatible environment of capital good markets.
 
     - n_hh households produce using capital and decide how much of their income
@@ -375,7 +375,7 @@ class CapitalMarket(MultiAgentEnv):
         }
 
         # 3. CALCUALTE REWARD
-        rew = {f"hh_{i}": utility_i[i] for i in range(self.n_hh)}
+        rew = {f"hh_{i}": np.mean(utility_i) for i in range(self.n_hh)}
 
         # DONE FLAGS
         if self.timestep < self.horizon:
@@ -425,7 +425,7 @@ class CapitalMarket(MultiAgentEnv):
 
 
 def main():
-    env = CapitalMarket(
+    env = CapitalConstPlan(
         env_config={
             "horizon": 200,
             "n_hh": 2,
