@@ -1,22 +1,45 @@
-# Evaluation
+# Imports
+from marketsai.economies.capital_mkts.capital_const_plan import CapitalConstPlan
 import scipy.io as sio
 from scipy.interpolate import RegularGridInterpolator
 from marketsai.utils import encode
-from ray.rllib.agents.ppo import PPOTrainer
-from ray.tune.registry import register_env
-from ray import shutdown, init
-from marketsai.economies.capital_mkts.capital_planner_ma import Capital_planner_ma
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import seaborn as sn
 import csv
 import json
+from ray.rllib.agents.ppo import PPOTrainer
+from ray.tune.registry import register_env
+from ray import shutdown, init
 
 
 """ GLOBAL CONFIGS """
-# PLot options
-PLOT_PROGRESS = True
+# Script Options
+FOR_PUBLIC = False  # for publication
+SAVE_CSV = False  # save learning CSV
+PLOT_PROGRESS = True  # create plot with progress
+
+# Input Directories
+# Rl experiment
+INPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/expINFO_native_multi_hh_cap_const_plan_run_Aug26_PPO.json"
+
+# GDSGE policy
+dir_policy_folder = (
+    "/Users/matiascovarrubias/Dropbox/RL_macro/Econ_algos/capital_const_plan/Results/"
+)
+
+# Output Directories
+if FOR_PUBLIC:
+    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/"
+    OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/"
+else:
+    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/ALL/"
+    OUTPUT_PATH_FIGURES = (
+        "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/ALL/"
+    )
+
+# Plot options
 sn.color_palette("Set2")
 sn.set_style("ticks")  # grid styling, "dark"
 # plt.figure(figure=(8, 4))
@@ -24,21 +47,6 @@ sn.set_style("ticks")  # grid styling, "dark"
 sn.set_context(
     "paper",
     font_scale=1.4,
-)
-FOR_PUBLIC = False
-SAVE_CSV = False
-INPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/exp_infonative_multi_hh_cap_plan_ma_run_Aug24_PPO.json"
-if FOR_PUBLIC:
-    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/"
-    OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/"
-else:
-    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/Tests/"
-    OUTPUT_PATH_FIGURES = (
-        "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/Tests/"
-    )
-
-dir_policy_folder = (
-    "/Users/matiascovarrubias/Dropbox/RL_macro/Econ_algos/capital_market/Results/"
 )
 
 """ Step 0: import experiment data """
@@ -58,8 +66,6 @@ checkpoint_path = checkpoints_dirs[0]
 # checkpoint_path = "/Users/matiascovarrubias/ray_results/native_multi_capital_planner_test_July17_PPO/PPO_capital_planner_3e5e9_00000_0_2021-07-18_14-01-58/checkpoint_000050/checkpoint-50"
 
 """ Step 1: Plot progress """
-
-
 if PLOT_PROGRESS == True:
     for i in range(len(exp_names)):
         data_progress_df = pd.read_csv(progress_csv_dirs[i])
@@ -78,9 +84,9 @@ if PLOT_PROGRESS == True:
     learning_plot = learning_plot.get_figure()
     plt.ylabel("Discounted utility")
     plt.xlabel("Timesteps (thousands)")
+    plt.xlim([0, 600])
     plt.legend(labels=[f"{i+1} households" for i in range(len(n_agents_list))])
     learning_plot.savefig(OUTPUT_PATH_FIGURES + "progress_" + exp_names[-1] + ".png")
-
 
 """ Step 2: Congif and Restore RL policy and  then simulate """
 y_agg_list = [[] for i in n_agents_list]
@@ -88,10 +94,11 @@ s_agg_list = [[] for i in n_agents_list]
 c_agg_list = [[] for i in n_agents_list]
 k_agg_list = [[] for i in n_agents_list]
 shock_agg_list = [[] for i in n_agents_list]
+
 for ind, n_hh in enumerate(n_agents_list):
     """ Step 2.0: replicate original environemnt and config """
-    env_label = "capital_planner_ma"
-    register_env(env_label, Capital_planner_ma)
+    env_label = "capital_const_plan"
+    register_env(env_label, CapitalConstPlan)
     env_horizon = 1000
     n_hh = n_hh
     n_capital = 1
@@ -112,7 +119,7 @@ for ind, n_hh in enumerate(n_agents_list):
     }
 
     # We instantiate the environment to extract information.
-    env = Capital_planner_ma(env_config_analysis)
+    env_inst = CapitalConstPlan(env_config_analysis)
     config_analysis = {
         "gamma": beta,
         "env": env_label,
@@ -124,8 +131,8 @@ for ind, n_hh in enumerate(n_agents_list):
             "policies": {
                 "hh": (
                     None,
-                    env.observation_space["hh_0"],
-                    env.action_space["hh_0"],
+                    env_inst.observation_space["hh_0"],
+                    env_inst.action_space["hh_0"],
                     {},
                 ),
             },
@@ -142,40 +149,40 @@ for ind, n_hh in enumerate(n_agents_list):
 
     """ Step 2: Simulate an episode (MAX_steps timesteps) """
 
-    env = Capital_planner_ma(env_config=env_config_analysis)
-    shock_idtc_list = [[] for i in range(env.n_hh)]
-    y_list = [[] for i in range(env.n_hh)]
-    s_list = [[] for i in range(env.n_hh)]
-    c_list = [[] for i in range(env.n_hh)]
-    k_list = [[] for i in range(env.n_hh)]
-    MAX_STEPS = env.horizon
+    env = env_inst(env_config=env_config_analysis)
+    shock_idtc_list = [[] for i in range(env_inst.n_hh)]
+    y_list = [[] for i in range(env_inst.n_hh)]
+    s_list = [[] for i in range(env_inst.n_hh)]
+    c_list = [[] for i in range(env_inst.n_hh)]
+    k_list = [[] for i in range(env_inst.n_hh)]
+    MAX_STEPS = env_inst.horizon
 
     # loop
-    obs = env.reset()
+    obs = env_inst.reset()
     for t in range(MAX_STEPS):
         action = {}
-        for i in range(env.n_hh):
+        for i in range(env_inst.n_hh):
             action[f"hh_{i}"] = trained_trainer.compute_action(
                 obs[f"hh_{i}"], policy_id="hh"
             )
 
-        obs, rew, done, info = env.step(action)
-        for i in range(env.n_hh):
+        obs, rew, done, info = env_inst.step(action)
+        for i in range(env_inst.n_hh):
             shock_idtc_list[i].append(obs["hh_0"][1][i])
             y_list[i].append(info["hh_0"]["income"][i])
             s_list[i].append(info["hh_0"]["savings"][i][0])
             c_list[i].append(info["hh_0"]["consumption"][i])
             k_list[i].append(info["hh_0"]["capital"][i][0])
 
-        # k_agg_list.append(np.sum([k_list[[j][t-1] for j in range(env.n_hh)]))
+        # k_agg_list.append(np.sum([k_list[[j][t-1] for j in range(env_loop.n_hh)]))
         shock_agg_list[ind].append(obs["hh_0"][2])
-        y_agg_list[ind].append(np.sum([y_list[i][t] for i in range(env.n_hh)]))
+        y_agg_list[ind].append(np.sum([y_list[i][t] for i in range(env_inst.n_hh)]))
         s_agg_list[ind].append(
-            np.sum([s_list[i][t] * y_list[i][t] for i in range(env.n_hh)])
+            np.sum([s_list[i][t] * y_list[i][t] for i in range(env_inst.n_hh)])
             / y_agg_list[ind][t]
         )
-        c_agg_list[ind].append(np.sum([y_list[i][t] for i in range(env.n_hh)]))
-        k_agg_list[ind].append(np.sum([k_list[i][t] for i in range(env.n_hh)]))
+        c_agg_list[ind].append(np.sum([y_list[i][t] for i in range(env_inst.n_hh)]))
+        k_agg_list[ind].append(np.sum([k_list[i][t] for i in range(env_inst.n_hh)]))
 
     """ Step 2.3 Run simulation on policies calculated with GDSGE """
 
@@ -198,7 +205,7 @@ for ind, n_hh in enumerate(n_agents_list):
         for i in range(n_hh)
     ]
 
-    sample_obs = env.observation_space.sample()
+    sample_obs = env_inst.observation_space.sample()
     sample_K = obs[0]
     sample_ind_shock = sample_obs[1]
     sample_agg_shock = sample_obs[2]
@@ -207,33 +214,33 @@ for ind, n_hh in enumerate(n_agents_list):
     sample_shock_raw = [sample_agg_shock] + list(sample_ind_shock)
     sample_shock_id = encode(sample_shock_raw, dims=[2 for i in range(n_hh + 1)])
     pts = [sample_shock_id] + list(sample_K)
-    sample_s = [s_interp[i](pts)[0] for i in range(env.n_hh)]
+    sample_s = [s_interp[i](pts)[0] for i in range(env_inst.n_hh)]
 
     def compute_action(obs, policy_list: list, max_action: float):
         # to do, check encode part
         K = obs[0][0]
         shock_raw = [obs[2], obs[1][0]]
         shock_id = encode(shock_raw, dims=[2 for i in range(n_hh)])  # change_dims
-        s = [policy_list[i](np.array([shock_id] + K)) for i in range(env.n_hh)]
-        action = np.array([2 * s[i] / max_action - 1 for i in range(env.n_hh)])
+        s = [policy_list[i](np.array([shock_id] + K)) for i in range(env_inst.n_hh)]
+        action = np.array([2 * s[i] / max_action - 1 for i in range(env_inst.n_hh)])
         return action
 
-    shock_list_econ = [[] for i in range(env.n_hh)]
-    s_list_econ = [[] for i in range(env.n_hh)]
-    inv_list_econ = [[] for i in range(env.n_hh)]
-    y_list_econ = [[] for i in range(env.n_hh)]
-    c_list_econ = [[] for i in range(env.n_hh)]
-    k_list_econ = [[] for i in range(env.n_hh)]
-    rew_list_econ = [[] for i in range(env.n_hh)]
-    MAX_STEPS = env.horizon
+    shock_list_econ = [[] for i in range(env_inst.n_hh)]
+    s_list_econ = [[] for i in range(env_inst.n_hh)]
+    inv_list_econ = [[] for i in range(env_inst.n_hh)]
+    y_list_econ = [[] for i in range(env_inst.n_hh)]
+    c_list_econ = [[] for i in range(env_inst.n_hh)]
+    k_list_econ = [[] for i in range(env_inst.n_hh)]
+    rew_list_econ = [[] for i in range(env_inst.n_hh)]
+    MAX_STEPS = env_inst.horizon
     # MAX_STEPS = 100
-    obs = env.reset()
+    obs = env_inst.reset()
     for i in range(MAX_STEPS):
-        action = compute_action(obs, s_interp, env.max_s_per_j)
-        obs, rew, done, info = env.step(action)
+        action = compute_action(obs, s_interp, env_inst.max_s_per_j)
+        obs, rew, done, info = env_inst.step(action)
         # obs[1] = shock_process[i]
-        # env.obs_[1] = shock_process[i]
-        for i in range(env.n_hh):
+        # env_loop.obs_[1] = shock_process[i]
+        for i in range(env_inst.n_hh):
             shock_list_econ[i].append(obs[1][i])
             s_list_econ[i].append(info["savings"][i][0])
             inv_list_econ[i].append(info["investment"][i][0])
@@ -248,23 +255,23 @@ for ind, n_hh in enumerate(n_agents_list):
 
     # Idiosyncratic trajectories
     plt.subplot(2, 2, 1)
-    for i in range(env.n_hh):
+    for i in range(env_inst.n_hh):
         plt.plot(shock_idtc_list[i][:100])
     plt.title("Shock")
 
     plt.subplot(2, 2, 2)
-    for i in range(env.n_hh):
+    for i in range(env_inst.n_hh):
         plt.plot(s_list[i][:100])
     plt.title("Savings Rate")
 
     plt.subplot(2, 2, 3)
-    for i in range(env.n_hh):
+    for i in range(env_inst.n_hh):
         plt.plot(y_list[i][:100])
     plt.title("Income")
 
     plt.subplot(2, 2, 4)
     # plt.plot(k_agg_list[:100])
-    for i in range(env.n_hh):
+    for i in range(env_inst.n_hh):
         plt.plot(k_list[i][:100])
     plt.title("Capital")
 
@@ -309,7 +316,7 @@ if SAVE_CSV == True:
 
     IRResults_agg = {"k_agg": k_agg_list, "shock_agg": shock_agg_list}
     IRResults_idtc = {}
-    for i in range(env.n_hh):
+    for i in range(env_inst.n_hh):
         IRResults_idtc[f"shock_idtc_{i}"] = shock_idtc_list[i]
         IRResults_idtc[f"s_{i}"] = s_list[i]
         IRResults_idtc[f"k_{i}"] = k_list[i]

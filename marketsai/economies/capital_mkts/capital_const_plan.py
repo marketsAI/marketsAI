@@ -63,7 +63,7 @@ class CapitalConstPlan(MultiAgentEnv):
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
-            {"delta": 0.04, "alpha": 0.3, "beta": 0.98},
+            {"delta": 0.04, "alpha": 0.3, "phi": 0.5, "beta": 0.98},
         )
 
         # STEADY STATE
