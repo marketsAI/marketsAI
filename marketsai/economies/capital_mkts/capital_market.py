@@ -48,6 +48,7 @@ class CapitalMarket(MultiAgentEnv):
         self.n_capital = self.env_config.get("n_capital", 1)
         self.eval_mode = self.env_config.get("eval_mode", False)
         self.analysis_mode = self.env_config.get("analysis_mode", False)
+        self.simul_mode = self.env_config.get("simul_mode", False)
         self.max_savings = self.env_config.get("max_savings", 0.6)
         self.bgt_penalty = self.env_config.get("bgt_penalty", 1)
 
@@ -98,7 +99,7 @@ class CapitalMarket(MultiAgentEnv):
                     if (t // (1 / self.shock_idtc_transition[0][1]) + 1) % 2 == 0
                     else [1 - (i % 2) for i in range(self.n_hh)]
                 )
-        # SPECIFIC SHOCK VALUES THAT ARE USEFUL FOR EVALUATION
+        # SPECIFIC SHOCK VALUES THAT ARE USEFUL FOR Analysis
         if self.analysis_mode == True:
             self.shocks_analysis_agg = {0: 0}
             for t in range(1, self.horizon + 1):
@@ -386,7 +387,7 @@ class CapitalMarket(MultiAgentEnv):
         # 4. CREATE INFO
 
         # The info of the first household contain global info, to make it easy to retrieve
-        if self.analysis_mode == False:
+        if not self.analysis_mode and not self.simul_mode:
             info = {}
         else:
             info_global = {
@@ -398,6 +399,7 @@ class CapitalMarket(MultiAgentEnv):
                     "bgt_penalty": bgt_penalty_ind,
                     "capital": k_ij,
                     "capital_new": k_ij_new,
+                    "price": p_j,
                 }
             }
 
