@@ -49,16 +49,6 @@ class Townsend(MultiAgentEnv):
         self.simul_mode = self.env_config.get("simul_mode", False)
         self.max_savings = self.env_config.get("max_savings", 0.6)
 
-        # this is going to change to continuous shocks
-        self.shock_idtc_values = self.env_config.get("shock_idtc_values", [0.9, 1.1])
-        self.shock_idtc_transition = self.env_config.get(
-            "shock_idtc_transition", [[0.9, 0.1], [0.1, 0.9]]
-        )
-        self.shock_agg_values = self.env_config.get("shock_agg_values", [0.8, 1.2])
-        self.shock_agg_transition = self.env_config.get(
-            "shock_agg_transition", [[0.95, 0.05], [0.05, 0.95]]
-        )
-
         # UNPACK PARAMETERS
         self.params = self.env_config.get(
             "parameters",
