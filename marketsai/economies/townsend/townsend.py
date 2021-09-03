@@ -1,442 +1,351 @@
-from gym.spaces import Discrete, Box, MultiDiscrete
-from ray.rllib.env.multi_agent_env import MultiAgentEnv
-from marketsai.functions.functions import CES, CRRA
+import gym
+from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
 
-# from marketsai.agents.agents import Household, Firm
-import math
+from ray.rllib.env.multi_agent_env import MultiAgentEnv
 import numpy as np
-from typing import Dict, Tuple, List
 import random
+
+# from marketsai.utils import encode
+# import math
 
 
 class Townsend(MultiAgentEnv):
-    """A gym compatible environment of the Twonsend (1983) model with N^I industries."""
+    """
+    An Rllib compatible environment of Townsend (1983) model.
 
-    def __init__(self, env_config={}):
+	-  There are  $N$  firms. Firm $i$ has objective function 
 
-        # To do:
-        # 1. check range of action _spaces in preprocess_actions()
+	E_t \sum_{r=0}^{\infty} \beta^r \left[p_{j,t} f k_{j,t} -\omega_{j,t} k_{j,t} - \frac{\phi}{2}\left(k_{j,t+1}-k_{j,t} \right)^2 \right]
 
-        # Doubts
-        # 1. Is it worthy to account for max_price in obs_sace?
-        # 2. Hould opaquenes include inventories?
+	where 
+
+	p_{j,t} = -A f(K_{j,t}) + u_{j,t},  A>0,
+	K_{j,t} =  k_{j,t}, N>0,
+	u_{j,t} = {\theta}_t + {\epsilon}_{j,t} 
+	{\theta}_t = \rho {\theta}_{t-1}+{v}_t  |\rho| <1 \
+
+	where {\epsilon}_{j,t} and {v}_t shocks, p_{j,t} is the price in industry j, k_{j,t} is the capital stock of a firm, 
+    f k_{j,t} is the output, u_{j,t} is a demand shock, \theta_t is an agg. demand shock and \omega_{j,t} is the stochastic rental rate. 
+	
+	-Firms in industry a observe the history \{p_{a,s}, K_{a,s}, p_{b,s}; s\leq t\}  and, symmetrically, 
+    firms in industry b observes history \{p_{b,s}, K_{b,s}, p_{a,s}; s\leq t\} 
+"""
+
+    def __init__(
+        self,
+        env_config={},
+    ):
 
         # UNPACK CONFIG
-        # 3 info modes: Full, Opaque_stocks, Opaque_prices.
-        # self.opaque_stocks = env_config.get("opaque_stocks", False)
-        # self.opaque_prices = env_config.get("opaque_prices", False)
-        self.horizon = env_config.get("horizon", 256)
-        self.n_I = env_config.get("n_I", 2)
-        self.n_F = env_config.get("n_F", 2)
-        self.n_agents = self.nF + self.nI
-        self.tfp = env_config.get("tfp", 0.3)
-        self.rho = env_config.get("rho", 0.9)
-        self.phi = env_config.get("phi", 0.3)
-        self.rts_mod = env_config.get("rts_mod", 0.3)
-        self.max_q_c = env_config.get("max_q_c", 0.3)
-        self.stock_init = env_config.get("stock_init", 10)
-        self.penalty_bgt_fix = env_config.get("penalty_bgt_fix", 1)
-        self.penalty_bgt_var = env_config.get("penalty_bgt_var", 0)
-        self.penalty_exss = env_config.get("penalty_exss", 0.1)
-        # Paraterers of the markets
-        self.params = env_config.get(
+        self.env_config = env_config
+
+        # GLOBAL ENV CONFIGS
+        self.horizon = self.env_config.get("horizon", 1000)
+        self.N_firms = self.env_config.get("N_firms", 1)
+        self.eval_mode = self.env_config.get("eval_mode", False)
+        self.analysis_mode = self.env_config.get("analysis_mode", False)
+        self.seed_eval = self.env_config.get("seed_eval", 1)
+        self.seed_analysis = self.env_config.get("seed_analysis", 2)
+        self.simul_mode = self.env_config.get("simul_mode", False)
+        self.max_savings = self.env_config.get("max_savings", 0.6)
+
+        # this is going to change to continuous shocks
+        self.shock_idtc_values = self.env_config.get("shock_idtc_values", [0.9, 1.1])
+        self.shock_idtc_transition = self.env_config.get(
+            "shock_idtc_transition", [[0.9, 0.1], [0.1, 0.9]]
+        )
+        self.shock_agg_values = self.env_config.get("shock_agg_values", [0.8, 1.2])
+        self.shock_agg_transition = self.env_config.get(
+            "shock_agg_transition", [[0.95, 0.05], [0.05, 0.95]]
+        )
+
+        # UNPACK PARAMETERS
+        self.params = self.env_config.get(
             "parameters",
             {
-                "depreciation": 0.04,
+                "delta": 0,
                 "alpha": 0.3,
-                "gammaK": 1 / self.nF,
+                "beta": 0.98,
+                "tfp": 1,
+                "rho": 0.9,
+                "mean_w": 0,
+                "var_w": 1,
+                "var_epsilon": 1,
+                "var_theta": 2,
+                "theta_0": 1,
             },
         )
 
-        self.timesteps = 0
+        # STEADY STATE
+        self.k_ss = (
+            self.params["phi"]
+            * self.params["delta"]
+            * self.N_firms
+            * 1
+            * (
+                (1 - self.params["beta"] * (1 - self.params["delta"]))
+                / (self.params["alpha"] * self.params["beta"])
+                + self.params["delta"] * (1 - 1) / 1
+            )
+        ) ** (1 / (self.params["alpha"] - 2))
+
+        # SPECIFIC SHOCK VALUES THAT ARE USEFUL FOR EVALUATION, ANALYSIS AND SIMULATION
+        # We first create seeds with a default random generator
+
+        if self.eval_mode:
+            rng = np.random.default_rng(self.seed_eval)
+        else:
+            rng = np.random.default_rng(self.seed_analysis)
+        self.shocks_agg_seeded = {t: rng.normal() for t in range(self.horizon + 1)}
+        self.shocks_idtc_seeded = {
+            t: [rng.normal() for i in range(self.N_firms)]
+            for t in range(self.horizon + 1)
+        }
 
         # CREATE SPACES
 
-        # actions of finalF: quantitiy of each capital
-        self.action_space_finalF = {
-            f"finalF_{i}": Box(low=-1, high=1, shape=(self.nF,)) for i in range(self.nI)
-        }
-        # actions of capitalF: quantity
-        self.action_space_capitalF = {
-            f"capitalF_{i}": Box(low=-1, high=1, shape=(1,)) for i in range(self.nF)
+        self.n_actions = 1
+        # boundaries: actions are normalized to be between -1 and 1 (and then unsquashed)
+        self.action_space = {
+            f"firm_{i}": Box(low=-1.0, high=1.0, shape=(self.n_actions,))
+            for i in range(self.N_firms)
         }
 
-        self.action_space = {**self.action_space_finalF, **self.action_space_capitalF}
+        self.n_obs_stock = 1
+        self.n_obs_price = self.N_firms
 
-        # Global Obs: stocks (dim n_capitalF*n_finalF), inventories (dim n_capitalF) and prices (dim n_capitalF),
-        if self.opaque_stocks == False and self.opaque_prices == False:
-
-            n_obs_finalF = self.nF * self.nI + self.nF
-            n_obs_capitalF = self.nF * self.nI + self.nF
-
-        if self.opaque_stocks == True and self.opaque_prices == True:
-            # obs final: own stocks (dim n_capitalF), inventories (dim n_finalF) and  prices (dim n_capitalF),
-            n_obs_finalF = self.nF * 2
-            # obs capital: own stocks (dim n_finalF), inventories (dim n_capitalF), own price (dim 1), price stats (dim 2)
-            n_obs_capitalF = self.nI + self.nF
-
-        obs_space_finalF = {
-            f"finalF_{i}": Box(
-                low=0,
+        self.observation_space = {
+            f"firm_{i}": Box(
+                low=0.0,
                 high=float("inf"),
-                shape=(n_obs_finalF,),
+                shape=(self.n_obs_stock + self.n_obs_price,),
             )
-            for i in range(self.nI)
+            for i in range(self.N_firms)
         }
-        obs_space_capitalF = {
-            f"capitalF_{j}": Box(
-                low=0,
-                high=float("inf"),
-                shape=(n_obs_capitalF,),
-            )
-            for j in range(self.nF)
-        }
-        self.observation_space = {**obs_space_finalF, **obs_space_capitalF}
 
-        # finalF_dict = {i: [] for i in range(self.n_finalF)}
-        # capitalF_dict = {i: [] for i in range(self.n_finalF, self.n_agents)}
-
-        # agents_dict = {i: [] for i in range(self.n_agents)}
-        # agent_roles_1 = {i: "final" for i in range(self.n_finalF)}
-        # agent_roles_2 = {i: "capital" for i in range(self.n_finalF, self.n_agents)}
-
-    # AUXILIARY FUNCTIONS
-    def allocate_game(self, quant_f: List[list], inventories: list) -> List[list]:
-        """Function that allocates inveotires according to quantities demanded.
-        quant_d is a List of list where the outer list collects finalFs
-        and inner list collects quanttities demanded for each capital good.
-        The output has the same dims as quant_d"""
-        quant_fiscal_reshaped = [[] for j in range(self.nF)]
-        for i in range(self.nI):
-            for j in range(self.nF):
-                quant_fiscal_reshaped[j].append(quant_f[i][j])
-
-        quant_final = [[] for i in range(self.nI)]
-        prices = []
-        for j in range(self.nF):
-            for i in range(self.nI):
-                quant_final[i].append(
-                    (quant_fiscal_reshaped[j][i] / np.sum(quant_fiscal_reshaped[j]))
-                    * inventories[j]
-                )
-            prices.append(
-                np.sum(quant_fiscal_reshaped[j]) / max(inventories[j], 0.0001)
-            )
-
-        quant_final_reshaped = [[] for j in range(self.nF)]
-        for i in range(self.nI):
-            for j in range(self.nF):
-                quant_final_reshaped[j].append(quant_final[i][j])
-
-        return quant_final, quant_final_reshaped, quant_fiscal_reshaped, prices
-
-    def preprocess_actions(self, action_dict: Dict) -> Tuple:
-        quant_f_fiscal = (
-            []
-        )  # list of list, outer list represent finalF and iner list represet capitalF
-        quant_c_pib = []
-
-        for key, value in action_dict.items():
-            if key.split("_")[0] == "finalF":
-                quant_f_fiscal.append(
-                    [
-                        max((value[j] + 1) / 2 * self.max_q_f, 0.1)
-                        for j in range(self.nF)
-                    ]
-                )
-            if key.split("_")[0] == "capitalF":
-                quant_c_pib.append(max((value[0] + 1) / 2 * self.max_q_c, 0.1))
-
-        return quant_f_fiscal, quant_c_pib
-
-    def preprocess_state(self, obs_global: Dict) -> Tuple:
-        stocks = obs_global[0]
-        stocks_org = [
-            stocks[i * self.nF : i * self.nF + self.nF] for i in range(self.nI)
-        ]
-        inventories = obs_global[1]
-
-        return stocks_org, inventories
+        self.timestep = None
 
     def reset(self):
-        self.timesteps = 0
-        # Stocks is aflatttened list of list where the outter list relflects finalF and inner list reflect capitalF
-        # Thus, the stock of finalF i of capital good j is stocks [i*self.n_capitalF+j]
-        # stocks = [
-        #     random.uniform(4, 10) / self.n_finalF
-        #     for i in range(self.n_capitalF * self.n_finalF)
-        # ]
-        # inventories = [
-        #     random.uniform(0.1, 0.7) / self.n_capitalF for i in range(self.n_capitalF)
-        # ]
-        # prices = [random.uniform(0.2, 2) for i in range(self.n_capitalF)]
+        """Rreset function
+        it specifies three types of initial obs. Random (default),
+        for evaluation, and for posterior analysis"""
 
-        stocks = [self.stock_init / self.nI for i in range(self.nF * self.nI)]
-        inventories = [0.6 for i in range(self.nF)]
+        self.timestep = 0
 
-        if self.opaque_stocks == False and self.opaque_prices == False:
-            self.obs_finalF = {
-                f"finalF_{i}": np.array(stocks + inventories) for i in range(self.nI)
-            }
-            self.obs_capitalF = {
-                f"capitalF_{j}": np.array(stocks + inventories) for j in range(self.nF)
-            }
+        # to evaluate policies, we fix the initial observation
+        if self.eval_mode == True:
+            k_init = np.array(
+                [
+                    self.k_ss * 0.9 if i % 2 == 0 else self.k_ss * 0.8
+                    for i in range(self.N_firms * 1)
+                ],
+                dtype=float,
+            )
 
-        # if self.opaque_stocks == True and self.opaque_prices == True:
-        #     self.obs_finalF = {
-        #         f"finalF_{i}": np.array(
-        #             stocks[i * self.n_capitalF : i * self.n_capitalF + self.n_capitalF]
-        #             + inventories
-        #             + prices
-        #         )
-        #         for i in range(self.n_finalF)
-        #     }
-        #     self.obs_capitalF = {
-        #         f"capitalF_{j}": np.array(
-        #             [stocks[i * self.n_capitalF + j] for i in range(self.n_finalF)]
-        #             + inventories
-        #             + [prices[j], np.mean(prices), np.std(prices)]
-        #         )
-        #         for j in range(self.n_capitalF)
-        #     }
+        elif self.analysis_mode == True:
+            k_init = np.array(
+                [
+                    self.k_ss * 0.9 if i % 2 == 0 else self.k_ss * 0.8
+                    for i in range(self.N_firms * 1)
+                ],
+                dtype=float,
+            )
 
-        self.obs_global = [stocks, inventories]
+        # DEFAULT: when learning, we randomize the initial observations
+        else:
+            k_init = np.array(
+                [
+                    random.uniform(self.k_ss * 0.5, self.k_ss * 1.25)
+                    for i in range(self.N_firms * 1)
+                ],
+                dtype=float,
+            )
 
-        self.obs_ = {**self.obs_finalF, **self.obs_capitalF}
+        shock_idtc_init = self.shocks_idtc_seeded[0]
+        shock_agg_init = self.shocks_agg_seeded[0]
+
+        # Useful variables
+        theta = self.params["theta_0"]
+        u = [theta + shock_idtc_init[i] for i in range(self.N_firms)]
+        y_init = [
+            self.params["tfp"] * k_init[i] ** self.params["alpha"]
+            for i in range(self.N_firms)
+        ]
+
+        p_init = [-self.params["A"] * y_init[i] + u[i] for i in range(self.N_firms)]
+        p_init_perfirm = [[] for i in range(self.N_firms)]
+
+        # put your own state first
+        for i in range(self.N_firms):
+            p_init_perfirm[i] = [p_init[i]] + [
+                x for z, x in enumerate(p_init) if z != i
+            ]
+
+        # create Dictionary wtih agents as keys and with Tuple spaces as values
+        self.obs_ = {
+            f"firm_{i}": (k_init[i], p_init_perfirm[i]) for i in range(self.N_firms)
+        }
+        self.obs_global = [k_init, p_init, shock_idtc_init, shock_agg_init]
         return self.obs_
 
-    def step(self, action_dict):
+    def step(self, action_dict):  # INPUT: Action Dictionary
+        """
+        STEP FUNCTION
+        0. update recursive structure (e.g. k=k_next)
+        1. Preprocess acrion space (e.g. unsquash and create useful variables such as production y)
+        2. Calculate obs_next (e.g. calculate k_next and update shocks by evaluation a markoc chain)
+        3. Calculate Rewards (e.g., calculate the logarithm of consumption and budget penalties)
+        4. Create Info (e.g., create a dictionary with useful data per agent)
 
-        # PREPROCESS ACTION AND SPACE
+        """
+        # 0. UPDATE recursive structure
 
-        self.obs = self.obs_
-        self.stocks_org, self.inventories = self.preprocess_state(self.obs_global)
+        self.timestep += 1
+        k = self.obs_global[0]
+        shocks_idtc_id = self.obs_global[1]
+        theta_old = self.obs_global[2]
+        rent_shock = np.random.normal(self.params["mean_w"], self.params["var_w"])
+        shock_ind = [
+            np.random.normal(0, self.params["var_epsilon"]) for i in range(self.N_firms)
+        ]
+        shock_agg = np.random.normal(0, self.params["var_theta"])
+        theta = self.params["rho"] * theta_old + shock_agg
+        u = [theta + shock_ind[i] for i in range(self.N_firms)]
+        # 1. PREPROCESS action and state
 
-        K = [
-            CES(coeff=self.params["gammaK"])(inputs=self.stocks_org[i])
-            for i in range(self.nI)
+        # unsquash action
+        s = [
+            (action_dict[f"firm_{i}"] + 1) / 2 * self.max_savings
+            for i in range(self.N_firms)
         ]
 
-        y_final = [1 * (K[i] ** self.params["alpha"]) for i in range(self.nI)]
-        (
-            self.quant_f_fiscal,
-            self.quant_c_pib,
-        ) = self.preprocess_actions(action_dict)
-
-        pib = np.sum(y_final)
-
-        self.quant_c = [
-            self.quant_c_pib[j] * np.sqrt(2 * pib / self.nF) for j in range(self.nF)
-        ]
-        self.quant_f = [
-            [self.quant_f_fiscal[i][j] * y_final[i] for j in range(self.nF)]
-            for i in range(self.nF)
+        # Useful variables
+        y = [
+            self.params["tfp"] * k[i] ** self.params["alpha"]
+            for i in range(self.N_firms)
         ]
 
-        # CREATE INTERMEDIATE VARIABLES
-
-        # allocate demand
-        (
-            self.quant_final,
-            self.quant_final_reshaped,
-            quant_fiscal_reshaped,
-            self.prices,
-        ) = self.allocate_game(quant_f=self.quant_f, inventories=self.inventories)
-
-        # profits and expenditures
-
-        # final
-        expend_f = [np.sum(self.quant_f[i]) for i in range(self.nI)]
-        c = [y_final[i] - expend_f[i] for i in range(self.nI)]
-
-        # capital
-        revenue_c = [np.sum(quant_fiscal_reshaped[j]) for j in range(self.nF)]
-        expend_c = [(1 / 2) * self.quant_c[j] ** 2 for j in range(self.nF)]
-        profits = [revenue_c[j] - expend_c[j] for j in range(self.nF)]
-
-        # OUTPUT1: obs_ - Next period obs
-        inventories_ = [self.quant_c[j] for j in range(self.nF)]
-
-        stocks_org_ = [
-            [
-                self.stocks_org[i][j] * (1 - self.params["depreciation"])
-                + self.quant_final[i][j]
-                for j in range(self.nF)
-            ]
-            for i in range(self.nI)
+        prices = [-self.params["A"] * y[i] + u[i] for i in range(self.N_firms)]
+        # 2. NEXT OBS
+        k_new = [
+            k[i] * (1 - self.params["delta"]) + s[i] * y[i] for i in range(self.N_firms)
         ]
 
-        stocks_ = [item for sublist in stocks_org_ for item in sublist]
+        # update shock
+        if self.eval_mode == True:
+            shocks_idtc_id_new = np.array(self.shocks_idtc_seeded[self.timestep])
+            shock_agg_id_new = self.shocks_agg_seeded[self.timestep]
+        elif self.analysis_mode == True:
+            shocks_idtc_id_new = np.array(self.shocks_idtc_seeded[self.timestep])
+            shock_agg_id_new = self.shocks_agg_seeded[self.timestep]
+        # reorganize state so each firm sees his state first
+        price_perfirm = [[] for i in range(self.N_firms)]
+        # put your own state first
 
-        stock_org_perfirm = [[] for i in range(self.nI)]
-        stocks_perfirm = [[] for i in range(self.nI)]
-
-        for i in range(self.nF):
-            stock_org_perfirm[i] = [stocks_org_[i]] + [
-                x for z, x in enumerate(stocks_org_) if z != i
+        for i in range(self.N_firms):
+            price_perfirm[i] = [shocks_idtc_id_new[i]] + [
+                x for z, x in enumerate(shocks_idtc_id_new) if z != i
             ]
-            stocks_perfirm[i] = [
-                item for sublist in stock_org_perfirm[i] for item in sublist
-            ]
-
-        inventories_perfirm = [[] for j in range(self.nF)]
-
-        for j in range(self.nF):
-            inventories_perfirm[j] = [inventories_[j]] + [
-                x for z, x in enumerate(inventories_) if z != j
-            ]
-
-        if self.opaque_stocks == False and self.opaque_prices == False:
-            self.obs_finalF = {
-                f"finalF_{i}": np.array(stocks_perfirm[i] + inventories_)
-                for i in range(self.nI)
-            }
-            self.obs_capitalF = {
-                f"capitalF_{j}": np.array(stocks_ + inventories_perfirm[j])
-                for j in range(self.nF)
-            }
-
-        # if self.opaque_stocks == True and self.opaque_prices == True:
-        #     self.obs_finalF = {
-        #         f"finalF_{i}": np.array(stocks_org_[i] + inventories_ + self.prices_)
-        #         for i in range(self.n_finalF)
-        #     }
-        #     self.obs_capitalF = {
-        #         f"capitalF_{j}": np.array(
-        #             [stocks_[i * self.n_capitalF + j] for i in range(self.n_finalF)]
-        #             + [self.prices_[j], np.mean(self.prices_), np.std(self.prices_)]
-        #             + inventories_
-        #         )
-        #         for j in range(self.n_capitalF)
-        #     }
-
-        self.obs_global = [stocks_, inventories_]
-
-        self.obs_ = {**self.obs_finalF, **self.obs_capitalF}
-
-        # next stock
-
-        # next inventories: production + excess
-
-        # OUTPUT2: rew: Reward Dictionary
-
-        # penalty for negative consumption
-        penalty_bgt_ind = [0 for i in range(self.nI)]
-        for i in range(self.nI):
-            if c[i] < 0:
-                penalty_bgt_ind[i] = 1
-
-        self.rew_finalF = {
-            f"finalF_{i}": c[i]
-            - penalty_bgt_ind[i] * (self.penalty_bgt_fix - self.penalty_bgt_var * c[i])
-            for i in range(self.nI)
+        # create Tuple
+        self.obs_ = {
+            f"firm_{i}": (
+                k_new[i],
+                price_perfirm[i],
+            )
+            for i in range(self.N_firms)
         }
 
-        self.rew_capitalF = {f"capitalF_{j}": profits[j] for j in range(self.nF)}
-        self.rew = {**self.rew_finalF, **self.rew_capitalF}
-        # reward capitalF (price * quant - w*labor_s)
-        # restrictions
-        # reward finalF (U(y-wl-price*K))
+        # 3. CALCUALTE REWARD
+        utility = [
+            prices[i] * y[i]
+            - rent_shock[i] * k[i]
+            - self.params["phi"](k_new[i] - k_new[i]) ** 2
+            for i in range(self.N_firms)
+        ]
+        rew = {f"firm_{i}": utility[i] for i in range(self.N_firms)}
 
-        # OUTPUT3: done: False since its an infinite game
-        if self.timesteps <= self.horizon:
+        # DONE FLAGS
+        if self.timestep < self.horizon:
             done = {"__all__": False}
         else:
             done = {"__all__": True}
 
-        # OUTPUT4: info - Info dictionary.
-        # put excess of each seller.
-        info_finalF = {
-            f"finalF_{i}": {
-                "penalty_bgt": penalty_bgt_ind[i],
-                "stocks": stocks_org_[i],
-                "quantity": self.quant_final[i][0],
-                "income": y_final[i],
-                "consumption": c[i],
-            }
-            for i in range(self.nI)
-        }
-        info_capitalF = {
-            f"capitalF_{j}": {
-                "production": self.quant_c[j],
-                "price": self.prices[j],
-            }
-            for j in range(self.nF)
-        }
-        info = {**info_finalF, **info_capitalF}
+        # 4. CREATE INFO
 
-        self.timesteps += 1
+        # The info of the first household contain global info, to make it easy to retrieve
+        if not self.analysis_mode and not self.simul_mode:
+            info = {}
+        else:
+            info_global = {
+                "firm_0": {
+                    "savings": s,
+                    "reward": utility,
+                    "income": y,
+                    "capital": k,
+                    "capital_new": k_new,
+                    "price": prices,
+                }
+            }
+
+            info_ind = {
+                f"firm_{i}": {
+                    "savings": s[i],
+                    "reward": utility[i],
+                    "income": y[i],
+                    "capital": k[i],
+                    "capital_new": k_new[i],
+                    "price": prices[i],
+                }
+                for i in range(1, self.N_firms)
+            }
+
+            info = {**info_global, **info_ind}
 
         # RETURN
-        return self.obs_, self.rew, done, info
+
+        return self.obs_, rew, done, info
 
 
-env = Capital_game(
-    env_config={
-        "horizon": 256,
-        "opaque_stocks": False,
-        "opaque_prices": False,
-        "n_finalF": 2,
-        "n_capitalF": 2,
-        "max_q_f": 0.3,
-        "max_q_c": 0.3,
-        "stock_init": 20,
-        "penalty_bgt_fix": 1,
-        "penalty_bgt_var": 0,
-        "parameters": {
-            "depreciation": 0.04,
-            "alpha": 0.3,
-            "gammaK": 1 / 1,
+""" TEST AND DEBUG CODE """
+
+
+def main():
+    env = Townsend(
+        env_config={
+            "horizon": 200,
+            "N_firms": 2,
+            "eval_mode": False,
+            "analysis_mode": False,
+            "simul_mode": False,
+            "max_savings": 0.6,
+            "parameters": {
+                "delta": 0,
+                "alpha": 0.3,
+                "beta": 0.98,
+                "tfp": 1,
+                "rho": 0.9,
+                "mean_w": 0,
+                "var_w": 1,
+                "var_epsilon": 1,
+                "var_theta": 2,
+            },
         },
-    },
-)
+    )
 
-env.reset()
-print("obs:", env.obs_["finalF_0"])
-obs, rew, done, info = env.step(
-    {
-        "finalF_0": np.array([1, 0]),
-        "finalF_1": np.array([0, 1]),
-        "capitalF_0": np.array([0]),
-        "capitalF_1": np.array([0]),
-    }
-)
-print("rew_final", rew["finalF_0"])
-print("rew_capital", rew["capitalF_0"])
+    env.reset()
+    print(
+        "k_ss:", env.k_ss, "y_ss:", env.params["tfp"] * env.k_ss ** env.params["alpha"]
+    )
+    print("obs", env.obs_)
 
-print("obs_final:", obs["finalF_0"])
+    for i in range(20):
+        obs, rew, done, info = env.step(
+            {f"firm_{i}": np.random.uniform(-1, 1) for i in range(env.N_firms)}
+        )
+        print("obs", obs)
+        print("rew", rew)
+        print("info", info)
 
-print("info_final", info["finalF_0"])
-print("info_capital", info["capitalF_0"])
 
-obs, rew, done, info = env.step(
-    {
-        "finalF_0": np.array([1, 0]),
-        "finalF_1": np.array([0, 1]),
-        "capitalF_0": np.array([1]),
-        "capitalF_1": np.array([1]),
-    }
-)
-print("rew_final", rew["finalF_0"])
-print("rew_capital", rew["capitalF_0"])
-
-print("obs_final:", obs["finalF_0"])
-
-print("info_final", info["finalF_0"], info["finalF_1"])
-print("info_capital", info["capitalF_0"])
-
-# for i in range(100):
-#     action_dict = {
-#         "finalF_0": np.array([np.random.uniform(-1, 1)]),
-#         "capitalF_0": np.array([np.random.uniform(-1, 1)]),
-#     }
-#     print(action_dict)
-#     obs, rew, done, info = env.step(action_dict)
-
-#     print("rew_final", rew["finalF_0"])
-#     print("rew_capital", rew["capitalF_0"])
-
-#     print("obs_final:", obs["finalF_0"])
-
-#     print("info_final", info["finalF_0"])
-#     print("info_capital", info["capitalF_0"])
+if __name__ == "__main__":
+    main()
