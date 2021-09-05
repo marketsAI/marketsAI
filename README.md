@@ -14,7 +14,7 @@ pip install https://github.com/marketsAI/marketsAI/archive/alpha.zip
 
 ## Folders
 
-The main cofe bas is the marketsai folder. The relevant sub-folers are:
+The main code is in the marketsai folder. The relevant sub-folers are:
 
 documents: It contain the latex of the related documents (papers, slides, etc.) and the figures that go on those documents.
 
