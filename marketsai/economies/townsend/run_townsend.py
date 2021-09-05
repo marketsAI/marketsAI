@@ -29,8 +29,8 @@ import json
 """ STEP 0: Experiment configs """
 
 # global configs
-DATE = "Sep4_"
-TEST = False
+DATE = "Sep5_"
+TEST = True
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = True
 sn.color_palette("Set2")
@@ -43,10 +43,10 @@ else:
     OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/"
     OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/"
 
-ALGO = "PPO"  # either PPO" or "SAC"
+ALGO = "SAC"  # either PPO" or "SAC"
 DEVICE = "native"  # either "native" or "server"
-n_firms_LIST = [2, 3, 4, 5]  # list with number of agents for each run
-ITERS_TEST = 10  # number of iteration for test
+n_firms_LIST = [5]  # list with number of agents for each run
+ITERS_TEST = 2  # number of iteration for test
 ITERS_RUN = 1000  # number of iteration for fullrun
 
 
@@ -57,9 +57,9 @@ BETA = 0.98  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 12
+NUM_CPUS = 6
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 2
+NUM_TRIALS = 1
 NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
@@ -316,7 +316,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
         checkpoint_at_end=True,
         metric="evaluation/custom_metrics/discounted_rewards_mean",
         mode="max",
-        num_samples=2 * NUM_TRIALS,
+        num_samples=1 * NUM_TRIALS,
         # resources_per_trial={"gpu": 0.5},
     )
 
