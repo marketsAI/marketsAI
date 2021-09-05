@@ -66,6 +66,7 @@ class KrusellSmith(MultiAgentEnv):
         )
 
         # STEADY STATE
+        self.k_ss = 1
         # self.k_ss = (
         #     self.params["phi"]
         #     * self.params["delta"]
@@ -184,7 +185,7 @@ class KrusellSmith(MultiAgentEnv):
             k_init = np.array(
                 [
                     random.uniform(self.k_ss * 0.5, self.k_ss * 1.25)
-                    for i in range(self.n_hh * self.n_capital)
+                    for i in range(self.n_hh)
                 ],
                 dtype=float,
             )

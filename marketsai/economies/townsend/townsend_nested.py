@@ -282,10 +282,6 @@ class Townsend(MultiAgentEnv):
                 for i in range(self.n_industries)
             ]
 
-        mgn_cost = [
-            self.params["phi"] * (k_new[i] - k[i]) for i in range(self.n_industries)
-        ]
-
         # reorganize state so each industry sees his state first
         price_perindustry = [[] for i in range(self.n_industries)]
         for i in range(self.n_industries):
@@ -330,6 +326,10 @@ class Townsend(MultiAgentEnv):
         if not self.analysis_mode and not self.simul_mode:
             info = {}
         else:
+            mgn_cost = [
+                self.params["phi"] * (k_new[i] - k[i]) for i in range(self.n_industries)
+            ]
+
             info_global = {
                 "firm_0": {
                     "savings": s,
