@@ -16,7 +16,7 @@ class Townsend(MultiAgentEnv):
     """
     An Rllib compatible environment of Townsend (1983) model.
 
-	-  There are  $N$  firms. Firm $i$ has objective function 
+	-  There are  $N$  industries. industry $i$ has objective function 
 
 	E_t \sum_{r=0}^{\infty} \beta^r \left[p_{j,t} f k_{j,t} -\omega_{j,t} k_{j,t} - \frac{\phi}{2}\left(k_{j,t+1}-k_{j,t} \right)^2 \right]
 
@@ -27,11 +27,11 @@ class Townsend(MultiAgentEnv):
 	u_{j,t} = {\theta}_t + {\epsilon}_{j,t} 
 	{\theta}_t = \rho {\theta}_{t-1}+{v}_t  |\rho| <1 \
 
-	where {\epsilon}_{j,t} and {v}_t shocks, p_{j,t} is the price in industry j, k_{j,t} is the capital stock of a firm, 
+	where {\epsilon}_{j,t} and {v}_t shocks, p_{j,t} is the price in industry j, k_{j,t} is the capital stock of a industry, 
     f k_{j,t} is the output, u_{j,t} is a demand shock, \theta_t is an agg. demand shock and \omega_{j,t} is the stochastic rental rate. 
 	
-	-Firms in industry a observe the history \{p_{a,s}, K_{a,s}, p_{b,s}; s\leq t\}  and, symmetrically, 
-    firms in industry b observes history \{p_{b,s}, K_{b,s}, p_{a,s}; s\leq t\} 
+	-industries in industry a observe the history \{p_{a,s}, K_{a,s}, p_{b,s}; s\leq t\}  and, symmetrically, 
+    industries in industry b observes history \{p_{b,s}, K_{b,s}, p_{a,s}; s\leq t\} 
 """
 
     def __init__(
@@ -44,7 +44,7 @@ class Townsend(MultiAgentEnv):
 
         # GLOBAL ENV CONFIGS
         self.horizon = self.env_config.get("horizon", 200)
-        self.n_firms = self.env_config.get("n_firms", 1)
+        self.n_industries = self.env_config.get("n_industries", 1)
         self.rental_shock = self.env_config.get("rental_shock", False)
         self.eval_mode = self.env_config.get("eval_mode", False)
         self.analysis_mode = self.env_config.get("analysis_mode", False)
@@ -91,7 +91,10 @@ class Townsend(MultiAgentEnv):
             t: rng.normal(0, self.params["var_theta"]) for t in range(self.horizon + 1)
         }
         self.shocks_idtc_seeded = {
-            t: [rng.normal(0, self.params["var_epsilon"]) for i in range(self.n_firms)]
+            t: [
+                rng.normal(0, self.params["var_epsilon"])
+                for i in range(self.n_industries)
+            ]
             for t in range(self.horizon + 1)
         }
 
@@ -101,11 +104,11 @@ class Townsend(MultiAgentEnv):
         # boundaries: actions are normalized to be between -1 and 1 (and then unsquashed)
         self.action_space = {
             f"firm_{i}": Box(low=-1.0, high=1.0, shape=(self.n_actions,), dtype=float)
-            for i in range(self.n_firms)
+            for i in range(self.n_industries)
         }
 
         self.n_obs_stock = 1
-        self.n_obs_price = self.n_firms
+        self.n_obs_price = self.n_industries
         self.observation_space = {
             f"firm_{i}": Box(
                 low=0,
@@ -113,7 +116,7 @@ class Townsend(MultiAgentEnv):
                 shape=(self.n_obs_stock + self.n_obs_price,),
                 dtype=float,
             )
-            for i in range(self.n_firms)
+            for i in range(self.n_industries)
         }
         self.timestep = None
 
@@ -139,7 +142,7 @@ class Townsend(MultiAgentEnv):
         if self.eval_mode == True:
             k_init = [
                 self.k_ss * 0.9 if i % 2 == 0 else self.k_ss * 0.8
-                for i in range(self.n_firms * 1)
+                for i in range(self.n_industries * self.n_firms)
             ]
 
             shock_idtc_init = self.shocks_idtc_seeded[0]
@@ -148,7 +151,7 @@ class Townsend(MultiAgentEnv):
         elif self.analysis_mode == True:
             k_init = [
                 self.k_ss * 0.9 if i % 2 == 0 else self.k_ss * 0.8
-                for i in range(self.n_firms * 1)
+                for i in range(self.n_industries * self.n_firms)
             ]
 
             shock_idtc_init = self.shocks_idtc_seeded[0]
@@ -157,45 +160,45 @@ class Townsend(MultiAgentEnv):
         # DEFAULT: when learning, we randomize the initial observations
         else:
             k_init = [
-                random.uniform(self.k_ss * 0.5, self.k_ss * 2)
-                for i in range(self.n_firms * 1)
+                random.uniform(self.k_ss * 0.5, self.k_ss * 30)
+                for i in range(self.n_industries * self.n_firms)
             ]
             shock_idtc_init = [
                 np.random.normal(0, self.params["var_epsilon"])
-                for i in range(self.n_firms)
+                for i in range(self.n_industries)
             ]
             shock_agg_init = np.random.normal(0, self.params["var_theta"])
 
         # Useful variables
         theta_init = self.params["theta_0"]
-        u_init = [theta_init + shock_idtc_init[i] for i in range(self.n_firms)]
+        u_init = [theta_init + shock_idtc_init[i] for i in range(self.n_industries)]
         y_init = [
             self.params["tfp"] * k_init[i] ** self.params["alpha"]
-            for i in range(self.n_firms)
+            for i in range(self.n_industries)
         ]
         if self.norm_ind:
             p_init = [
                 max(self.max_price_norm - self.params["A"] * y_init[i] + u_init[i], 0)
-                for i in range(self.n_firms)
+                for i in range(self.n_industries)
             ]
         else:
             p_init = [
                 self.max_price - self.params["A"] * y_init[i] + u_init[i]
-                for i in range(self.n_firms)
+                for i in range(self.n_industries)
             ]
 
-        p_init_perfirm = [[] for i in range(self.n_firms)]
+        p_init_perindustry = [[] for i in range(self.n_industries)]
 
         # put your own state first
-        for i in range(self.n_firms):
-            p_init_perfirm[i] = [p_init[i]] + [
+        for i in range(self.n_industries):
+            p_init_perindustry[i] = [p_init[i]] + [
                 x for z, x in enumerate(p_init) if z != i
             ]
 
         # create Dictionary wtih agents as keys and with Tuple spaces as values
         self.obs_ = {
-            f"firm_{i}": np.array([k_init[i]] + p_init_perfirm[i], dtype=float)
-            for i in range(self.n_firms)
+            f"firm_{i}": np.array([k_init[i]] + p_init_perindustry[i], dtype=float)
+            for i in range(self.n_industries)
         }
         self.obs_global = [
             k_init,
@@ -230,65 +233,70 @@ class Townsend(MultiAgentEnv):
         else:
             shock_idtc = [
                 np.random.normal(0, self.params["var_epsilon"])
-                for i in range(self.n_firms)
+                for i in range(self.n_industries)
             ]
             shock_agg = np.random.normal(0, self.params["var_theta"])
 
         if self.rental_shock:
             shock_rent = [
-                np.random.normal(0, self.params["var_w"]) for i in range(self.n_firms)
+                np.random.normal(0, self.params["var_w"])
+                for i in range(self.n_industries)
             ]
         else:
-            shock_rent = [0 for i in range(self.n_firms)]
+            shock_rent = [0 for i in range(self.n_industries)]
 
         theta_old = self.obs_global[2]
         theta = self.params["rho"] * theta_old + shock_agg
-        u = [theta + shock_idtc[i] for i in range(self.n_firms)]
+        u = [theta + shock_idtc[i] for i in range(self.n_industries)]
 
         # 1. PREPROCESS action and state
         # unsquash action
         s = [
             (action_dict[f"firm_{i}"][0] + 1) / 2 * self.max_savings
-            for i in range(self.n_firms)
+            for i in range(self.n_industries)
         ]
 
         # Useful variables
         y = [
             self.params["tfp"] * k[i] ** self.params["alpha"]
-            for i in range(self.n_firms)
+            for i in range(self.n_industries)
         ]
 
         # 2. NEXT OBS
         if self.norm_ind:
             prices = [
                 max(self.max_price_norm - self.params["A"] * y[i] + u[i], 0)
-                for i in range(self.n_firms)
+                for i in range(self.n_industries)
             ]
             k_new = [
                 min(k[i] * (1 - self.params["delta"]) + s[i] * y[i], self.max_cap_norm)
-                for i in range(self.n_firms)
+                for i in range(self.n_industries)
             ]
         else:
             prices = [
                 max(self.max_price - self.params["A"] * y[i] + u[i], 0)
-                for i in range(self.n_firms)
+                for i in range(self.n_industries)
             ]
             k_new = [
                 min(k[i] * (1 - self.params["delta"]) + s[i] * y[i], self.max_cap)
-                for i in range(self.n_firms)
+                for i in range(self.n_industries)
             ]
 
-        mgn_cost = [self.params["phi"] * (k_new[i]-k[i]) for i in range(self.n_firms)]
+        mgn_cost = [
+            self.params["phi"] * (k_new[i] - k[i]) for i in range(self.n_industries)
+        ]
 
-        # reorganize state so each firm sees his state first
-        price_perfirm = [[] for i in range(self.n_firms)]
-        for i in range(self.n_firms):
-            price_perfirm[i] = [prices[i]] + [x for z, x in enumerate(prices) if z != i]
+        # reorganize state so each industry sees his state first
+        price_perindustry = [[] for i in range(self.n_industries)]
+        for i in range(self.n_industries):
+            price_perindustry[i] = [prices[i]] + [
+                x for z, x in enumerate(prices) if z != i
+            ]
 
         # create obs dict
         self.obs_ = {
-            f"firm_{i}": np.array([k_new[i]] + price_perfirm[i], dtype=float)
-            for i in range(self.n_firms)
+            f"firm_{i}": np.array([k_new[i]] + price_perindustry[i], dtype=float)
+            for i in range(self.n_industries)
         }
         self.obs_global = [k_new, prices, theta, shock_agg, shock_idtc, shock_rent]
 
@@ -297,17 +305,17 @@ class Townsend(MultiAgentEnv):
             prices[i] * (1 - s[i]) * y[i]
             - shock_rent[i] * k[i]
             - self.params["phi"] * (k_new[i] - k[i]) ** 2
-            for i in range(self.n_firms)
+            for i in range(self.n_industries)
         ]
         if self.norm_ind:
             rew = {
                 f"firm_{i}": (utility[i] - self.rew_mean) / self.rew_std
-                for i in range(self.n_firms)
+                for i in range(self.n_industries)
             }
         else:
             rew = {
                 f"firm_{i}": (utility[i] - self.rew_mean) / self.rew_std
-                for i in range(self.n_firms)
+                for i in range(self.n_industries)
             }
 
         # DONE FLAGS
@@ -342,7 +350,7 @@ class Townsend(MultiAgentEnv):
                     "capital_new": k_new[i],
                     "prices": prices[i],
                 }
-                for i in range(1, self.n_firms)
+                for i in range(1, self.n_industries)
             }
 
             info = {**info_global, **info_ind}
@@ -354,20 +362,20 @@ class Townsend(MultiAgentEnv):
     def random_sample(self, NUM_PERIODS):
         self.simul_mode_org = self.simul_mode
         self.simul_mode = True
-        k_list = [[] for i in range(self.n_firms)]
-        p_list = [[] for i in range(self.n_firms)]
-        rew_list = [[] for i in range(self.n_firms)]
+        k_list = [[] for i in range(self.n_industries)]
+        p_list = [[] for i in range(self.n_industries)]
+        rew_list = [[] for i in range(self.n_industries)]
         for t in range(NUM_PERIODS):
             if t % 1000 == 0:
                 obs = self.reset()
             obs, rew, done, info = self.step(
                 {
                     f"firm_{i}": self.action_space[f"firm_{i}"].sample()
-                    for i in range(self.n_firms)
+                    for i in range(self.n_industries)
                 }
             )
-            for i in range(self.n_firms):
-                k_list[i].append(info["firm_0"]["capital"][i])
+            for i in range(self.n_industries):
+                k_list[i].append(info["industry_0"]["capital"][i])
                 p_list[i].append(info["firm_0"]["prices"][i])
                 rew_list[i].append(rew["firm_0"])
         cap_stats = [np.max(k_list), np.min(k_list), np.mean(k_list), np.std(k_list)]
@@ -390,7 +398,7 @@ def main():
     # init environment
     env_config = {
         "horizon": 200,
-        "n_firms": 2,
+        "n_industries": 2,
         "rental_shock": False,
         "eval_mode": False,
         "analysis_mode": False,
@@ -424,7 +432,8 @@ def main():
 
     # Validate spaces
     print(
-        type(env.action_space["firm_0"].sample()), env.action_space["firm_0"].sample()
+        type(env.action_space["firm_0"].sample()),
+        env.action_space["firm_0"].sample(),
     )
     print(
         type(env.observation_space["firm_0"].sample()),
@@ -436,15 +445,15 @@ def main():
     obs, rew, done, info = env.step(
         {
             f"firm_{i}": env.action_space[f"firm_{i}"].sample()
-            for i in range(env.n_firms)
+            for i in range(env.n_industries)
         }
     )
     print(env.observation_space["firm_0"].contains(obs["firm_0"]))
 
     # Simulate runs and get statistics
-    k_list = [[] for i in range(env.n_firms)]
-    p_list = [[] for i in range(env.n_firms)]
-    rew_list = [[] for i in range(env.n_firms)]
+    k_list = [[] for i in range(env.n_industries)]
+    p_list = [[] for i in range(env.n_industries)]
+    rew_list = [[] for i in range(env.n_industries)]
     env_config_simul = env_config.copy()
     env_config_simul["simul_mode"] = True
     env = Townsend(env_config=env_config_simul)
@@ -455,11 +464,11 @@ def main():
         obs, rew, done, info = env.step(
             {
                 f"firm_{i}": env.action_space[f"firm_{i}"].sample()
-                for i in range(env.n_firms)
+                for i in range(env.n_industries)
             }
         )
         # print(obs, "\n", rew, "\n", done, "\n", info)
-        for i in range(env.n_firms):
+        for i in range(env.n_industries):
             k_list[i].append(info["firm_0"]["capital"][i])
             p_list[i].append(info["firm_0"]["prices"][i])
             rew_list[i].append(rew["firm_0"])
@@ -474,15 +483,15 @@ def main():
 
     # Analyze timing and scalability:
     data_timing = {
-        "n_firms": [],
+        "n_industries": [],
         "time_init": [],
         "time_reset": [],
         "time_step": [],
         "max_passthrough": [],
     }
 
-    for i, n_firms in enumerate([i + 1 for i in range(5)]):
-        env_config["n_firms"] = n_firms
+    for i, n_industries in enumerate([i + 1 for i in range(5)]):
+        env_config["n_industries"] = n_industries
         time_preinit = time.time()
         env = Townsend(env_config=env_config)
         time_postinit = time.time()
@@ -491,12 +500,12 @@ def main():
         obs, rew, done, info = env.step(
             {
                 f"firm_{i}": np.array([np.random.uniform(-1, 1)])
-                for i in range(env.n_firms)
+                for i in range(env.n_industries)
             }
         )
         time_poststep = time.time()
 
-        data_timing["n_firms"].append(n_firms)
+        data_timing["n_industries"].append(n_industries)
         data_timing["time_init"].append((time_postinit - time_preinit) * 1000)
         data_timing["time_reset"].append((time_postreset - time_postinit) * 1000)
         data_timing["time_step"].append((time_poststep - time_postreset) * 1000)
@@ -506,10 +515,10 @@ def main():
     timing_plot = sn.lineplot(
         data=data_timing,
         y="time_step",
-        x="n_firms",
+        x="n_industries",
     )
     timing_plot.get_figure()
-    plt.xlabel("Number of firms")
+    plt.xlabel("Number of industries")
     plt.ylabel("Time of step")
     plt.show()
 

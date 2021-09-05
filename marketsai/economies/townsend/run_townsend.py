@@ -30,7 +30,7 @@ import json
 
 # global configs
 DATE = "Sep5_"
-TEST = True
+TEST = False
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = True
 sn.color_palette("Set2")
@@ -43,10 +43,10 @@ else:
     OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/"
     OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/"
 
-ALGO = "SAC"  # either PPO" or "SAC"
-DEVICE = "native"  # either "native" or "server"
-n_firms_LIST = [5]  # list with number of agents for each run
-ITERS_TEST = 2  # number of iteration for test
+ALGO = "PPO"  # either PPO" or "SAC"
+DEVICE = "native_"  # either "native" or "server"
+n_firms_LIST = [2]  # list with number of agents for each run
+ITERS_TEST = 4  # number of iteration for test
 ITERS_RUN = 1000  # number of iteration for fullrun
 
 
@@ -61,7 +61,7 @@ NUM_CPUS = 6
 NUM_CPUS_DRIVER = 1
 NUM_TRIALS = 1
 NUM_ROLLOUT = ENV_HORIZON * 1
-NUM_ENV_PW = 1  # num_env_per_worker
+NUM_ENV_PW = 5  # num_env_per_worker
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
 NUM_MINI_BATCH = NUM_CPUS_DRIVER
