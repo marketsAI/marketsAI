@@ -272,8 +272,7 @@ class KrusellSmith(MultiAgentEnv):
         ]
 
         inv_exp_i = [
-            [s_i[i] * income_i[i] for j in range(self.n_capital)]
-            for i in range(self.n_hh)
+            s_i[i] * income_i[i] for i in range(self.n_hh)
         ]  # in utility, if bgt constraint is violated, c[i]=0, so penalty
 
         inv_exp_tot = np.sum([inv_exp_i[i] for i in range(self.n_hh)])
@@ -385,7 +384,6 @@ def main():
         env_config={
             "horizon": 200,
             "n_hh": 2,
-            "n_capital": 2,
             "eval_mode": False,
             "max_savings": 0.6,
             "bgt_penalty": 100,
@@ -403,12 +401,7 @@ def main():
 
     for i in range(20):
         obs, rew, done, info = env.step(
-            {
-                f"hh_{i}": np.array(
-                    [np.random.uniform(-1, 1) for i in range(env.n_capital)]
-                )
-                for i in range(env.n_hh)
-            }
+            {f"hh_{i}": np.array([np.random.uniform(-1, 1)]) for i in range(env.n_hh)}
         )
 
         print("obs", obs)
