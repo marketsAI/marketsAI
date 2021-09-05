@@ -36,16 +36,16 @@ sn.color_palette("Set2")
 SAVE_PROGRESS_CSV = True
 
 if TEST:
-    OUTPUT_PATH_EXPERS = "home/mc5851/RL_macro/Tests/"
-    OUTPUT_PATH_FIGURES = "home/mc5851/RL_macro/Tests/"
+    OUTPUT_PATH_EXPERS = "/home/mc5851/RL_macro/Tests/"
+    OUTPUT_PATH_FIGURES = "/home/mc5851/RL_macro/Tests/"
 else:
-    OUTPUT_PATH_EXPERS = "home/mc5851/RL_macro/RL_macro/Experiments/"
-    OUTPUT_PATH_FIGURES = "home/mc5851/RL_macro/Documents/Figures/"
+    OUTPUT_PATH_EXPERS = "/home/mc5851/RL_macro/RL_macro/Experiments/"
+    OUTPUT_PATH_FIGURES = "/home/mc5851/RL_macro/Documents/Figures/"
 
-ALGO = "PPO"  # either PPO" or "SAC"
+ALGO = "SAC"  # either PPO" or "SAC"
 DEVICE = "server"  # either "native" or "server"
-n_firms_LIST = [2, 3, 4, 5]  # list with number of agents for each run
-ITERS_TEST = 10  # number of iteration for test
+n_firms_LIST = [2]  # list with number of agents for each run
+ITERS_TEST = 1  # number of iteration for test
 ITERS_RUN = 1000  # number of iteration for fullrun
 
 
@@ -265,7 +265,7 @@ ppo_config = {
     "clip_actions": True,
 }
 
-sac_config = {"prioritized_replay": False, "normalize_actions": False}
+sac_config = {"prioritized_replay": False, "normalize_actions": True}
 
 if ALGO == "PPO":
     training_config = {**common_config, **ppo_config}
@@ -319,7 +319,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
         stop=stop,
         checkpoint_freq=CHKPT_FREQ,
         checkpoint_at_end=True,
-        metric="evaluation/custom_metrics/discounted_rewards_mean",
+        metric="episode_reward_mean",
         mode="max",
         num_samples=2 * NUM_TRIALS,
         # resources_per_trial={"gpu": 0.5},
