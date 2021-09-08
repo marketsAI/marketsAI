@@ -4,18 +4,26 @@ from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 import numpy as np
 import random
+import time
+import seaborn as sn
+import matplotlib.pyplot as plt
 
-# from marketsai.utils import encode
-# import math
+""" CONFIGS for when run scrip"""
+VALID_SPACES = True
+SIMULATE = False
+SIMUL_PERIODS = 10000
+TIMMING_ANALYSIS = True
+ANALYSIS_RUN = True
+EVALUATION_RUN = True
 
 
 class KrusellSmith(MultiAgentEnv):
     """An Rllib compatible environment of a market for the krusell and smith economy.
 
     - n_hh decide how much capital to acumualte and how much to consume. THey receive labor income
-    and rental income from renting the capital to firms
+    and rental income from renting the capital to hhs
 
-    - Competitive firms produce the final good using a CRS cobb-douglas technology.
+    - Competitive hhs produce the final good using a CRS cobb-douglas technology.
 
     -The problem is formulated as a multi-agent problem with centralized learning and decentralized execution.
      Since the problem of all households is symmetric, one neural net learns from the experuence of all agents,
@@ -48,6 +56,7 @@ class KrusellSmith(MultiAgentEnv):
         self.n_hh = self.env_config.get("n_hh", 2)
         self.eval_mode = self.env_config.get("eval_mode", False)
         self.analysis_mode = self.env_config.get("analysis_mode", False)
+        self.simul_mode = self.env_config.get("simul_mode", False)
         self.max_savings = self.env_config.get("max_savings", 0.6)
 
         self.shock_idtc_values = self.env_config.get("shock_idtc_values", [0.9, 1.1])
@@ -67,20 +76,6 @@ class KrusellSmith(MultiAgentEnv):
 
         # STEADY STATE
         self.k_ss = 1
-        # self.k_ss = (
-        #     self.params["phi"]
-        #     * self.params["delta"]
-        #     * self.n_hh
-        #     * self.n_capital
-        #     * (
-        #         (1 - self.params["beta"] * (1 - self.params["delta"]))
-        #         / (self.params["alpha"] * self.params["beta"])
-        #         + self.params["delta"] * (self.n_capital - 1) / self.n_capital
-        #     )
-        # ) ** (1 / (self.params["alpha"] - 2))
-
-        # MAX SAVING RATE PER CAPITAL GOOD
-        # self.max_s_ij = self.max_savings / self.n_capital * 1.5
 
         # SPECIFIC SHOCK VALUES THAT ARE USEFUL FOR EVALUATION
         if self.eval_mode == True:
@@ -184,7 +179,7 @@ class KrusellSmith(MultiAgentEnv):
         else:
             k_init = np.array(
                 [
-                    random.uniform(self.k_ss * 0.5, self.k_ss * 1.25)
+                    random.uniform(self.k_ss * 0.5, self.k_ss * 20)
                     for i in range(self.n_hh)
                 ],
                 dtype=float,
@@ -198,24 +193,22 @@ class KrusellSmith(MultiAgentEnv):
             )
             shock_agg_init = random.choices(list(range(len(self.shock_idtc_values))))[0]
 
-        # Now we need to reorganize the state so each firm observes his own state first.
+        # Now we need to reorganize the state so each hh observes his own state first.
         # First, organize stocks as list of lists, where inner list [i] reflect stocks for  hh with index i.
 
-        k_init_perfirm = [[] for i in range(self.n_hh)]
-        shocks_idtc_init_perfirm = [[] for i in range(self.n_hh)]
+        k_init_perhh = [[] for i in range(self.n_hh)]
+        shocks_idtc_init_perhh = [[] for i in range(self.n_hh)]
 
         # put your own state first
         for i in range(self.n_hh):
-            k_init_perfirm[i] = [k_init[i]] + [
-                x for z, x in enumerate(k_init) if z != i
-            ]
-            shocks_idtc_init_perfirm[i] = [shocks_idtc_init[i]] + [
+            k_init_perhh[i] = [k_init[i]] + [x for z, x in enumerate(k_init) if z != i]
+            shocks_idtc_init_perhh[i] = [shocks_idtc_init[i]] + [
                 x for z, x in enumerate(shocks_idtc_init) if z != i
             ]
 
         # create Dictionary wtih agents as keys and with Tuple spaces as values
         self.obs_ = {
-            f"hh_{i}": (k_init_perfirm[i], shocks_idtc_init_perfirm[i], shock_agg_init)
+            f"hh_{i}": (k_init_perhh[i], shocks_idtc_init_perhh[i], shock_agg_init)
             for i in range(self.n_hh)
         }
         return self.obs_
@@ -238,7 +231,6 @@ class KrusellSmith(MultiAgentEnv):
         ]  # we take the ordering of the first agents as the global ordering.
         shocks_idtc_id = self.obs_["hh_0"][1]
         shock_agg_id = self.obs_["hh_0"][2]
-        k_tot = np.sum(k)
         # go from shock_id (e.g. 0) to shock value (e.g. 0.8)
         shocks_idtc = [
             self.shock_idtc_values[shocks_idtc_id[i]] for i in range(self.n_hh)
@@ -246,49 +238,40 @@ class KrusellSmith(MultiAgentEnv):
         shock_agg = self.shock_agg_values[shock_agg_id]
 
         # 1. PREPROCESS action and state
+        k_tot = np.sum(k)
+        l_tot = np.sum(shocks_idtc)
 
         # unsquash action
-        s_i = [
+        s = [
             (action_dict[f"hh_{i}"] + 1) / 2 * self.max_savings
             for i in range(self.n_hh)
         ]
         # Define prices
         R = (
-            1
-            - self.params["delta"]
-            + self.params["alpha"] * shock_agg * k_tot ** (self.params["alpha"] - 1)
+            self.params["alpha"]
+            * shock_agg
+            * (k_tot / l_tot) ** (self.params["alpha"] - 1)
         )
 
-        W = (1 - self.params["alpha"]) * shock_agg * k_tot ** (self.params["alpha"] - 1)
+        W = (
+            (1 - self.params["alpha"])
+            * shock_agg
+            * (k_tot / l_tot) ** (self.params["alpha"])
+        )
         # Useful variables
         # income = R_t K_t + W_t z_t
-        income_i = [R * k[i] + W * shocks_idtc[i] for i in range(self.n_hh)]
+        income = [R * k[i] + W * shocks_idtc[i] for i in range(self.n_hh)]
 
-        c_i = [income_i[i] * (1 - s_i[i]) for i in range(self.n_hh)]
+        c = [income[i] * (1 - s[i]) for i in range(self.n_hh)]
 
-        utility_i = [
-            np.log(c_i[i]) if c_i[i] > 0 else -self.bgt_penalty
-            for i in range(self.n_hh)
-        ]
+        utility = [np.log(c[i]) if c[i] > 0 else -100 for i in range(self.n_hh)]
 
-        inv_exp_i = [
-            s_i[i] * income_i[i] for i in range(self.n_hh)
+        inv = [
+            s[i] * income[i] for i in range(self.n_hh)
         ]  # in utility, if bgt constraint is violated, c[i]=0, so penalty
 
-        inv_exp_tot = np.sum([inv_exp_i[i] for i in range(self.n_hh)])
-
-        # p_j = [
-        #     (self.params["phi"] * inv_exp_tot[j]) ** (1 / 2)
-        #     for j in range(self.n_capital)
-        # ]
-
-        # inv_j = [
-        #     np.sqrt((2 / self.params["phi"]) * inv_exp_j[j])
-        #     for j in range(self.n_capital)
-        # ]
-
         # 2. NEXT OBS
-        k_new = [s_i[i] * income_i[i] for i in range(self.n_hh)]
+        k_new = [(1 - self.params["delta"]) * k + inv[i] for i in range(self.n_hh)]
         # update shock
         if self.eval_mode == True:
             shocks_idtc_id_new = np.array(self.shocks_eval_idtc[self.timestep])
@@ -312,27 +295,27 @@ class KrusellSmith(MultiAgentEnv):
             )[0]
 
         # reorganize state so each hh sees his state first
-        k_new_perfirm = [[] for i in range(self.n_hh)]
-        shocks_idtc_id_new_perfirm = [[] for i in range(self.n_hh)]
+        k_new_perhh = [[] for i in range(self.n_hh)]
+        shocks_idtc_id_new_perhh = [[] for i in range(self.n_hh)]
         # put your own state first
 
         for i in range(self.n_hh):
-            k_new_perfirm[i] = [k_new[i]] + [x for z, x in enumerate(k_new) if z != i]
-            shocks_idtc_id_new_perfirm[i] = [shocks_idtc_id_new[i]] + [
+            k_new_perhh[i] = [k_new[i]] + [x for z, x in enumerate(k_new) if z != i]
+            shocks_idtc_id_new_perhh[i] = [shocks_idtc_id_new[i]] + [
                 x for z, x in enumerate(shocks_idtc_id_new) if z != i
             ]
         # create Tuple
         self.obs_ = {
             f"hh_{i}": (
-                k_new_perfirm[i],
-                shocks_idtc_id_new_perfirm[i],
+                k_new_perhh[i],
+                shocks_idtc_id_new_perhh[i],
                 shock_agg_id_new,
             )
             for i in range(self.n_hh)
         }
 
         # 3. CALCUALTE REWARD
-        rew = {f"hh_{i}": utility_i[i] for i in range(self.n_hh)}
+        rew = {f"hh_{i}": utility[i] for i in range(self.n_hh)}
 
         # DONE FLAGS
         if self.timestep < self.horizon:
@@ -343,28 +326,34 @@ class KrusellSmith(MultiAgentEnv):
         # 4. CREATE INFO
 
         # The info of the first household contain global info, to make it easy to retrieve
-        if self.analysis_mode == False:
+        if not self.analysis_mode and not self.simul_mode:
             info = {}
         else:
             info_global = {
                 "hh_0": {
-                    "savings": s_i,
-                    "reward": utility_i,
-                    "income": income_i,
-                    "consumption": c_i,
+                    "savings": s,
+                    "rewards": utility,
+                    "income": income,
+                    "consumption": c,
                     "capital": k,
                     "capital_new": k_new,
+                    "rental_rate": R,
+                    "shock_agg": shock_agg,
+                    "shock_idtc": shocks_idtc,
                 }
             }
 
             info_ind = {
                 f"hh_{i}": {
-                    "savings": s_i[i],
-                    "reward": utility_i[i],
-                    "income": income_i[i],
-                    "consumption": c_i[i],
+                    "savings": s[i],
+                    "rewards": utility[i],
+                    "income": income[i],
+                    "consumption": c[i],
                     "capital": k[i],
                     "capital_new": k_new[i],
+                    "rental_rate": R,
+                    "shock_agg": shock_agg,
+                    "shock_idtc": shocks_idtc[i],
                 }
                 for i in range(1, self.n_hh)
             }
@@ -380,33 +369,179 @@ class KrusellSmith(MultiAgentEnv):
 
 
 def main():
-    env = KrusellSmith(
-        env_config={
-            "horizon": 200,
-            "n_hh": 2,
-            "eval_mode": False,
-            "max_savings": 0.6,
-            "bgt_penalty": 100,
-            "shock_idtc_values": [0.9, 1.1],
-            "shock_idtc_transition": [[0.9, 0.1], [0.1, 0.9]],
-            "shock_agg_values": [0.8, 1.2],
-            "shock_agg_transition": [[0.95, 0.05], [0.05, 0.95]],
-            "parameters": {"delta": 0.04, "alpha": 0.33, "phi": 0.5, "beta": 0.98},
-        },
-    )
 
-    env.reset()
-    print("k_ss:", env.k_ss, "y_ss:", env.k_ss ** env.params["alpha"])
-    print("obs", env.obs_)
+    env_config = {
+        "horizon": 200,
+        "n_hh": 2,
+        "eval_mode": False,
+        "max_savings": 0.6,
+        "shock_idtc_values": [0.9, 1.1],
+        "shock_idtc_transition": [[0.9, 0.1], [0.1, 0.9]],
+        "shock_agg_values": [0.8, 1.2],
+        "shock_agg_transition": [[0.95, 0.05], [0.05, 0.95]],
+        "parameters": {"delta": 0.04, "alpha": 0.33, "phi": 0.5, "beta": 0.98},
+    }
 
-    for i in range(20):
+    if SIMULATE:
+        env = KrusellSmith(env_config=env_config)
+        cap_stats, price_stats, rew_stats = env.random_sample(SIMUL_PERIODS)
+        print(cap_stats, price_stats, rew_stats)
+
+    # Validate spaces
+    if VALID_SPACES:
+        env = KrusellSmith(env_config=env_config)
+        print(
+            type(env.action_space["hh_0"].sample()),
+            env.action_space["hh_0"].sample(),
+        )
+        print(
+            type(env.observation_space["hh_0"].sample()),
+            env.observation_space["hh_0"].sample(),
+        )
+        obs_init = env.reset()
+        print(env.observation_space["hh_0"].contains(obs_init["hh_0"]))
+        print(env.action_space["hh_0"].contains(np.array([np.random.uniform(-1, 1)])))
         obs, rew, done, info = env.step(
-            {f"hh_{i}": np.array([np.random.uniform(-1, 1)]) for i in range(env.n_hh)}
+            {f"hh_{i}": env.action_space[f"hh_{i}"].sample() for i in range(env.n_hh)}
+        )
+        print(obs["hh_0"])
+        print(env.observation_space["hh_0"].contains(obs["hh_0"]))
+
+    # Analyze timing and scalability:\
+    if TIMMING_ANALYSIS:
+        data_timing = {
+            "n_industries": [],
+            "time_init": [],
+            "time_reset": [],
+            "time_step": [],
+            "max_passthrough": [],
+        }
+
+        for i, n_hh in enumerate([i + 1 for i in range(5)]):
+            env_config["n_inda"] = n_hh
+            time_preinit = time.time()
+            env = KrusellSmith(env_config=env_config)
+            time_postinit = time.time()
+            env.reset()
+            time_postreset = time.time()
+            obs, rew, done, info = env.step(
+                {
+                    f"hh_{i}": np.array([np.random.uniform(-1, 1)])
+                    for i in range(env.n_hh)
+                }
+            )
+            time_poststep = time.time()
+
+            data_timing["n_industries"].append(n_hh)
+            data_timing["time_init"].append((time_postinit - time_preinit) * 1000)
+            data_timing["time_reset"].append((time_postreset - time_postinit) * 1000)
+            data_timing["time_step"].append((time_poststep - time_postreset) * 1000)
+            data_timing["max_passthrough"].append(1 / (time_poststep - time_postreset))
+        print(data_timing)
+        # plots
+        timing_plot = sn.lineplot(
+            data=data_timing,
+            y="time_step",
+            x="n_industries",
+        )
+        timing_plot.get_figure()
+        plt.xlabel("Number of industries")
+        plt.ylabel("Time of step")
+        plt.show()
+
+    # GET EVALUATION AND ANALYSIS SCRIPTS RIGHT
+    if ANALYSIS_RUN:
+        env_config_analysis = env_config.copy()
+        env_config_analysis["analysis_mode"] = True
+        env = KrusellSmith(env_config=env_config_analysis)
+        k_list = [[] for i in range(env.n_hh)]
+        rew_list = [[] for i in range(env.n_hh)]
+        shock_ind_list = [[] for i in range(env.n_hh)]
+        R_list = []
+        shock_agg_list = []
+
+        env.reset()
+        for t in range(200):
+            if t % 200 == 0:
+                obs = env.reset()
+            obs, rew, done, info = env.step(
+                {
+                    f"hh_{i}": env.action_space[f"hh_{i}"].sample()
+                    for i in range(env.n_hh)
+                }
+            )
+            # print(obs, "\n", rew, "\n", done, "\n", info)
+            shock_agg_list.append(info["hh_0"]["shock_agg"])
+            R_list.append(info["hh_0"]["rental_rate"])
+            for i in range(env.n_hh):
+                shock_ind_list[i].append(info["hh_0"]["shock_idtc"][i])
+                k_list[i].append(info["hh_0"]["capital"][i])
+                rew_list[i].append(info["hh_0"]["rewards"][i])
+        print(
+            "cap_stats:",
+            [
+                np.max(k_list[0]),
+                np.min(k_list[0]),
+                np.mean(k_list[0]),
+                np.std(k_list[0]),
+            ],
+            "r_stats:",
+            [np.max(R_list), np.min(R_list), np.mean(R_list), np.std(R_list)],
+            "reward_stats:",
+            [np.max(rew_list), np.min(rew_list), np.mean(rew_list), np.std(rew_list)],
         )
 
-        print("obs", obs)
-        # print("rew", rew)
-        # print("info", info)
+        plt.plot(shock_agg_list)
+        plt.plot(shock_ind_list[0])
+        plt.legend(["shock_agg", "shock_ind"])
+        plt.show()
+
+    if EVALUATION_RUN:
+        env_config_eval = env_config.copy()
+        env_config_eval["eval_mode"] = True
+        env_config_eval["simul_mode"] = True
+        env = KrusellSmith(env_config=env_config_eval)
+        k_list = [[] for i in range(env.n_hh)]
+        rew_list = [[] for i in range(env.n_hh)]
+        shock_ind_list = [[] for i in range(env.n_hh)]
+        R_list = []
+        shock_agg_list = []
+
+        env.reset()
+        for t in range(200):
+            if t % 200 == 0:
+                obs = env.reset()
+            obs, rew, done, info = env.step(
+                {
+                    f"hh_{i}": env.action_space[f"hh_{i}"].sample()
+                    for i in range(env.n_hh)
+                }
+            )
+            # print(obs, "\n", rew, "\n", done, "\n", info)
+            shock_agg_list.append(info["hh_0"]["shock_agg"])
+            R_list.append(info["hh_0"]["rental_rate"])
+            for i in range(env.n_hh):
+                shock_ind_list[i].append(info["hh_0"]["shock_idtc"][i])
+                k_list[i].append(info["hh_0"]["capital"][i])
+                rew_list[i].append(info["hh_0"]["rewards"][i])
+        print(
+            "cap_stats:",
+            [
+                np.max(k_list[0]),
+                np.min(k_list[0]),
+                np.mean(k_list[0]),
+                np.std(k_list[0]),
+            ],
+            "r_stats:",
+            [np.max(R_list), np.min(R_list), np.mean(R_list), np.std(R_list)],
+            "reward_stats:",
+            [np.max(rew_list), np.min(rew_list), np.mean(rew_list), np.std(rew_list)],
+        )
+
+        plt.plot(shock_agg_list)
+        plt.plot(shock_ind_list[0])
+        plt.legend(["shock_agg", "shock_ind"])
+        plt.show()
 
 
 if __name__ == "__main__":

@@ -8,8 +8,15 @@ import time
 import seaborn as sn
 import matplotlib.pyplot as plt
 
-# from marketsai.utils import encode
-# import math
+""" CONFIGS for when run scrip"""
+VALID_SPACES = True
+SIMULATE = True
+SIMUL_PERIODS = 10000
+TIMMING_ANALYSIS = True
+ANALYSIS_RUN = True
+EVALUATION_RUN = True
+
+""" CREATE ENVIRONMENT """
 
 
 class Townsend(MultiAgentEnv):
@@ -278,7 +285,7 @@ class Townsend(MultiAgentEnv):
                 for i in range(self.n_firms)
             ]
 
-        mgn_cost = [self.params["phi"] * (k_new[i]-k[i]) for i in range(self.n_firms)]
+        mgn_cost = [self.params["phi"] * (k_new[i] - k[i]) for i in range(self.n_firms)]
 
         # reorganize state so each firm sees his state first
         price_perfirm = [[] for i in range(self.n_firms)]
@@ -325,7 +332,7 @@ class Townsend(MultiAgentEnv):
             info_global = {
                 "firm_0": {
                     "savings": s,
-                    "reward": utility,
+                    "rewards": list(rew.values()),
                     "income": y,
                     "capital": k,
                     "capital_new": k_new,
@@ -336,7 +343,7 @@ class Townsend(MultiAgentEnv):
             info_ind = {
                 f"firm_{i}": {
                     "savings": s[i],
-                    "reward": utility[i],
+                    "rewards": list(rew.values())[i],
                     "income": y[i],
                     "capital": k[i],
                     "capital_new": k_new[i],
@@ -355,8 +362,8 @@ class Townsend(MultiAgentEnv):
         self.simul_mode_org = self.simul_mode
         self.simul_mode = True
         k_list = [[] for i in range(self.n_firms)]
-        p_list = [[] for i in range(self.n_firms)]
         rew_list = [[] for i in range(self.n_firms)]
+        p_list = [[] for i in range(self.n_firms)]
         for t in range(NUM_PERIODS):
             if t % 1000 == 0:
                 obs = self.reset()
@@ -368,8 +375,8 @@ class Townsend(MultiAgentEnv):
             )
             for i in range(self.n_firms):
                 k_list[i].append(info["firm_0"]["capital"][i])
+                rew_list[i].append(rew[f"firm_{i}"])
                 p_list[i].append(info["firm_0"]["prices"][i])
-                rew_list[i].append(rew["firm_0"])
         cap_stats = [np.max(k_list), np.min(k_list), np.mean(k_list), np.std(k_list)]
         price_stats = [np.max(p_list), np.min(p_list), np.mean(p_list), np.std(p_list)]
         rew_stats = [
@@ -398,8 +405,8 @@ def main():
         "max_savings": 0.3,
         "max_cap": 100,
         "max_price": 60,
-        "rew_mean": 361.8,
-        "rew_std": 230.9,
+        "rew_mean": 0,
+        "rew_std": 1,
         "normalize": False,
         "k_ss": 1,
         "parameters": {
@@ -416,6 +423,13 @@ def main():
             "var_theta": 1,
         },
     }
+
+    # simulate random
+    if SIMULATE:
+        env = Townsend(env_config=env_config)
+        cap_stats, price_stats, rew_stats = env.random_sample(SIMUL_PERIODS)
+        print(cap_stats, price_stats, rew_stats)
+
     env = Townsend(env_config=env_config)
     # normalize spaces
 
@@ -423,23 +437,26 @@ def main():
     print(cap_stats, price_stats, rew_stats)
 
     # Validate spaces
-    print(
-        type(env.action_space["firm_0"].sample()), env.action_space["firm_0"].sample()
-    )
-    print(
-        type(env.observation_space["firm_0"].sample()),
-        env.observation_space["firm_0"].sample(),
-    )
-    obs_init = env.reset()
-    print(env.observation_space["firm_0"].contains(obs_init["firm_0"]))
-    print(env.action_space["firm_0"].contains(np.array([np.random.uniform(-1, 1)])))
-    obs, rew, done, info = env.step(
-        {
-            f"firm_{i}": env.action_space[f"firm_{i}"].sample()
-            for i in range(env.n_firms)
-        }
-    )
-    print(env.observation_space["firm_0"].contains(obs["firm_0"]))
+    if VALID_SPACES:
+        env = Townsend(env_config=env_config)
+        print(
+            type(env.action_space["firm_0"].sample()),
+            env.action_space["firm_0"].sample(),
+        )
+        print(
+            type(env.observation_space["firm_0"].sample()),
+            env.observation_space["firm_0"].sample(),
+        )
+        obs_init = env.reset()
+        print(env.observation_space["firm_0"].contains(obs_init["firm_0"]))
+        print(env.action_space["firm_0"].contains(np.array([np.random.uniform(-1, 1)])))
+        obs, rew, done, info = env.step(
+            {
+                f"firm_{i}": env.action_space[f"firm_{i}"].sample()
+                for i in range(env.n_firms)
+            }
+        )
+        print(env.observation_space["firm_0"].contains(obs["firm_0"]))
 
     # Simulate runs and get statistics
     k_list = [[] for i in range(env.n_firms)]
@@ -473,46 +490,159 @@ def main():
     )
 
     # Analyze timing and scalability:
-    data_timing = {
-        "n_firms": [],
-        "time_init": [],
-        "time_reset": [],
-        "time_step": [],
-        "max_passthrough": [],
-    }
+    if TIMMING_ANALYSIS:
+        data_timing = {
+            "n_firms": [],
+            "time_init": [],
+            "time_reset": [],
+            "time_step": [],
+            "max_passthrough": [],
+        }
 
-    for i, n_firms in enumerate([i + 1 for i in range(5)]):
-        env_config["n_firms"] = n_firms
-        time_preinit = time.time()
-        env = Townsend(env_config=env_config)
-        time_postinit = time.time()
-        env.reset()
-        time_postreset = time.time()
-        obs, rew, done, info = env.step(
-            {
-                f"firm_{i}": np.array([np.random.uniform(-1, 1)])
-                for i in range(env.n_firms)
-            }
+        for i, n_firms in enumerate([i + 1 for i in range(5)]):
+            env_config["n_firms"] = n_firms
+            time_preinit = time.time()
+            env = Townsend(env_config=env_config)
+            time_postinit = time.time()
+            env.reset()
+            time_postreset = time.time()
+            obs, rew, done, info = env.step(
+                {
+                    f"firm_{i}": np.array([np.random.uniform(-1, 1)])
+                    for i in range(env.n_firms)
+                }
+            )
+            time_poststep = time.time()
+
+            data_timing["n_firms"].append(n_firms)
+            data_timing["time_init"].append((time_postinit - time_preinit) * 1000)
+            data_timing["time_reset"].append((time_postreset - time_postinit) * 1000)
+            data_timing["time_step"].append((time_poststep - time_postreset) * 1000)
+            data_timing["max_passthrough"].append(1 / (time_poststep - time_postreset))
+        print(data_timing)
+        # plots
+        timing_plot = sn.lineplot(
+            data=data_timing,
+            y="time_step",
+            x="n_firms",
         )
-        time_poststep = time.time()
+        timing_plot.get_figure()
+        plt.xlabel("Number of firms")
+        plt.ylabel("Time of step")
+        plt.show()
+    # GET EVALUATION AND ANALYSIS SCRIPTS RIGHT
+    if ANALYSIS_RUN:
+        env_config_analysis = env_config.copy()
+        env_config_analysis["analysis_mode"] = True
+        env = Townsend(env_config=env_config_analysis)
+        k_list = [[] for i in range(env.n_firms)]
+        rew_list = [[] for i in range(env.n_firms)]
+        p_list = [[] for i in range(env.n_firms)]
+        shock_ind_list = [[] for i in range(env.n_firms)]
+        theta_list = []
+        shock_agg_list = []
 
-        data_timing["n_firms"].append(n_firms)
-        data_timing["time_init"].append((time_postinit - time_preinit) * 1000)
-        data_timing["time_reset"].append((time_postreset - time_postinit) * 1000)
-        data_timing["time_step"].append((time_poststep - time_postreset) * 1000)
-        data_timing["max_passthrough"].append(1 / (time_poststep - time_postreset))
-    print(data_timing)
-    # plots
-    timing_plot = sn.lineplot(
-        data=data_timing,
-        y="time_step",
-        x="n_firms",
-    )
-    timing_plot.get_figure()
-    plt.xlabel("Number of firms")
-    plt.ylabel("Time of step")
-    plt.show()
+        env.reset()
+        for t in range(200):
+            if t % 200 == 0:
+                obs = env.reset()
+            obs, rew, done, info = env.step(
+                {
+                    f"firm_{i}": env.action_space[f"firm_{i}"].sample()
+                    for i in range(env.n_firms)
+                }
+            )
+            # print(obs, "\n", rew, "\n", done, "\n", info)
+            theta_list.append(env.obs_global[2])
+            shock_agg_list.append(env.obs_global[3])
+            for i in range(env.n_firms):
+                p_list[i].append(info["firm_0"]["prices"][i])
+                shock_ind_list[i].append(env.obs_global[4][i])
+                k_list[i].append(info["firm_0"]["capital"][i])
+                rew_list[i].append(info["firm_0"]["rewards"][i])
+        print(
+            "cap_stats:",
+            [
+                np.max(k_list[0]),
+                np.min(k_list[0]),
+                np.mean(k_list[0]),
+                np.std(k_list[0]),
+            ],
+            "price_stats:",
+            [np.max(p_list), np.min(p_list), np.mean(p_list), np.std(p_list)],
+            "reward_stats:",
+            [np.max(rew_list), np.min(rew_list), np.mean(rew_list), np.std(rew_list)],
+            "theta_stats",
+            [
+                np.max(theta_list),
+                np.min(theta_list),
+                np.mean(theta_list),
+                np.std(theta_list),
+            ],
+        )
+        plt.plot(theta_list)
+        plt.plot(shock_agg_list)
+        plt.plot(shock_ind_list[0])
+        plt.legend(["theta", "v_agg", "e_ind"])
+        plt.show()
 
+    if EVALUATION_RUN:
+        env_config_eval = env_config.copy()
+        env_config_eval["eval_mode"] = True
+        env_config_eval["simul_mode"] = True
+        env = Townsend(env_config=env_config_eval)
+        k_list = [[] for i in range(env.n_firms)]
+        rew_list = [[] for i in range(env.n_firms)]
+        p_list = [[] for i in range(env.n_firms)]
+        shock_ind_list = [[] for i in range(env.n_firms)]
+        theta_list = []
+        shock_agg_list = []
+
+        env.reset()
+        for t in range(200):
+            if t % 200 == 0:
+                obs = env.reset()
+            obs, rew, done, info = env.step(
+                {
+                    f"firm_{i}": env.action_space[f"firm_{i}"].sample()
+                    for i in range(env.n_firms)
+                }
+            )
+            # print(obs, "\n", rew, "\n", done, "\n", info)
+            theta_list.append(env.obs_global[2])
+            shock_agg_list.append(env.obs_global[3])
+            for i in range(env.n_firms):
+                p_list[i].append(info["firm_0"]["prices"][i])
+                shock_ind_list[i].append(env.obs_global[4][i])
+
+            for i in range(env.n_firms):
+                k_list[i].append(info["firm_0"]["capital"][i])
+                rew_list[i].append(info["firm_0"]["rewards"][i])
+        print(
+            "cap_stats:",
+            [
+                np.max(k_list[0]),
+                np.min(k_list[0]),
+                np.mean(k_list[0]),
+                np.std(k_list[0]),
+            ],
+            "price_stats:",
+            [np.max(p_list), np.min(p_list), np.mean(p_list), np.std(p_list)],
+            "reward_stats:",
+            [np.max(rew_list), np.min(rew_list), np.mean(rew_list), np.std(rew_list)],
+            "theta_stats",
+            [
+                np.max(theta_list),
+                np.min(theta_list),
+                np.mean(theta_list),
+                np.std(theta_list),
+            ],
+        )
+        plt.plot(theta_list)
+        plt.plot(shock_agg_list)
+        plt.plot(shock_ind_list[0])
+        plt.legend(["theta", "v_agg", "e_ind"])
+        plt.show()
     #
 
 
