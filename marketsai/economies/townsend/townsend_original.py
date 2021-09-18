@@ -171,7 +171,7 @@ class Townsend_nested(MultiAgentEnv):
 
         elif self.analysis_mode == True:
             k_init = [
-                self.k_ss * 5 + 0 * i if i % 2 == 0 else self.k_ss * 5 + 0 * i
+                self.k_ss * 10 + i if i % 2 == 0 else self.k_ss * 10 + i
                 for i in range(self.n_agents)
             ]
 
@@ -181,7 +181,7 @@ class Townsend_nested(MultiAgentEnv):
         # DEFAULT: when learning, we randomize the initial observations
         else:
             k_init = [
-                random.uniform(self.k_ss * 1, self.k_ss * 10)
+                random.uniform(self.k_ss * 10, self.k_ss * 50)
                 for i in range(self.n_agents)
             ]
             shock_idtc_init = [
@@ -306,11 +306,14 @@ class Townsend_nested(MultiAgentEnv):
         # 2. NEXT OBS
         if self.norm_ind:
             prices = [
-                max(self.max_price_norm - self.params["A"] * y_tot_per_ind[i] + u[i], 0)
-                for i in range(self.n_inds)
+                self.params["A"] * y_tot_per_ind[i] + u[i] for i in range(self.n_inds)
             ]
             k_new = [
-                min(k[i] * (1 - self.params["delta"]) + s[i] * y[i], self.max_cap_norm)
+                min(
+                    k[i] * (1 - self.params["delta"])
+                    + s[i] * y[i] * prices[self.ind_per_firm[i]],
+                    self.max_cap_norm,
+                )
                 for i in range(self.n_agents)
             ]
         else:

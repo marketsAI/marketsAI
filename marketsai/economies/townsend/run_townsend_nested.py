@@ -30,7 +30,7 @@ import json
 
 # global configs
 DATE = "Sep7_"
-TEST = True
+TEST = False
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = True
 sn.color_palette("Set2")
@@ -45,10 +45,10 @@ else:
 
 ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
-n_firms_LIST = [1, 2]  # list with number of agents for each run
-n_inds_LIST = [2, 3]
+n_firms_LIST = [1, 2, 3, 4, 5]  # list with number of agents for each run
+n_inds_LIST = [2, 3, 4, 5]
 ITERS_TEST = 1  # number of iteration for test
-ITERS_RUN = 1000  # number of iteration for fullrun
+ITERS_RUN = 1500  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -573,12 +573,16 @@ for ind, n_inds in enumerate(n_inds_LIST):
         EXP_NAME = EXP_LABEL + DATE + ALGO + "_run"
     env_config["parameters"]["alpha"] = 0.5
     env_config["parameters"]["max_price"] = 50
-    env_config["parameters"]["rew_mean"] = 46.0
-    env_config["parameters"]["rew_std"] = 15.1
+    env_config["rew_mean"] = 40.0
+    env_config["rew_std"] = 14.0
     env_config["n_inds"] = n_inds
     env_config["n_firms"] = 1
     env_config["parameters"]["A"] = 1
+
     env_config_eval["parameters"]["alpha"] = 0.5
+    env_config_eval["parameters"]["max_price"] = 50
+    env_config_eval["rew_mean"] = 46.0
+    env_config_eval["rew_std"] = 15.1
     env_config_eval["n_inds"] = n_inds
     env_config_eval["n_firms"] = 1
     env_config_eval["parameters"]["A"] = 1
@@ -628,7 +632,7 @@ for ind, n_inds in enumerate(n_inds_LIST):
     learning_dta[ind].columns = ["episodes_total", f"{n_inds} industries"]
 shutdown()
 
-""" STEP 9 (optional): Organize and Plot multi industry expers"""
+""" STEP 9 (optional): Organize and Plot multi industry nonlinear expers"""
 
 # global experiment name
 if len(exp_names) > 1:

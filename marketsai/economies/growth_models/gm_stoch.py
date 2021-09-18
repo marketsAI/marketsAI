@@ -1,20 +1,17 @@
 import gym
 from gym.spaces import Discrete, Box, MultiDiscrete, Tuple
-
-# from ray.rllib.env.multi_agent_env import MultiAgentEnv
-from marketsai.functions.functions import MarkovChain, CRRA
+from marketsai.utils import MarkovChain, CRRA
 import numpy as np
 import random
 
 # from marketsai.utils import encode
 # import math
 
+# to do:
+
 
 class GM_stoch(gym.Env):
-    """An gym compatible environment consisting of a durable good consumption and production problem
-    The agent chooses how much to produce of a durable good subject to quadratci costs.
-
-    """
+    """An gym compatible environment consisting of the rbc model."""
 
     def __init__(
         self,
