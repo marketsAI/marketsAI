@@ -29,7 +29,7 @@ import json
 """ STEP 0: Experiment configs """
 
 # global configs
-DATE = "Sep7_"
+DATE = "_Sep19_"
 TEST = True
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = True
@@ -37,28 +37,35 @@ sn.color_palette("Set2")
 SAVE_PROGRESS_CSV = True
 
 if TEST:
-    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
-    OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
+    OUTPUT_PATH_EXPERS = "/Users/jasonli/Dropbox/RL_macro/Tests/"
+    OUTPUT_PATH_FIGURES = "/Users/jasonli/Dropbox/RL_macro/Tests/"
 else:
-    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/"
-    OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/"
+    OUTPUT_PATH_EXPERS = "/Users/jasonli/Dropbox/RL_macro/Experiments/"
+    OUTPUT_PATH_FIGURES = "/Users/jasonli/Dropbox/RL_macro/Documents/Figures/"
+
+# if TEST:
+#     OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
+#     OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
+# else:
+#     OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/"
+#     OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/"
 
 ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
-ITERS_TEST = 1  # number of iteration for test
-ITERS_RUN = 1500  # number of iteration for fullrun
+ITERS_TEST = 10  # number of iteration for test
+ITERS_RUN = 1000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
 ENV_HORIZON = 200
 N_CAPITAL = 1
-BETA = 0.98  # discount parameter
+BETA = 0.99  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 12
+NUM_CPUS = 6 # 12
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 2
+NUM_TRIALS = 1  # 2
 NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
@@ -162,12 +169,12 @@ env_config = {
     "eval_mode": False,
     "analysis_mode": False,
     "simul_mode": False,
-    "max_action": 0.5,
+    "max_action": 0.8,
     "rew_mean": 0,
     "rew_std": 1,
     "parameters": {
-        "alpha": 0.5,
-        "delta": 0.04,
+        "alpha": 0.36,
+        "delta": 0.025,
         "beta": 0.99,
     },
 }
@@ -343,7 +350,7 @@ if PLOT_PROGRESS:
 
     learning_plot = sn.lineplot(
         data=learning_dta[0],
-        y="Discounted Rewards",
+        y="discounted_rewards",
         x="episodes_total",
     )
     learning_plot = learning_plot.get_figure()
