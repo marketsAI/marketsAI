@@ -30,7 +30,7 @@ import json
 
 # global configs
 DATE = "_Sep19_"
-TEST = True
+TEST = False
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = True
 sn.color_palette("Set2")
