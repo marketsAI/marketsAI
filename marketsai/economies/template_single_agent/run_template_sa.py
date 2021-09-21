@@ -29,45 +29,39 @@ import json
 """ STEP 0: Experiment configs """
 
 # global configs
-DATE = "_Sep20_"
-TEST = False
+DATE = "_Sep21_"
+TEST = True
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = True
 sn.color_palette("Set2")
 SAVE_PROGRESS_CSV = True
 
 if TEST:
-    OUTPUT_PATH_EXPERS = "/Users/jasonli/Dropbox/RL_macro/Tests/"
-    OUTPUT_PATH_FIGURES = "/Users/jasonli/Dropbox/RL_macro/Tests/"
+    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
+    OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
 else:
-    OUTPUT_PATH_EXPERS = "/Users/jasonli/Dropbox/RL_macro/Experiments/"
-    OUTPUT_PATH_FIGURES = "/Users/jasonli/Dropbox/RL_macro/Documents/Figures/"
+    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/"
+    OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/"
 
-# if TEST:
-#     OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
-#     OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
-# else:
-#     OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/"
-#     OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/"
 
 ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
-ITERS_TEST = 2  # number of iteration for test
+ITERS_TEST = 100  # number of iteration for test
 ITERS_RUN = 1000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
-ENV_HORIZON = 200
+ENV_HORIZON = 1000
 
 BETA = 0.99  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 6 # 12
+NUM_CPUS = 12  # 12
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 1  # 2
+NUM_TRIALS = 2  # 2
 NUM_ROLLOUT = ENV_HORIZON * 1
-NUM_ENV_PW = 1  # num_env_per_worker
+NUM_ENV_PW = 2  # num_env_per_worker
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
 NUM_MINI_BATCH = NUM_CPUS_DRIVER
@@ -83,7 +77,7 @@ if TEST == True:
 else:
     MAX_STEPS = ITERS_RUN * BATCH_SIZE
 
-CHKPT_FREQ = 2
+CHKPT_FREQ = 1
 
 stop = {"timesteps_total": MAX_STEPS}
 # Initialize ray
@@ -165,17 +159,19 @@ class MyCallbacks(DefaultCallbacks):
 
 # environment config including evaluation environment (without exploration)
 env_config = {
-    "horizon": 200,
+    "horizon": ENV_HORIZON,
     "eval_mode": False,
     "analysis_mode": False,
     "simul_mode": False,
-    "max_action": 0.8,
+    "max_action": 0.6,
+    # "rew_mean": 0.9200565795467147,
+    # "rew_std": 0.3003009455512563,
     "rew_mean": 0,
     "rew_std": 1,
     "parameters": {
         "alpha": 0.36,
         "delta": 0.025,
-        "beta": 0.99,
+        "beta": BETA,
     },
 }
 
@@ -224,19 +220,19 @@ common_config = {
 
 # Configs specific to the chosel algorithms, INCLUDING THE LEARNING RATE
 ppo_config = {
-    "lr": 0.0005,
+    "lr": 0.00003,
     # "lr_schedule": [[0, 0.00005], [MAX_STEPS * 1 / 2, 0.00001]],
     "sgd_minibatch_size": BATCH_SIZE // NUM_MINI_BATCH,
     "num_sgd_iter": 1,
     "batch_mode": "complete_episodes",
-    "lambda": 0.98,
-    "entropy_coeff": 0,
-    "kl_coeff": 0.2,
+    "lambda": 1,
+    # "entropy_coeff": 0,
+    "kl_coeff": 0.1,
     # "vf_loss_coeff": 0.5,
     # "vf_clip_param": tune.choice([5, 10, 20]),
     # "entropy_coeff_schedule": [[0, 0.01], [5120 * 1000, 0]],
-    "clip_param": 0.2,
-    "clip_actions": True,
+    "clip_param": 0.1,
+    # "clip_actions": True,
 }
 
 sac_config = {"prioritized_replay": False, "normalize_actions": False}
@@ -278,7 +274,7 @@ analysis = tune.run(
     checkpoint_at_end=True,
     metric="evaluation/custom_metrics/discounted_rewards_mean",
     mode="max",
-    num_samples= 8 * NUM_TRIALS,
+    num_samples=NUM_TRIALS,
     # resources_per_trial={"gpu": 0.5},
 )
 
@@ -295,7 +291,8 @@ learning_dta.append(
     ]
 )
 learning_dta[0].columns = ["episodes_total", "discounted_rewards"]
-
+max_rewards = abs(learning_dta[0].max())
+print(max_rewards)
 
 """ STEP 5 (optional): Organize and Plot multi firm expers """
 
@@ -355,21 +352,5 @@ if PLOT_PROGRESS:
     )
     learning_plot = learning_plot.get_figure()
     plt.ylabel("Discounted utility")
-    plt.xlabel("Timesteps (thousands)")
-
-
-""" Annex_env_hyp: For Environment hyperparameter tuning"""
-
-# # We create a list that contain the main config + altered copies.
-env_configs = [env_config]
-for i in range(1, 15):
-    env_configs.append(env_config.copy())
-    env_configs[i]["parameteres"] = (
-        {
-            "depreciation": np.random.choice([0.02, 0.04, 0.06, 0.08]),
-            "alpha": 0.3,
-            "phi": 0.3,
-            "beta": 0.98,
-        },
-    )
-    env_configs[i]["bgt_penalty"] = np.random.choice([1, 5, 10, 50])
+    plt.xlabel("Episodes")
+    plt.show()

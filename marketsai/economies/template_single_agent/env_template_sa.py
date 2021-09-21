@@ -42,11 +42,18 @@ class TemplateSA(gym.Env):
         self.params = self.env_config.get(
             "parameters",
             {
-                "alpha": 0.3,
-                "delta": 0.04,
+                "alpha": 0.36,
+                "delta": 0.025,
                 "beta": 0.99,
             },
         )
+
+        # calculate steady state:
+        self.k_ss = (
+            self.params["alpha"]
+            / ((1 / self.params["beta"]) - 1 + self.params["delta"])
+        ) ** (1 / (1 - self.params["alpha"]))
+        self.timestep = None
 
         # CREATE SPACES
 
@@ -64,7 +71,7 @@ class TemplateSA(gym.Env):
             [
                 Box(
                     low=0.0,
-                    high=float("inf"),
+                    high=self.k_ss * 1.5,
                     shape=(self.n_cont_states,),
                 ),
                 MultiDiscrete([self.n_choices for i in range(self.n_disc_states)]),
@@ -86,12 +93,6 @@ class TemplateSA(gym.Env):
                     1 if (t // (1 / self.shock_transition[0][1]) + 1) % 2 == 0 else 0
                 )
 
-        # calculate steady state:
-        self.k_ss = self.params["alpha"] / (
-            (1 / self.params["beta"]) - 1 + self.params["delta"]
-        )
-        self.timestep = None
-
     def reset(self):
         """Rreset function
         it specifies three types of initial obs. Random (default),
@@ -110,7 +111,7 @@ class TemplateSA(gym.Env):
 
         # DEFAULT: when learning, we randomize the initial observations
         else:
-            obs_init = random.uniform(self.k_ss * 0.1, self.k_ss * 1.1)
+            obs_init = random.uniform(self.k_ss * 0.1, self.k_ss * 0.7)
             shocks_id_init = random.choices(list(range(len(self.shock_values))))[0]
         # create global obs:
         self.obs_global = [obs_init, shocks_id_init]
@@ -145,7 +146,7 @@ class TemplateSA(gym.Env):
         c = y * (1 - s)
 
         # 2. NEXT OBS
-        k_new = k * (1 - self.params["delta"]) + s * y
+        k_new = min(k * (1 - self.params["delta"]) + s * y, self.k_ss * 1.5)
 
         # update shock
         if self.eval_mode == True:
@@ -181,6 +182,7 @@ class TemplateSA(gym.Env):
             "savings": s,
             "rewards": rew,
             "income": y,
+            "consumption": c,
             "capital": k,
             "capital_new": k_new,
         }
@@ -212,155 +214,3 @@ class TemplateSA(gym.Env):
         self.simul_mode = self.simul_mode_org
 
         return (cap_stats, rew_stats)
-
-
-""" TEST AND DEBUG CODE """
-
-
-def main():
-    # init environment
-
-    env_config = {
-        "horizon": 200,
-        "eval_mode": False,
-        "analysis_mode": False,
-        "simul_mode": False,
-        "max_action": 0.5,
-        "rew_mean": 0,
-        "rew_std": 1,
-        "parameters": {
-            "alpha": 0.5,
-            "delta": 0.04,
-            "beta": 0.99,
-        },
-    }
-
-    # simulate random
-    if SIMULATE:
-        env = TemplateSA(env_config=env_config)
-        cap_stats, rew_stats = env.random_sample(SIMUL_PERIODS)
-        print(cap_stats, rew_stats)
-
-    # Validate spaces
-    if VALID_SPACES:
-        env = TemplateSA(env_config=env_config)
-        print(
-            "action space type:",
-            type(env.action_space.sample()),
-            "action space sample:",
-            env.action_space.sample(),
-        )
-        print(
-            "obs space type:",
-            type(env.observation_space.sample()),
-            "obs space sample:",
-            env.observation_space.sample(),
-        )
-        obs_init = env.reset()
-        print(
-            "obs_init contained in obs_space?",
-            env.observation_space.contains(obs_init),
-        )
-        print(
-            "random number in [-1,1] contained in action_space?",
-            env.action_space.contains(np.array([np.random.uniform(-1, 1)])),
-        )
-        obs, rew, done, info = env.step(env.action_space.sample())
-        print(
-            "obs after step contained in obs space?",
-            env.observation_space.contains(obs),
-        )
-
-    # Analyze timing and scalability:\
-    if TIMMING_ANALYSIS:
-        data_timing = {
-            "time_init": [],
-            "time_reset": [],
-            "time_step": [],
-            "max_passthrough": [],
-        }
-
-        time_preinit = time.time()
-        env = TemplateSA(env_config=env_config)
-        time_postinit = time.time()
-        env.reset()
-        time_postreset = time.time()
-        obs, rew, done, info = env.step(np.array([np.random.uniform(-1, 1)]))
-        time_poststep = time.time()
-
-        data_timing["time_init"].append((time_postinit - time_preinit) * 1000)
-        data_timing["time_reset"].append((time_postreset - time_postinit) * 1000)
-        data_timing["time_step"].append((time_poststep - time_postreset) * 1000)
-        data_timing["max_passthrough"].append(1 / (time_poststep - time_postreset))
-        print(data_timing)
-
-    # GET EVALUATION AND ANALYSIS SCRIPTS RIGHT
-    if ANALYSIS_RUN:
-        env_config_analysis = env_config.copy()
-        env_config_analysis["analysis_mode"] = True
-        env = TemplateSA(env_config=env_config_analysis)
-        k_list = []
-        rew_list = []
-        shock_list = []
-
-        env.reset()
-        for t in range(200):
-            if t % 200 == 0:
-                obs = env.reset()
-            obs, rew, done, info = env.step(env.action_space.sample())
-            shock_list.append(env.obs_global[1])
-            k_list.append(info["capital"])
-            rew_list.append(info["rewards"])
-        print(
-            "cap_stats:",
-            [
-                np.max(k_list),
-                np.min(k_list),
-                np.mean(k_list),
-                np.std(k_list),
-            ],
-            "reward_stats:",
-            [np.max(rew_list), np.min(rew_list), np.mean(rew_list), np.std(rew_list)],
-        )
-        plt.plot(shock_list)
-        plt.legend(["shock"])
-        plt.show()
-
-    if EVALUATION_RUN:
-        env_config_eval = env_config.copy()
-        env_config_eval["eval_mode"] = True
-        env_config_eval["simul_mode"] = True
-        env = TemplateSA(env_config=env_config_eval)
-        k_list = []
-        rew_list = []
-        shock_list = []
-
-        env.reset()
-        for t in range(200):
-            if t % 200 == 0:
-                obs = env.reset()
-            obs, rew, done, info = env.step(env.action_space.sample())
-            # print(obs, "\n", rew, "\n", done, "\n", info)
-
-            k_list.append(info["capital"])
-            shock_list.append(env.obs_global[1])
-            rew_list.append(info["rewards"])
-        print(
-            "cap_stats:",
-            [
-                np.max(k_list),
-                np.min(k_list),
-                np.mean(k_list),
-                np.std(k_list),
-            ],
-            "reward_stats:",
-            [np.max(rew_list), np.min(rew_list), np.mean(rew_list), np.std(rew_list)],
-        )
-
-        plt.plot(shock_list)
-        plt.legend(["shock"])
-        plt.show()
-
-
-if __name__ == "__main__":
-    main()
