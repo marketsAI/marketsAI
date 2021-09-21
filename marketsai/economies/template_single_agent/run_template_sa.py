@@ -29,7 +29,7 @@ import json
 """ STEP 0: Experiment configs """
 
 # global configs
-DATE = "_Sep19_"
+DATE = "_Sep20_"
 TEST = False
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = True
@@ -52,13 +52,13 @@ else:
 
 ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
-ITERS_TEST = 10  # number of iteration for test
+ITERS_TEST = 2  # number of iteration for test
 ITERS_RUN = 1000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
 ENV_HORIZON = 200
-N_CAPITAL = 1
+
 BETA = 0.99  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
@@ -83,7 +83,7 @@ if TEST == True:
 else:
     MAX_STEPS = ITERS_RUN * BATCH_SIZE
 
-CHKPT_FREQ = 10
+CHKPT_FREQ = 2
 
 stop = {"timesteps_total": MAX_STEPS}
 # Initialize ray
@@ -268,7 +268,7 @@ if TEST == True:
 else:
     EXP_NAME = EXP_LABEL + DATE + ALGO + "_run"
 
-
+# here we train the algorithm
 analysis = tune.run(
     ALGO,
     name=EXP_NAME,
@@ -278,7 +278,7 @@ analysis = tune.run(
     checkpoint_at_end=True,
     metric="evaluation/custom_metrics/discounted_rewards_mean",
     mode="max",
-    num_samples=2 * NUM_TRIALS,
+    num_samples= 8 * NUM_TRIALS,
     # resources_per_trial={"gpu": 0.5},
 )
 
