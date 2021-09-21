@@ -7,13 +7,6 @@ import time
 import seaborn as sn
 import matplotlib.pyplot as plt
 
-""" CONFIGS for when run scrip"""
-VALID_SPACES = True
-SIMULATE = True
-SIMUL_PERIODS = 10000
-TIMMING_ANALYSIS = False
-ANALYSIS_RUN = False
-EVALUATION_RUN = False
 
 """ CREATE ENVIRONMENT """
 
@@ -119,7 +112,6 @@ class TemplateSA(gym.Env):
         else:
             obs_init = random.uniform(self.k_ss * 0.1, self.k_ss * 1.1)
             shocks_id_init = random.choices(list(range(len(self.shock_values))))[0]
-
         # create global obs:
         self.obs_global = [obs_init, shocks_id_init]
 
