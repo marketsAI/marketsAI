@@ -248,27 +248,6 @@ config_analysis = {
     "explore": False,
     "framework": "torch",
 }
-""" Step 7.1: restore trainer """
-
-# dir_model = "rbc_savings_5pts"
-# matlab_struct = sio.loadmat(dir_policy_folder + dir_model, simplify_cells=True)
-
-# K_grid = np.array(matlab_struct["IterRslt"]["var_state"]["K"])
-
-# shock_grid = np.array([i for i in range(matlab_struct["IterRslt"]["shock_num"])])
-# s_on_grid = matlab_struct["IterRslt"]["var_policy"]["s"]
-
-
-# s_interp = RegularGridInterpolator((shock_grid,) + (K_grid,), s_on_grid)
-
-
-# def compute_action(obs, policy_list, max_action: float):
-#     K = list(obs[0])
-#     # shock_raw = obs[1][0]
-#     shock_id = obs[1][0]
-#     s = policy_list([shock_id] + K)
-#     action = 2 * s / max_action - 1
-#     return action
 
 
 """ Simulate SIMUL_PERIODS timesteps """
