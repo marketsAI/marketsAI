@@ -1817,7 +1817,7 @@ python-versions = ">=3.5"
 
 [[package]]
 name = "sqlalchemy"
-version = "1.4.23"
+version = "1.4.22"
 description = "Database Abstraction Library"
 category = "dev"
 optional = false
