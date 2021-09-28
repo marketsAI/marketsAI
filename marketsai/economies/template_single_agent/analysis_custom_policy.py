@@ -124,7 +124,7 @@ def process_rewards(r, BETA):
 
 # replicate environment
 beta = 0.99
-env_horizon = 1000
+env_horizon = 200
 env_config_analysis = {
     "horizon": env_horizon,
     "eval_mode": False,
@@ -173,10 +173,10 @@ s_interp = RegularGridInterpolator((shock_grid,) + (K_grid,), s_on_grid)
 
 
 def compute_action(obs, policy_list, max_action: float, Kbounds: list):
-    K = obs[0][0]
+    K = obs["stock"][0]
     K = min(max(K, Kbounds[0]), Kbounds[1])
     # shock_raw = obs[1][0]
-    shock_id = obs[1][0]
+    shock_id = obs["shock"][0]
     s = policy_list([shock_id] + [K])
     action = 2 * s / max_action - 1
     return action
@@ -194,7 +194,8 @@ obs = env.reset()
 for t in range(env_horizon):
     action = compute_action(obs, s_interp, env.max_action, Kbounds)
     obs, rew, done, info = env.step(action)
-    shock_list.append(obs[1][0])
+    print(done)
+    shock_list.append(obs["shock"][0])
     y_list.append(info["income"])
     s_list.append(info["savings"])
     c_list.append(info["consumption"])
@@ -202,7 +203,7 @@ for t in range(env_horizon):
     rew_list.append(info["rewards"])
 disc_rew = process_rewards(rew_list, beta)
 print("Discounted_rewards", disc_rew)
-
+print(len(rew_list))
 """ Step 5.4: Plot individual trajectories """
 
 # Idiosyncratic trajectories
@@ -284,7 +285,7 @@ for t in range(SIMUL_PERIODS):
         obs = env.reset()
     action = compute_action(obs, s_interp, env.max_action, Kbounds)
     obs, rew, done, info = env.step(action)
-    shock_list.append(obs[1][0])
+    shock_list.append(obs["shock"][0])
     y_list.append(info["income"])
     s_list.append(info["savings"])
     c_list.append(info["consumption"])

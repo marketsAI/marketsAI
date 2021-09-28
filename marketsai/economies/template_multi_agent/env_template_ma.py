@@ -271,7 +271,7 @@ class TemplateMA(MultiAgentEnv):
         rew_list = [[] for i in range(self.n_agents)]
 
         for t in range(NUM_PERIODS):
-            if t % self.horizon == 0:
+            if done:
                 obs = self.reset()
             obs, rew, done, info = self.step(
                 {

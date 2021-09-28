@@ -29,7 +29,7 @@ import json
 """ STEP 0: Experiment configs """
 
 # global configs
-DATE = "_Sep21_"
+DATE = "_Sep28_"
 TEST = True
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = True
@@ -46,22 +46,22 @@ else:
 
 ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
-ITERS_TEST = 100  # number of iteration for test
+ITERS_TEST = 200  # number of iteration for test
 ITERS_RUN = 1000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
-ENV_HORIZON = 1000
+ENV_HORIZON = 200
 
 BETA = 0.99  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 12  # 12
+NUM_CPUS = 10  # 12
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 2  # 2
+NUM_TRIALS = 10  # 2
 NUM_ROLLOUT = ENV_HORIZON * 1
-NUM_ENV_PW = 2  # num_env_per_worker
+NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
 NUM_MINI_BATCH = NUM_CPUS_DRIVER
@@ -200,7 +200,16 @@ common_config = {
     "horizon": ENV_HORIZON,
     # MODEL
     "framework": "torch",
-    # "model": tune.grid_search([{"use_lstm": True}, {"use_lstm": False}]),
+    # "model": tune.grid_search(
+    #     [
+    #         {"fcnet_hiddens": [16, 16]},
+    #         {"fcnet_hiddens": [32, 32]},
+    #         {"fcnet_hiddens": [64, 64]},
+    #         {"fcnet_hiddens": [128, 128]},
+    #         {"fcnet_hiddens": [256, 256]},
+    #     ]
+    # ),
+    "model": {"fcnet_hiddens": [128, 128]},
     # TRAINING CONFIG
     "num_workers": N_WORKERS,
     "create_env_on_driver": False,
@@ -220,18 +229,18 @@ common_config = {
 
 # Configs specific to the chosel algorithms, INCLUDING THE LEARNING RATE
 ppo_config = {
-    "lr": 0.00003,
+    "lr": 0.0005,
     # "lr_schedule": [[0, 0.00005], [MAX_STEPS * 1 / 2, 0.00001]],
-    "sgd_minibatch_size": BATCH_SIZE // NUM_MINI_BATCH,
-    "num_sgd_iter": 1,
-    "batch_mode": "complete_episodes",
-    "lambda": 1,
+    # "sgd_minibatch_size": BATCH_SIZE // NUM_MINI_BATCH,
+    # "num_sgd_iter": 1,
+    # "batch_mode": "complete_episodes",
+    # "lambda": 1,
     # "entropy_coeff": 0,
-    "kl_coeff": 0.1,
+    # "kl_coeff": 0.1,
     # "vf_loss_coeff": 0.5,
     # "vf_clip_param": tune.choice([5, 10, 20]),
     # "entropy_coeff_schedule": [[0, 0.01], [5120 * 1000, 0]],
-    "clip_param": 0.1,
+    # "clip_param": 0.1,
     # "clip_actions": True,
 }
 
@@ -275,6 +284,7 @@ analysis = tune.run(
     metric="evaluation/custom_metrics/discounted_rewards_mean",
     mode="max",
     num_samples=NUM_TRIALS,
+    # num_samples=2,
     # resources_per_trial={"gpu": 0.5},
 )
 
@@ -291,8 +301,8 @@ learning_dta.append(
     ]
 )
 learning_dta[0].columns = ["episodes_total", "discounted_rewards"]
-max_rewards = abs(learning_dta[0].max())
-print(max_rewards)
+max_rewards = abs(learning_dta[0]["discounted_rewards"].max())
+print("max_rewards", max_rewards)
 
 """ STEP 5 (optional): Organize and Plot multi firm expers """
 
