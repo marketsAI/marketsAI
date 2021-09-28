@@ -30,7 +30,7 @@ import json
 
 # global configs
 DATE = "_Sep28_"
-TEST = True
+TEST = False
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = True
 sn.color_palette("Set2")
@@ -46,8 +46,8 @@ else:
 
 ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
-ITERS_TEST = 200  # number of iteration for test
-ITERS_RUN = 1000  # number of iteration for fullrun
+ITERS_TEST = 10  # number of iteration for test
+ITERS_RUN = 100  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -57,9 +57,9 @@ BETA = 0.99  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 10  # 12
+NUM_CPUS = 12  # 12
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 10  # 2
+NUM_TRIALS = 2  # 2
 NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
@@ -150,6 +150,8 @@ class MyCallbacks(DefaultCallbacks):
         env_index: int,
         **kwargs,
     ):
+        rewards = episode.prev_reward_for()
+        episode.user_data["rewards"].append(rewards)
         discounted_rewards = process_rewards(episode.user_data["rewards"])
         episode.custom_metrics["discounted_rewards"] = discounted_rewards
 
@@ -200,16 +202,6 @@ common_config = {
     "horizon": ENV_HORIZON,
     # MODEL
     "framework": "torch",
-    # "model": tune.grid_search(
-    #     [
-    #         {"fcnet_hiddens": [16, 16]},
-    #         {"fcnet_hiddens": [32, 32]},
-    #         {"fcnet_hiddens": [64, 64]},
-    #         {"fcnet_hiddens": [128, 128]},
-    #         {"fcnet_hiddens": [256, 256]},
-    #     ]
-    # ),
-    "model": {"fcnet_hiddens": [128, 128]},
     # TRAINING CONFIG
     "num_workers": N_WORKERS,
     "create_env_on_driver": False,
@@ -230,6 +222,7 @@ common_config = {
 # Configs specific to the chosel algorithms, INCLUDING THE LEARNING RATE
 ppo_config = {
     "lr": 0.0005,
+    "model": {"fcnet_hiddens": [128, 128]},
     # "lr_schedule": [[0, 0.00005], [MAX_STEPS * 1 / 2, 0.00001]],
     # "sgd_minibatch_size": BATCH_SIZE // NUM_MINI_BATCH,
     # "num_sgd_iter": 1,
@@ -244,7 +237,12 @@ ppo_config = {
     # "clip_actions": True,
 }
 
-sac_config = {"prioritized_replay": False, "normalize_actions": False}
+sac_config = {
+    "Q_model": {"fcnet_hiddens": [128, 128]},
+    "policy_model": {"fcnet_hiddens": [128, 128]},
+    # "prioritized_replay": True,
+    # "normalize_actions": False
+}
 
 if ALGO == "PPO":
     training_config = {**common_config, **ppo_config}
@@ -283,7 +281,7 @@ analysis = tune.run(
     checkpoint_at_end=True,
     metric="evaluation/custom_metrics/discounted_rewards_mean",
     mode="max",
-    num_samples=NUM_TRIALS,
+    num_samples=4 * NUM_TRIALS,
     # num_samples=2,
     # resources_per_trial={"gpu": 0.5},
 )

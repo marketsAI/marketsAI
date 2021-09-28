@@ -20,7 +20,7 @@ env_label = "template_sa"
 # Input Directories
 # Rl experiment
 """ CHANGE HERE """
-INPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/expINFO_native_template_sa_Sep19_PPO_run.json"
+INPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/expINFO_native_template_sa_Sep28_PPO_run.json"
 # GDSGE policy
 dir_policy_folder = (
     "/Users/matiascovarrubias/Dropbox/RL_macro/Econ_algos/rbc_savings/Results/"
@@ -203,7 +203,7 @@ for t in range(env_horizon):
     rew_list.append(info["rewards"])
 disc_rew = process_rewards(rew_list, beta)
 print("Discounted_rewards", disc_rew)
-print(len(rew_list))
+print("length of rew", len(rew_list))
 """ Step 5.4: Plot individual trajectories """
 
 # Idiosyncratic trajectories
