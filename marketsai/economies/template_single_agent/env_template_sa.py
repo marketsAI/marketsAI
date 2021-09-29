@@ -12,7 +12,7 @@ from gym.utils import seeding
 """ CREATE ENVIRONMENT """
 
 
-class TemplateSA(gym.Env):
+class Rbc(gym.Env):
     """
     An Rllib multi agent compatible environment"""
 
@@ -260,7 +260,7 @@ class TemplateSA(gym.Env):
 
 if __name__ == "__main__":
     SIMUL_PERIODS = 1000000
-    env = TemplateSA()
+    env = Rbc()
     print("steady_state", env.k_ss)
     cap_stats, rew_stats, rew_disc_stats = env.random_sample(SIMUL_PERIODS)
     print(

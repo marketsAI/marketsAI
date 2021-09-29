@@ -1,4 +1,4 @@
-from marketsai.economies.template_single_agent.env_template_sa import TemplateSA
+from marketsai.economies.template_single_agent.env_template_sa import Rbc
 import scipy.io as sio
 from scipy.interpolate import RegularGridInterpolator
 from marketsai.utils import encode
@@ -15,7 +15,7 @@ FOR_PUBLIC = True  # for publication
 SAVE_CSV = False  # save learning CSV
 PLOT_PROGRESS = True  # create plot with progress
 SIMUL_PERIODS = 10000
-env_label = "template_sa"
+env_label = "rbc"
 
 # Input Directories
 # Rl experiment
@@ -143,7 +143,7 @@ env_config_analysis = {
 }
 # We instantiate the environment to extract information.
 """ CHANGE HERE """
-env = TemplateSA(env_config_analysis)
+env = Rbc(env_config_analysis)
 config_analysis = {
     "gamma": beta,
     "env": env_label,
@@ -239,7 +239,7 @@ env_config_simul = env_config_analysis.copy()
 env_config_simul["simul_mode"] = True
 env_config_simul["analysis_mode"] = False
 # We instantiate the environment to extract information.
-env = TemplateSA(env_config_simul)
+env = Rbc(env_config_simul)
 config_analysis = {
     "gamma": beta,
     "env": env_label,

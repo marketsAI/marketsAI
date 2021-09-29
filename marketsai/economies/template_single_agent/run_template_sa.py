@@ -1,5 +1,5 @@
 # import environment
-from marketsai.economies.template_single_agent.env_template_sa import TemplateSA
+from marketsai.economies.template_single_agent.env_template_sa import Rbc
 
 # import ray
 from ray import tune, shutdown, init
@@ -29,7 +29,7 @@ import json
 """ STEP 0: Experiment configs """
 
 # global configs
-DATE = "_Sep28_"
+DATE = "_Sep29_"
 TEST = False
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = True
@@ -47,7 +47,7 @@ else:
 ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
 ITERS_TEST = 10  # number of iteration for test
-ITERS_RUN = 100  # number of iteration for fullrun
+ITERS_RUN = 1000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -89,8 +89,8 @@ init(
 )
 
 # Define environment, which should be imported from a class
-ENV_LABEL = "template_sa"
-register_env(ENV_LABEL, TemplateSA)
+ENV_LABEL = "rbc"
+register_env(ENV_LABEL, Rbc)
 
 """ STEP 2: set custom metrics such as discounted rewards to keep track of through leraning"""
 # Define custom metrics using the Callbacks class
@@ -182,7 +182,7 @@ env_config_eval["eval_mode"] = True
 
 # we instantiate the environment to extrac relevant info
 " CHANGE HERE "
-env = TemplateSA(env_config)
+env = Rbc(env_config)
 
 # common configuration
 
