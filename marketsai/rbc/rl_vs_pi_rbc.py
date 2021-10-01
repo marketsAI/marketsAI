@@ -1,4 +1,4 @@
-from marketsai.economies.template_single_agent.env_template_sa import Rbc
+from marketsai.rbc.env_rbc import Rbc
 import scipy.io as sio
 from scipy.interpolate import RegularGridInterpolator
 from marketsai.utils import encode

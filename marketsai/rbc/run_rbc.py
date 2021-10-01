@@ -1,5 +1,5 @@
 # import environment
-from marketsai.economies.template_single_agent.env_template_sa import Rbc
+from marketsai.rbc.env_rbc import Rbc
 
 # import ray
 from ray import tune, shutdown, init
@@ -29,8 +29,8 @@ import json
 """ STEP 0: Experiment configs """
 
 # global configs
-DATE = "_Sep29_"
-TEST = False
+DATE = "_Sep30_"
+TEST = True
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = True
 sn.color_palette("Set2")
@@ -47,7 +47,7 @@ else:
 ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
 ITERS_TEST = 10  # number of iteration for test
-ITERS_RUN = 1000  # number of iteration for fullrun
+ITERS_RUN = 10000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -281,7 +281,7 @@ analysis = tune.run(
     checkpoint_at_end=True,
     metric="evaluation/custom_metrics/discounted_rewards_mean",
     mode="max",
-    num_samples=4 * NUM_TRIALS,
+    num_samples=NUM_TRIALS,
     # num_samples=2,
     # resources_per_trial={"gpu": 0.5},
 )
