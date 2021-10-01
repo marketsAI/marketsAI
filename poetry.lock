@@ -1567,7 +1567,7 @@ six = "*"
 
 [[package]]
 name = "ray"
-version = "1.6.0"
+version = "1.5.2"
 description = "Ray provides a simple, universal API for building distributed applications."
 category = "main"
 optional = false
