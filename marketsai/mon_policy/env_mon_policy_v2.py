@@ -26,7 +26,7 @@ class MonPolicy(MultiAgentEnv):
         self.env_config = env_config
 
         # GLOBAL ENV CONFIGS
-        self.horizon = self.env_config.get("horizon", 100)
+        self.horizon = self.env_config.get("horizon", 200)
         self.n_firms = self.env_config.get("n_firms", 2)
         self.n_inds = self.env_config.get("n_inds", 2)
         self.n_agents = self.n_firms * self.n_inds
@@ -93,7 +93,7 @@ class MonPolicy(MultiAgentEnv):
         self.action_space = {
             f"firm_{i}": Dict(
                 {
-                    "move_prob": Box(low=-1, high=1, shape=(1,), dtype=np.float32),
+                    "move": Discrete(2),
                     "reset_markup": Box(low=-1, high=1, shape=(1,), dtype=np.float32),
                 }
             )
@@ -101,12 +101,16 @@ class MonPolicy(MultiAgentEnv):
         }
 
         self.n_obs_markups = self.n_firms
+        self.n_obs_shocks = 1
         self.n_obs_agg = 2
         self.observation_space = {
             f"firm_{i}": Box(
-                low=np.array([0 for i in range(self.n_firms)] + [0, 0]),
-                high=np.array([10 for i in range(self.n_firms)] + [5, np.float("inf")]),
-                shape=(self.n_obs_markups + self.n_obs_agg,),
+                low=np.array([0 for i in range(self.n_firms)] + [0, 0, 0]),
+                high=np.array(
+                    [10 for i in range(self.n_firms)]
+                    + [self.params["menu_cost"], 5, np.float("inf")]
+                ),
+                shape=(self.n_obs_markups + self.n_obs_agg + self.n_obs_shocks,),
                 dtype=np.float32,
             )
             for i in range(self.n_agents)
@@ -164,9 +168,9 @@ class MonPolicy(MultiAgentEnv):
             [elem ** (1 - self.params["theta"]) for elem in self.mu_j]
         ) ** (1 / (1 - self.params["theta"]))
 
-        mu_obsperfirm = [[] for i in range(self.n_agents)]
+        mu_perfirm = [[] for i in range(self.n_agents)]
         for i in range(self.n_agents):
-            mu_obsperfirm[i] = [self.mu_ij[i]] + [
+            mu_perfirm[i] = [self.mu_ij[i]] + [
                 x
                 for z, x in enumerate(mu_perind[self.ind_per_firm[i]])
                 if z != i % self.n_firms
@@ -175,7 +179,7 @@ class MonPolicy(MultiAgentEnv):
         # create Dictionary wtih agents as keys and with Tuple spaces as values
         self.obs_next = {
             f"firm_{i}": np.array(
-                mu_obsperfirm[i] + [self.mu, self.g],
+                mu_perfirm[i] + [self.menu_cost[i]] + [self.mu, self.g],
                 dtype=np.float32,
             )
             for i in range(self.n_agents)
@@ -188,14 +192,8 @@ class MonPolicy(MultiAgentEnv):
         self.timestep += 1
 
         # process actions and calcute curent markups
-
         self.move_ij = [
-            True
-            if self.menu_cost[i]
-            <= (action_dict[f"firm_{i}"]["move_prob"] + 1)
-            / 2
-            * self.params["menu_cost"]
-            else False
+            True if action_dict[f"firm_{i}"]["move"] == 1 else False
             for i in range(self.n_agents)
         ]
         self.mu_ij_reset = [
@@ -231,7 +229,7 @@ class MonPolicy(MultiAgentEnv):
             * (self.mu_j[self.ind_per_firm[i]] / self.mu) ** (-self.params["theta"])
             * (self.mu_ij[i] - 1)
             / self.mu
-            - self.menu_cost[1] * self.move_ij[i]
+            - self.menu_cost[1] * action_dict[f"firm_{i}"]["move"]
             for i in range(self.n_agents)
         ]
 
@@ -279,7 +277,7 @@ class MonPolicy(MultiAgentEnv):
         # new observation
         self.obs_next = {
             f"firm_{i}": np.array(
-                mu_obsperfirm[i] + [self.mu, self.g],
+                mu_obsperfirm[i] + [self.menu_cost[i]] + [self.mu, self.g],
                 dtype=np.float32,
             )
             for i in range(self.n_agents)
@@ -315,7 +313,7 @@ class MonPolicy(MultiAgentEnv):
             obs, rew, done, info = self.step(
                 {
                     f"firm_{i}": {
-                        "move_prob": self.action_space["firm_0"]["move_prob"].sample(),
+                        "move": self.action_space["firm_0"]["move"].sample(),
                         "reset_markup": self.action_space["firm_0"][
                             "reset_markup"
                         ].sample(),
@@ -366,7 +364,7 @@ def main():
     n_firms = 2
     n_inds = 2
     env_config = {
-        "horizon": 100,
+        "horizon": 200,
         "n_inds": n_inds,
         "n_firms": n_firms,
         "eval_mode": False,
@@ -398,7 +396,7 @@ def main():
         obs, rew, done, info = env.step(
             {
                 f"firm_{i}": {
-                    "move_prob": env.action_space[f"firm_{i}"]["move_prob"].sample(),
+                    "move": env.action_space[f"firm_{i}"]["move"].sample(),
                     "reset_markup": env.action_space[f"firm_{i}"][
                         "reset_markup"
                     ].sample(),
