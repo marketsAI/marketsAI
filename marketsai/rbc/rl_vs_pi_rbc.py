@@ -8,6 +8,9 @@ import numpy as np
 import seaborn as sn
 import csv
 import json
+from ray.rllib.agents.ppo import PPOTrainer
+from ray.tune.registry import register_env
+from ray import shutdown, init
 
 """ GLOBAL CONFIGS """
 # Script Options
@@ -20,24 +23,24 @@ env_label = "rbc"
 # Input Directories
 # Rl experiment
 """ CHANGE HERE """
-INPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/expINFO_native_template_sa_Sep28_PPO_run.json"
+INPUT_PATH_EXPERS = "/Users/jasonli/Dropbox/RL_macro/Experiments/expINFO_native_rbc_Oct6_PPO_run.json"
 # GDSGE policy
 dir_policy_folder = (
-    "/Users/matiascovarrubias/Dropbox/RL_macro/Econ_algos/rbc_savings/Results/"
+    "/Users/jasonli/Dropbox/RL_macro/Econ_algos/rbc_savings/Results/"
 )
 
 # Output Directories
 if FOR_PUBLIC:
-    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/"
-    OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/"
-    OUTPUT_PATH_TABLES = "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Tables/"
+    OUTPUT_PATH_EXPERS = "/Users/jasonli/Dropbox/RL_macro/Experiments/"
+    OUTPUT_PATH_FIGURES = "/Users/jasonli/Dropbox/RL_macro/Documents/Figures/"
+    OUTPUT_PATH_TABLES = "/Users/jasonli/Dropbox/RL_macro/Documents/Tables/"
 else:
-    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/ALL/"
+    OUTPUT_PATH_EXPERS = "/Users/jasonli/Dropbox/RL_macro/Experiments/ALL/"
     OUTPUT_PATH_FIGURES = (
-        "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/ALL/"
+        "/Users/jasonli/Dropbox/RL_macro/Documents/Figures/ALL/"
     )
     OUTPUT_PATH_TABLES = (
-        "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Tables/ALL/"
+        "/Users/jasonli/Dropbox/RL_macro/Documents/Tables/ALL/"
     )
 
 
@@ -109,6 +112,54 @@ exp_data_simul_econ_dict = {
     "Max s": [],
     "Min s": [],
 }
+exp_data_analysis_dict = {
+    "n_firms": [],
+    "max rewards": [],
+    "time to peak": [],
+    "Mean Agg. K": [],
+    "S.D. Agg. K": [],
+    "Mean Avge. K": [],
+    "S.D. Avge. K": [],
+    "S.D. Agg. K": [],
+    "Max K": [],
+    "Min K": [],
+    "Discounted Rewards": [],
+    "Mean Price": [],
+    "S.D. Price": [],
+    "Max Price": [],
+    "Min Price": [],
+    "Discounted Rewards": [],
+    "Mean Agg. s": [],
+    "S.D. Agg. s": [],
+    "Max s": [],
+    "Min s": [],
+}
+exp_data_simul_dict = {
+    "n_firms": [],
+    "max rewards": [],
+    "time to peak": [],
+    "Mean Agg. K": [],
+    "S.D. Agg. K": [],
+    "Mean Avge. K": [],
+    "S.D. Avge. K": [],
+    "S.D. Agg. K": [],
+    "Max K": [],
+    "Min K": [],
+    "Discounted Rewards": [],
+    "Mean Price": [],
+    "S.D. Price": [],
+    "Max Price": [],
+    "Min Price": [],
+    "Discounted Rewards": [],
+    "Mean Agg. s": [],
+    "S.D. Agg. s": [],
+    "Max s": [],
+    "Min s": [],
+}
+
+# init ray
+shutdown()
+init()
 
 # useful functions
 def process_rewards(r, BETA):
@@ -118,6 +169,57 @@ def process_rewards(r, BETA):
         running_add = running_add * BETA + r[t]
         discounted_r[t] = running_add
     return discounted_r[0]
+
+
+
+""" Step 1: Plot progress during learning run """
+
+if PLOT_PROGRESS == True:
+    #Big plot
+
+    data_progress_df = pd.read_csv(progress_csv_dirs[0])
+    max_rewards = abs(data_progress_df[
+        "evaluation/custom_metrics/discounted_rewards_mean"
+    ].max())
+    print(max_rewards)
+    exp_data_simul_dict["max rewards"].append(max_rewards)
+    exp_data_simul_dict["time to peak"].append(0)
+    exp_data_analysis_dict["max rewards"].append(max_rewards)
+    exp_data_analysis_dict["time to peak"].append(0)
+    data_progress_df["evaluation/custom_metrics/discounted_rewards_mean"] = data_progress_df["evaluation/custom_metrics/discounted_rewards_mean"] / max_rewards
+    
+    learning_plot_big = sn.lineplot(
+        data=data_progress_df,
+        y="evaluation/custom_metrics/discounted_rewards_mean",
+        x="episodes_total",
+    )
+
+
+    learning_plot_big = learning_plot_big.get_figure()
+    plt.ylabel("Discounted utility")
+    plt.xlabel("Timesteps (thousands)")
+    plt.xlim([0, 10000])
+    learning_plot_big.savefig(OUTPUT_PATH_FIGURES + "progress_BIG_" + exp_names[-1] + ".png")
+    plt.show()
+    plt.close()
+
+    # small plot
+
+    learning_plot_small = sn.lineplot(
+        data=data_progress_df,
+        y="evaluation/custom_metrics/discounted_rewards_mean",
+        x="episodes_total",
+    )
+
+
+    learning_plot_small = learning_plot_small.get_figure()
+    plt.ylabel("Discounted utility")
+    plt.xlabel("Timesteps (thousands)")
+    plt.xlim([0, 1000])
+    learning_plot_small.savefig(OUTPUT_PATH_FIGURES + "progress_SMALL_" + exp_names[-1] + ".png")
+    plt.show()
+    plt.close()
+
 
 
 """ Step 5: config env, Restore PI (GDSGE) policy and simulate analysis trajectory """
@@ -151,6 +253,7 @@ config_analysis = {
     "horizon": env_horizon,
     "explore": False,
     "framework": "torch",
+    "model": {"fcnet_hiddens": [128, 128]}
 }
 """ Step 5.1: import matlab struct """
 """ CHANGE HERE """
@@ -180,48 +283,79 @@ def compute_action(obs, policy_list, max_action: float, Kbounds: list):
     s = policy_list([shock_id] + [K])
     action = 2 * s / max_action - 1
     return action
+    
+# restore the RL trainer
+trained_trainer = PPOTrainer(env=env_label, config=config_analysis)
+trained_trainer.restore(checkpoints_dirs[0])
 
 
 """ Step 5.2: Simulate an episode (MAX_steps timesteps) """
-shock_list = []
-y_list = []
-s_list = []
-c_list = []
-k_list = []
-rew_list = []
-# loop
+shock_list_pi = []     
+y_list_pi = []
+s_list_pi = []
+c_list_pi = []
+k_list_pi = []
+rew_list_pi = []
+
+y_list_rl = []
+s_list_rl = []
+k_list_rl = []
+shock_list_rl = []
+rew_list_rl = []
+rew_disc_rl = []
+
+
+# loop for pi
 obs = env.reset()
 for t in range(env_horizon):
     action = compute_action(obs, s_interp, env.max_action, Kbounds)
     obs, rew, done, info = env.step(action)
     print(done)
-    shock_list.append(obs["shock"][0])
-    y_list.append(info["income"])
-    s_list.append(info["savings"])
-    c_list.append(info["consumption"])
-    k_list.append(info["capital"])
-    rew_list.append(info["rewards"])
-disc_rew = process_rewards(rew_list, beta)
+    shock_list_pi.append(obs["shock"][0])
+    y_list_pi.append(info["income"])
+    s_list_pi.append(info["savings"])
+    c_list_pi.append(info["consumption"])
+    k_list_pi.append(info["capital"])
+    rew_list_pi.append(info["rewards"])
+disc_rew = process_rewards(rew_list_pi, beta)
 print("Discounted_rewards", disc_rew)
-print("length of rew", len(rew_list))
+print("length of rew", len(rew_list_pi))
+
+# loop for rl
+obs = env.reset()
+for t in range(env_horizon):
+    action = trained_trainer.compute_action(obs)
+
+    obs, rew, done, info = env.step(action)
+    shock_list_rl.append(obs["shock"][0])
+    y_list_rl.append(info["income"])
+    s_list_rl.append(info["savings"])
+    k_list_rl.append(info["capital"])
+    rew_list_rl.append(info["rewards"])
+rew_disc_rl.append(np.mean(process_rewards(rew_list_rl,beta)))
+
 """ Step 5.4: Plot individual trajectories """
 
 # Idiosyncratic trajectories
 x = [i for i in range(200)]
 plt.subplot(2, 2, 1)
-sn.lineplot(x, shock_list[:200], legend=0)
+sn.lineplot(x, shock_list_pi[:200], legend=0)
+sn.lineplot(x, shock_list_rl[:200], legend=0)
 plt.title("Shock")
 
 plt.subplot(2, 2, 2)
-sn.lineplot(x, s_list[:200], legend=0)
+sn.lineplot(x, s_list_pi[:200], legend=0)
+sn.lineplot(x, s_list_rl[:200], legend=0)
 plt.title("Savings Rate")
 
 plt.subplot(2, 2, 3)
-sn.lineplot(x, y_list[:200], legend=0)
+sn.lineplot(x, y_list_pi[:200], legend=0)
+sn.lineplot(x, y_list_rl[:200], legend=0)
 plt.title("Income")
 
 plt.subplot(2, 2, 4)
-sn.lineplot(x, k_list[:200], legend=0)
+sn.lineplot(x, k_list_pi[:200], legend=0)
+sn.lineplot(x, k_list_rl[:200], legend=0)
 plt.title("Capital")
 
 plt.tight_layout()
@@ -251,11 +385,11 @@ config_analysis = {
 
 
 """ Simulate SIMUL_PERIODS timesteps """
-shock_list = []
-y_list = []
-s_list = []
-c_list = []
-k_list = []
+shock_list_pi = []
+y_list_pi = []
+s_list_pi = []
+c_list_pi = []
+k_list_pi = []
 
 # loop
 obs = env.reset()
@@ -264,9 +398,9 @@ for t in range(SIMUL_PERIODS):
         obs = env.reset()
     action = compute_action(obs, s_interp, env.max_action, Kbounds)
     obs, rew, done, info = env.step(action)
-    shock_list.append(obs["shock"][0])
-    y_list.append(info["income"])
-    s_list.append(info["savings"])
-    c_list.append(info["consumption"])
-    k_list.append(info["capital"])
-print(np.max(s_list), np.min(s_list))
+    shock_list_pi.append(obs["shock"][0])
+    y_list_pi.append(info["income"])
+    s_list_pi.append(info["savings"])
+    c_list_pi.append(info["consumption"])
+    k_list_pi.append(info["capital"])
+print(np.max(s_list_pi), np.min(s_list_pi))

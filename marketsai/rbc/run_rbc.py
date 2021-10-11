@@ -29,7 +29,7 @@ import json
 """ STEP 0: Experiment configs """
 
 # global configs
-DATE = "_Sep30_"
+DATE = "_Oct2_"
 TEST = True
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = True
@@ -37,11 +37,18 @@ sn.color_palette("Set2")
 SAVE_PROGRESS_CSV = True
 
 if TEST:
-    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
-    OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
+    OUTPUT_PATH_EXPERS = "/Users/jasonli/Dropbox/RL_macro/Tests/"
+    OUTPUT_PATH_FIGURES = "/Users/jasonli/Dropbox/RL_macro/Tests/"
 else:
-    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/"
-    OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/"
+    OUTPUT_PATH_EXPERS = "/Users/jasonli/Dropbox/RL_macro/Experiments/"
+    OUTPUT_PATH_FIGURES = "/Users/jasonli/Dropbox/RL_macro/Documents/Figures/"
+
+# if TEST:
+#     OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
+#     OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
+# else:
+#     OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/"
+#     OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/"
 
 
 ALGO = "PPO"  # either PPO" or "SAC"
@@ -57,11 +64,11 @@ BETA = 0.99  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 12  # 12
+NUM_CPUS = 6  # 12
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 2  # 2
+NUM_TRIALS = 1  # 2
 NUM_ROLLOUT = ENV_HORIZON * 1
-NUM_ENV_PW = 1  # num_env_per_worker
+NUM_ENV_PW = 2  # num_env_per_worker
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
 NUM_MINI_BATCH = NUM_CPUS_DRIVER
@@ -222,7 +229,9 @@ common_config = {
 # Configs specific to the chosel algorithms, INCLUDING THE LEARNING RATE
 ppo_config = {
     "lr": 0.0005,
-    "model": {"fcnet_hiddens": [128, 128]},
+    "model": {"fcnet_hiddens": [128, 128], 
+        #"use_attention": True,
+        },
     # "lr_schedule": [[0, 0.00005], [MAX_STEPS * 1 / 2, 0.00001]],
     # "sgd_minibatch_size": BATCH_SIZE // NUM_MINI_BATCH,
     # "num_sgd_iter": 1,
