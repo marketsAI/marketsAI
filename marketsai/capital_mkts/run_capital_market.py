@@ -1,5 +1,5 @@
 # import environment
-from marketsai.economies.capital_mkts.capital_market import CapitalMarket
+from marketsai.capital_mkts.capital_market import CapitalMarket
 
 # import ray
 from ray import tune, shutdown, init
@@ -29,8 +29,8 @@ import json
 """ STEP 0: Experiment configs """
 
 # global configs
-DATE = "Aug25_"
-TEST = False
+DATE = "Oct11_"
+TEST = True
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = True
 sn.color_palette("Set2")
@@ -117,7 +117,7 @@ class MyCallbacks(DefaultCallbacks):
             "after env reset!"
         )
         episode.user_data["rewards"] = []
-        # episode.user_data["bgt_penalty"] = []
+        episode.user_data["bgt_penalty"] = []
 
     def on_episode_step(
         self,
@@ -147,7 +147,7 @@ class MyCallbacks(DefaultCallbacks):
         discounted_rewards = process_rewards(episode.user_data["rewards"])
         episode.custom_metrics["discounted_rewards"] = discounted_rewards
         # episode.custom_metrics["bgt_penalty"] = np.mean(
-        #    episode.user_data["bgt_penalty"][0]
+        #     episode.user_data["bgt_penalty"][0]
         # )
 
 

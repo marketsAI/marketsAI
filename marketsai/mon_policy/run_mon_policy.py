@@ -47,7 +47,7 @@ ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [100]
-ITERS_TEST = 10
+ITERS_TEST = 2
 # number of iteration for test
 ITERS_RUN = 5000  # number of iteration for fullrun
 
@@ -127,6 +127,9 @@ class MyCallbacks(DefaultCallbacks):
             "after env reset!"
         )
         episode.user_data["rewards"] = []
+        episode.user_data["markup_agg"] = []
+        episode.user_data["freq_p_adj"] = []
+        episode.user_data["log_c"] = []
 
     def on_episode_step(
         self,
@@ -139,7 +142,13 @@ class MyCallbacks(DefaultCallbacks):
     ):
         if episode.length > 1:  # at t=0, previous rewards are not defined
             rewards = episode.prev_reward_for("firm_0")
+            # markup = episode.last_info_for("firm_0")["mu"]
+            # move_freq = episode.last_info_for("firm_0")["move_freq"]
+            # log_c = episode.last_info_for("firm_0")["log_c"]
             episode.user_data["rewards"].append(rewards)
+            # episode.user_data["markup_agg"].append(markup)
+            # episode.user_data["freq_p_adj"].append(move_freq)
+            # episode.user_data["log_c"].append(log_c)
 
     def on_episode_end(
         self,
@@ -152,7 +161,13 @@ class MyCallbacks(DefaultCallbacks):
         **kwargs,
     ):
         discounted_rewards = process_rewards(episode.user_data["rewards"])
+        # mean_markup = np.mean(episode.user_data["markup_agg"])
+        # mean_freq_p_adj = np.mean(episode.user_data["freq_p_adj"])
+        # std_log_c = np.std(episode.user_data["log_c"])
         episode.custom_metrics["discounted_rewards"] = discounted_rewards
+        # episode.custom_metrics["mean_markup"] = mean_markup
+        # episode.custom_metrics["freq_p_adj"] = mean_freq_p_adj
+        # episode.custom_metrics["std_log_c"] = std_log_c
 
 
 """ STEP 3: Environment and Algorithm configuration """
@@ -163,12 +178,9 @@ env_config = {
     "n_inds": n_inds_LIST[0],
     "n_firms": n_firms_LIST[0],
     "eval_mode": False,
-    "noagg_mode": False,
     "analysis_mode": False,
     "seed_eval": 2000,
-    "seed_noagg": 2500,
     "seed_analisys": 3000,
-    "info_mode": False,
     "markup_max": 2,
     "markup_start": 1.3,
     "rew_mean": 0,
@@ -187,6 +199,7 @@ env_config = {
 
 env_config_eval = env_config.copy()
 env_config_eval["eval_mode"] = True
+env_config_eval["horizon"] = 5000
 
 # we instantiate the environment to extrac relevant info
 " CHANGE HERE "
@@ -220,7 +233,7 @@ common_config = {
     "rollout_fragment_length": NUM_ROLLOUT,
     "train_batch_size": BATCH_SIZE,
     # EVALUATION
-    "evaluation_interval": 5,
+    "evaluation_interval": 10,
     "evaluation_num_episodes": 1,
     "evaluation_config": {
         "explore": False,

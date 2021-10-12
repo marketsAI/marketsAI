@@ -32,12 +32,9 @@ class MonPolicy(MultiAgentEnv):
         self.n_agents = self.n_firms * self.n_inds
         self.eval_mode = self.env_config.get("eval_mode", False)
         self.analysis_mode = self.env_config.get("analysis_mode", False)
-        self.noagg_mode = self.env_config.get("noagg_mode", False)
+        self.noagg = self.env_config.get("noagg", False)
         self.seed_eval = self.env_config.get("seed_eval", 2000)
-        self.seed_noagg = self.env_config.get("seed_noagg", 2500)
         self.seed_analysis = self.env_config.get("seed_analysis", 3000)
-        self.get_info = self.env_config.get("get_info", False)
-
         self.markup_max = self.env_config.get("markup_max", 2)
         self.markup_star = self.env_config.get("markup_star", 1.1)
         self.rew_mean = self.env_config.get("rew_mean", 0)
@@ -68,25 +65,25 @@ class MonPolicy(MultiAgentEnv):
 
         if self.eval_mode:
             rng = np.random.default_rng(self.seed_eval)
-        elif self.analysis_mode:
+        if self.analysis_mode:
             rng = np.random.default_rng(self.seed_analysis)
-        else:
-            rng = np.random.default_rng(self.seed_noagg)
+
         if self.eval_mode or self.analysis_mode:
             self.epsilon_g_seeded = {
                 t: rng.standard_normal() for t in range(self.horizon + 1)
             }
-        else:
-            self.epsilon_g_seeded = {t: 0 for t in range(self.horizon + 1)}
 
-        self.epsilon_z_seeded = {
-            t: [rng.standard_normal() for i in range(self.n_agents)]
-            for t in range(self.horizon + 1)
-        }
-        self.menu_cost_seeded = {
-            t: [rng.uniform(0, self.params["menu_cost"]) for i in range(self.n_agents)]
-            for t in range(self.horizon + 1)
-        }
+            self.epsilon_z_seeded = {
+                t: [rng.standard_normal() for i in range(self.n_agents)]
+                for t in range(self.horizon + 1)
+            }
+            self.menu_cost_seeded = {
+                t: [
+                    rng.uniform(0, self.params["menu_cost"])
+                    for i in range(self.n_agents)
+                ]
+                for t in range(self.horizon + 1)
+            }
 
         # CREATE SPACES
 
@@ -123,8 +120,8 @@ class MonPolicy(MultiAgentEnv):
         self.timestep = 0
 
         # to evaluate policies, we fix the initial observation
-        if self.eval_mode or self.analysis_mode or self.noagg_mode:
-            self.mu_ij = [
+        if self.eval_mode or self.analysis_mode:
+            self.mu_ij_next = [
                 1 + (self.markup_star - 1) * 0.5
                 if i % 2 == 0
                 else 1 + (self.markup_star - 1) * 2
@@ -136,13 +133,17 @@ class MonPolicy(MultiAgentEnv):
 
         # DEFAULT: when learning, we randomize the initial observations
         else:
-            self.mu_ij = [random.uniform(1, 2) for i in range(self.n_agents)]
+            self.mu_ij_next = [random.uniform(1, 2) for i in range(self.n_agents)]
             self.epsilon_z = np.random.standard_normal(size=self.n_agents)
             self.epsilon_g = np.random.standard_normal()
             self.menu_cost = [
                 random.uniform(0, self.params["menu_cost"])
                 for i in range(self.n_agents)
             ]
+
+        if self.noagg:
+            self.epsilon_g = 0
+
         self.M = 1
         self.log_z = [
             self.params["sigma_z"] * self.epsilon_z[i] for i in range(self.n_agents)
@@ -152,7 +153,7 @@ class MonPolicy(MultiAgentEnv):
         # mu vector per industry:
         mu_perind = []
         for counter in range(0, self.n_agents, self.n_firms):
-            mu_perind.append(self.mu_ij[counter : counter + self.n_firms])
+            mu_perind.append(self.mu_ij_next[counter : counter + self.n_firms])
         # collapse to markup index:
         self.mu_j = [
             np.sum([i ** (1 - self.params["eta"]) for i in elem])
@@ -166,7 +167,7 @@ class MonPolicy(MultiAgentEnv):
 
         mu_obsperfirm = [[] for i in range(self.n_agents)]
         for i in range(self.n_agents):
-            mu_obsperfirm[i] = [self.mu_ij[i]] + [
+            mu_obsperfirm[i] = [self.mu_ij_next[i]] + [
                 x
                 for z, x in enumerate(mu_perind[self.ind_per_firm[i]])
                 if z != i % self.n_firms
@@ -186,6 +187,7 @@ class MonPolicy(MultiAgentEnv):
     def step(self, action_dict):
 
         self.timestep += 1
+        self.mu_ij = self.mu_ij_next
 
         # process actions and calcute curent markups
 
@@ -236,7 +238,7 @@ class MonPolicy(MultiAgentEnv):
         ]
 
         # update shocks and states
-        if self.analysis_mode or self.eval_mode or self.noagg_mode:
+        if self.analysis_mode or self.eval_mode:
             self.epsilon_z = self.epsilon_z_seeded[self.timestep]
             self.epsilon_g = self.epsilon_g_seeded[self.timestep]
             self.menu_cost = self.menu_cost_seeded[self.timestep]
@@ -248,6 +250,9 @@ class MonPolicy(MultiAgentEnv):
                 random.uniform(0, self.params["menu_cost"])
                 for i in range(self.n_agents)
             ]
+
+        if self.noagg:
+            self.epsilon_g = 0
 
         self.log_z = [
             self.log_z[i] + self.params["sigma_z"] * self.epsilon_z[i]
@@ -261,20 +266,24 @@ class MonPolicy(MultiAgentEnv):
         )
         self.g = math.e ** self.log_g
 
-        self.mu_ij = [
+        self.mu_ij_next = [
             self.mu_ij[i]
             / (self.g * math.e ** (self.params["sigma_z"] * self.epsilon_z[i]))
             for i in range(self.n_agents)
         ]
+
+        mu_next_perind = []
+        for counter in range(0, self.n_agents, self.n_firms):
+            mu_next_perind.append(self.mu_ij_next[counter : counter + self.n_firms])
         # Prepare obs per firm
         mu_obsperfirm = [[] for i in range(self.n_agents)]
         for i in range(self.n_agents):
-            mu_obsperfirm[i] = [self.mu_ij[i]] + [
+            mu_obsperfirm[i] = [self.mu_ij_next[i]] + [
                 x
-                for z, x in enumerate(mu_perind[self.ind_per_firm[i]])
+                for z, x in enumerate(mu_next_perind[self.ind_per_firm[i]])
                 if z != i % self.n_firms
             ]
-        self.M = self.M * (self.g)
+        self.M = self.M * self.g
 
         # new observation
         self.obs_next = {
@@ -297,13 +306,46 @@ class MonPolicy(MultiAgentEnv):
         else:
             done = {"__all__": True}
 
-        self.info = {}
+        # if self.get_info or self.analysis_mode or self.eval_mode or self.noagg:
 
-        return self.obs_next, self.rew, done, self.info
+        info_global = {
+            "firm_0": {
+                "mu": self.mu,
+                "mean_profits": np.mean(self.profits),
+                "log_c": np.log(1 / self.mu),
+                "move_freq": np.mean(self.move_ij),
+                "mean_p_change": np.mean(
+                    [
+                        np.log(self.mu_ij_next[i] / self.mu_ij[i])
+                        for i in range(self.n_agents)
+                    ]
+                ),
+                "mu_ij": self.mu_ij[0],
+                "profits_ij": self.profits[0],
+                "move_ij": self.move_ij[0],
+            }
+        }
+
+        info_ind = {
+            f"firm_{i}": {
+                "mu": self.mu,
+                "mean_profits": np.mean(self.profits),
+                "log_c": np.log(1 / self.mu),
+                "mu_ij": self.mu_ij[i],
+                "profits_ij": self.profits[i],
+                "move_ij": self.move_ij[i],
+            }
+            for i in range(self.n_agents)
+        }
+
+        info = {**info_global, **info_ind}
+
+        # else:
+        #     self.info = {}
+
+        return self.obs_next, self.rew, done, info
 
     def random_sample(self, NUM_PERIODS):
-        self.get_info_orig = self.get_info  # we don't want to change the orig. seting
-        self.get_info = True
         mu_ij_list = []
         mu_list = []
         rew_list = []
@@ -325,7 +367,7 @@ class MonPolicy(MultiAgentEnv):
             )
             # print("g", self.g, "mu", self.mu_ij[0], "mu_reset", self.mu_ij_reset)
             epsilon_g_list.append(self.epsilon_g)
-            mu_ij_list.append(self.mu_ij[0])
+            mu_ij_list.append(self.mu_ij_next[0])
             mu_list.append(self.mu)
             rew_list.append(self.profits[0])
 
@@ -353,7 +395,6 @@ class MonPolicy(MultiAgentEnv):
             np.mean(epsilon_g_list),
             np.std(epsilon_g_list),
         ]
-        self.get_info = self.get_info_orig
 
         return (mu_ij_stats, rew_stats, epsilon_g_stats)
 
@@ -370,12 +411,9 @@ def main():
         "n_inds": n_inds,
         "n_firms": n_firms,
         "eval_mode": False,
-        "noagg_mode": False,
         "analysis_mode": False,
         "seed_eval": 2000,
-        "seed_noagg": 2500,
         "seed_analisys": 3000,
-        "info_mode": False,
         "markup_max": 2,
         "markup_start": 1.3,
         "rew_mean": 0,
