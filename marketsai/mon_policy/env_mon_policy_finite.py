@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 """ CREATE ENVIRONMENT """
 
 
-class MonPolicy(MultiAgentEnv):
+class MonPolicyFinite(MultiAgentEnv):
     """
     An Rllib compatible environment consisting of a multisector model with monetary policy."""
 
@@ -101,9 +101,12 @@ class MonPolicy(MultiAgentEnv):
         self.n_obs_agg = 2
         self.observation_space = {
             f"firm_{i}": Box(
-                low=np.array([0 for i in range(self.n_firms)] + [0, 0]),
-                high=np.array([10 for i in range(self.n_firms)] + [5, np.float("inf")]),
-                shape=(self.n_obs_markups + self.n_obs_agg,),
+                low=np.array([0 for i in range(self.n_firms)] + [0, 0, 0]),
+                high=np.array(
+                    [10 for i in range(self.n_firms)]
+                    + [5, np.float("inf"), self.horizon]
+                ),
+                shape=(self.n_obs_markups + self.n_obs_agg + 1,),
                 dtype=np.float32,
             )
             for i in range(self.n_agents)
@@ -174,7 +177,7 @@ class MonPolicy(MultiAgentEnv):
         # create Dictionary wtih agents as keys and with Tuple spaces as values
         self.obs_next = {
             f"firm_{i}": np.array(
-                mu_obsperfirm[i] + [self.mu, self.g],
+                mu_obsperfirm[i] + [self.mu, self.g, self.timestep],
                 dtype=np.float32,
             )
             for i in range(self.n_agents)
@@ -295,7 +298,7 @@ class MonPolicy(MultiAgentEnv):
         # new observation
         self.obs_next = {
             f"firm_{i}": np.array(
-                mu_obsperfirm[i] + [self.mu, self.g],
+                mu_obsperfirm[i] + [self.mu, self.g, self.timestep],
                 dtype=np.float32,
             )
             for i in range(self.n_agents)
@@ -433,7 +436,7 @@ def main():
         },
     }
 
-    env = MonPolicy(env_config)
+    env = MonPolicyFinite(env_config)
     obs = env.reset()
     for i in range(10):
         obs, rew, done, info = env.step(

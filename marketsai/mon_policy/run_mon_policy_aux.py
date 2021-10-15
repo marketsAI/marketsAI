@@ -1,5 +1,5 @@
 # import environment
-from marketsai.mon_policy.env_mon_policy import MonPolicy
+from marketsai.mon_policy.env_mon_policy_finite import MonPolicyFinite
 
 # import ray
 from ray import tune, shutdown, init
@@ -29,8 +29,8 @@ import json
 """ STEP 0: Experiment configs """
 
 # global configss
-ENV_LABEL = "mon_policy"
-register_env(ENV_LABEL, MonPolicy)
+ENV_LABEL = "mon_policy_finite"
+register_env(ENV_LABEL, MonPolicyFinite)
 DATE = "Oct14_v1_"
 TEST = False
 SAVE_EXP_INFO = True
@@ -61,7 +61,7 @@ BETA = 0.95 ** (1 / 12)  # discount parameter
 # Parallelization options
 NUM_CPUS = 4
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 8
+NUM_TRIALS = 4
 NUM_PAR_TRIALS = 4
 NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1  # num_env_per_worker
@@ -215,7 +215,7 @@ env_config_eval["horizon"] = 5000
 
 # we instantiate the environment to extrac relevant info
 " CHANGE HERE "
-env = MonPolicy(env_config)
+env = MonPolicyFinite(env_config)
 
 # common configuration
 
@@ -329,7 +329,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
     env_config_eval["n_firms"] = n_firms
 
     """ CHANGE HERE """
-    env = MonPolicy(env_config)
+    env = MonPolicyFinite(env_config)
     training_config["env_config"] = env_config
     training_config["evaluation_config"]["env_config"] = env_config_eval
     training_config["multiagent"] = {
@@ -530,7 +530,7 @@ if SAVE_PROGRESS_CSV:
 #     env_config_eval["parameters"]["A"] = 1
 
 #     """ CHANGE HERE """
-#     env = MonPolicy(env_config)
+#     env = MonPolicyFinite(env_config)
 #     training_config["env_config"] = env_config
 #     training_config["evaluation_config"]["env_config"] = env_config_eval
 #     training_config["multiagent"] = {
@@ -680,7 +680,7 @@ if SAVE_PROGRESS_CSV:
 #     env_config_eval["parameters"]["A"] = 1
 
 #     """ CHANGE HERE """
-#     env = MonPolicy(env_config)
+#     env = MonPolicyFinite(env_config)
 #     training_config["env_config"] = env_config
 #     training_config["evaluation_config"]["env_config"] = env_config_eval
 #     training_config["multiagent"] = {

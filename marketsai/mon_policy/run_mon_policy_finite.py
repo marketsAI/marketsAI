@@ -1,5 +1,6 @@
 # import environment
-from marketsai.mon_policy.env_mon_policy import MonPolicy
+from marketsai.mon_policy.env_mon_policy_finite import MonPolicyFinite
+from marketsai.mon_policy.env_mon_policy_colab import MonPolicyColab
 
 # import ray
 from ray import tune, shutdown, init
@@ -28,15 +29,13 @@ import json
 
 """ STEP 0: Experiment configs """
 
-# global configss
-ENV_LABEL = "mon_policy"
-register_env(ENV_LABEL, MonPolicy)
-DATE = "Oct14_v1_"
-TEST = False
+
+DATE = "Oct15_v1_"
+TEST = True
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = False
 sn.color_palette("Set2")
-SAVE_PROGRESS_CSV = True
+SAVE_PROGRESS_CSV = False
 
 if TEST:
     OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
@@ -49,12 +48,12 @@ ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [100]
-ITERS_TEST = 2  # number of iteration for test
-ITERS_RUN = 2000  # number of iteration for fullrun
+ITERS_TEST = 4  # number of iteration for test
+ITERS_RUN = 200  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
-ENV_HORIZON = 100
+ENV_HORIZON = 60
 BETA = 0.95 ** (1 / 12)  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
@@ -82,7 +81,7 @@ else:
 
 # checkpointing, evaluation during trainging and stopage
 CHKPT_FREQ = 500
-EVAL_INTERVAL = 100
+EVAL_INTERVAL = 1
 STOP = {"timesteps_total": MAX_STEPS}
 
 # Initialize ray
@@ -92,7 +91,9 @@ init(
     num_gpus=NUM_GPUS,
     log_to_driver=False,
 )
-
+# global configss
+ENV_LABEL = "mon_policy_finite"
+register_env(ENV_LABEL, MonPolicyFinite)
 
 """ STEP 2: set custom metrics such as discounted rewards to keep track of through leraning"""
 # Define custom metrics using the Callbacks class
@@ -211,11 +212,11 @@ env_config = {
 
 env_config_eval = env_config.copy()
 env_config_eval["eval_mode"] = True
-env_config_eval["horizon"] = 5000
+env_config_eval["horizon"] = 60
 
 # we instantiate the environment to extrac relevant info
 " CHANGE HERE "
-env = MonPolicy(env_config)
+env = MonPolicyFinite(env_config)
 
 # common configuration
 
@@ -329,7 +330,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
     env_config_eval["n_firms"] = n_firms
 
     """ CHANGE HERE """
-    env = MonPolicy(env_config)
+    env = MonPolicyFinite(env_config)
     training_config["env_config"] = env_config
     training_config["evaluation_config"]["env_config"] = env_config_eval
     training_config["multiagent"] = {
@@ -411,28 +412,28 @@ for ind, n_firms in enumerate(n_firms_LIST):
     #         ["episodes_total", "evaluation/custom_metrics/discounted_rewards_mean"]
     #     ]
     # )
-    learning_dta.append(
-        [
-            list(analysis.trial_dataframes.values())[i][
-                [
-                    "episodes_total",
-                    "evaluation/custom_metrics/discounted_rewards_mean",
-                    "evaluation/custom_metrics/mean_markup_ij_mean",
-                    "evaluation/custom_metrics/freq_p_adj_mean",
-                    "evaluation/custom_metrics/size_adj_mean",
-                ]
-            ]
-            for i in range(NUM_TRIALS)
-        ]
-    )
-    for i in range(NUM_TRIALS):
-        learning_dta[ind][i].columns = [
-            "episodes_total",
-            f"discounted_rewards_trial_{i}",
-            f"mu_ij_mean_{i}",
-            f"freq_p_adj_{i}",
-            f"size_adj_mean_{i}",
-        ]
+    # learning_dta.append(
+    #     [
+    #         list(analysis.trial_dataframes.values())[i][
+    #             [
+    #                 "episodes_total",
+    #                 "evaluation/custom_metrics/discounted_rewards_mean",
+    #                 "evaluation/custom_metrics/mean_markup_ij_mean",
+    #                 "evaluation/custom_metrics/freq_p_adj_mean",
+    #                 "evaluation/custom_metrics/size_adj_mean",
+    #             ]
+    #         ]
+    #         for i in range(NUM_TRIALS)
+    #     ]
+    # # )
+    # for i in range(NUM_TRIALS):
+    #     learning_dta[ind][i].columns = [
+    #         "episodes_total",
+    #         f"discounted_rewards_trial_{i}",
+    #         f"mu_ij_mean_{i}",
+    #         f"freq_p_adj_{i}",
+    #         f"size_adj_mean_{i}",
+    #     ]
 
 
 """ STEP 5 (optional): Organize and Plot multi firm expers """
@@ -503,6 +504,7 @@ if SAVE_PROGRESS_CSV:
             OUTPUT_PATH_EXPERS + "progress_" + exp_names[i] + ".csv"
         )
 
+
 # """ STEP 6: run multi industry experiment """
 
 # exp_names = []
@@ -530,7 +532,7 @@ if SAVE_PROGRESS_CSV:
 #     env_config_eval["parameters"]["A"] = 1
 
 #     """ CHANGE HERE """
-#     env = MonPolicy(env_config)
+#     env = MonPolicyFinite(env_config)
 #     training_config["env_config"] = env_config
 #     training_config["evaluation_config"]["env_config"] = env_config_eval
 #     training_config["multiagent"] = {
@@ -680,7 +682,7 @@ if SAVE_PROGRESS_CSV:
 #     env_config_eval["parameters"]["A"] = 1
 
 #     """ CHANGE HERE """
-#     env = MonPolicy(env_config)
+#     env = MonPolicyFinite(env_config)
 #     training_config["env_config"] = env_config
 #     training_config["evaluation_config"]["env_config"] = env_config_eval
 #     training_config["multiagent"] = {

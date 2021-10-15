@@ -1,5 +1,5 @@
 # import environment
-from marketsai.mon_policy.env_mon_policy import MonPolicy
+from marketsai.mon_policy.env_mon_policy_flat import MonPolicyFlat
 
 # import ray
 from ray import tune, shutdown, init
@@ -28,13 +28,11 @@ import json
 
 """ STEP 0: Experiment configs """
 
-# global configss
-ENV_LABEL = "mon_policy"
-register_env(ENV_LABEL, MonPolicy)
-DATE = "Oct14_v1_"
-TEST = False
+# global configs
+DATE = "Oct12_"
+TEST = True
 SAVE_EXP_INFO = True
-PLOT_PROGRESS = False
+PLOT_PROGRESS = True
 sn.color_palette("Set2")
 SAVE_PROGRESS_CSV = True
 
@@ -49,8 +47,9 @@ ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [100]
-ITERS_TEST = 2  # number of iteration for test
-ITERS_RUN = 2000  # number of iteration for fullrun
+ITERS_TEST = 100
+# number of iteration for test
+ITERS_RUN = 5000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -59,20 +58,19 @@ BETA = 0.95 ** (1 / 12)  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 4
+NUM_CPUS = 1
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 8
-NUM_PAR_TRIALS = 4
+NUM_TRIALS = 1
 NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
 NUM_MINI_BATCH = NUM_CPUS_DRIVER
 
-N_WORKERS = (NUM_CPUS - NUM_PAR_TRIALS * NUM_CPUS_DRIVER) // NUM_PAR_TRIALS
+N_WORKERS = (NUM_CPUS - NUM_TRIALS * NUM_CPUS_DRIVER) // NUM_TRIALS
 BATCH_SIZE = NUM_ROLLOUT * (max(N_WORKERS, 1)) * NUM_ENV_PW * BATCH_ROLLOUT
 
-print("number of workers:", N_WORKERS, "batch size:", BATCH_SIZE)
+print(N_WORKERS, BATCH_SIZE)
 
 # define length of experiment (MAX_STEPS) and experiment name
 if TEST == True:
@@ -80,19 +78,20 @@ if TEST == True:
 else:
     MAX_STEPS = ITERS_RUN * BATCH_SIZE
 
-# checkpointing, evaluation during trainging and stopage
-CHKPT_FREQ = 500
-EVAL_INTERVAL = 100
-STOP = {"timesteps_total": MAX_STEPS}
+CHKPT_FREQ = 10
 
+stop = {"timesteps_total": MAX_STEPS}
 # Initialize ray
 shutdown()
 init(
     num_cpus=NUM_CPUS,
     num_gpus=NUM_GPUS,
-    log_to_driver=False,
+    # logging_level=logging.ERROR,
 )
 
+# Define environment, which should be imported from a class
+ENV_LABEL = "mon_policy_flat"
+register_env(ENV_LABEL, MonPolicyFlat)
 
 """ STEP 2: set custom metrics such as discounted rewards to keep track of through leraning"""
 # Define custom metrics using the Callbacks class
@@ -129,9 +128,7 @@ class MyCallbacks(DefaultCallbacks):
         )
         episode.user_data["rewards"] = []
         episode.user_data["markup_agg"] = []
-        episode.user_data["markup_ij_avge"] = []
         episode.user_data["freq_p_adj"] = []
-        episode.user_data["size_adj"] = []
         episode.user_data["log_c"] = []
 
     def on_episode_step(
@@ -146,15 +143,11 @@ class MyCallbacks(DefaultCallbacks):
         if episode.length > 1:  # at t=0, previous rewards are not defined
             rewards = episode.prev_reward_for("firm_0")
             markup = episode.last_info_for("firm_0")["mu"]
-            markup_ij_avge = episode.last_info_for("firm_0")["mean_mu_ij"]
             move_freq = episode.last_info_for("firm_0")["move_freq"]
-            mean_p_change = episode.last_info_for("firm_0")["mean_p_change"]
             log_c = episode.last_info_for("firm_0")["log_c"]
             episode.user_data["rewards"].append(rewards)
             episode.user_data["markup_agg"].append(markup)
-            episode.user_data["markup_ij_avge"].append(markup_ij_avge)
             episode.user_data["freq_p_adj"].append(move_freq)
-            episode.user_data["size_adj"].append(mean_p_change)
             episode.user_data["log_c"].append(log_c)
 
     def on_episode_end(
@@ -169,15 +162,11 @@ class MyCallbacks(DefaultCallbacks):
     ):
         discounted_rewards = process_rewards(episode.user_data["rewards"])
         mean_markup = np.mean(episode.user_data["markup_agg"])
-        mean_markup_ij = np.mean(episode.user_data["markup_ij_avge"])
         mean_freq_p_adj = np.mean(episode.user_data["freq_p_adj"])
-        size_adj = np.mean(episode.user_data["size_adj"])
         std_log_c = np.std(episode.user_data["log_c"])
         episode.custom_metrics["discounted_rewards"] = discounted_rewards
         episode.custom_metrics["mean_markup"] = mean_markup
-        episode.custom_metrics["mean_markup_ij"] = mean_markup_ij
         episode.custom_metrics["freq_p_adj"] = mean_freq_p_adj
-        episode.custom_metrics["size_adj"] = size_adj
         episode.custom_metrics["std_log_c"] = std_log_c
 
 
@@ -190,8 +179,7 @@ env_config = {
     "n_firms": n_firms_LIST[0],
     "eval_mode": False,
     "analysis_mode": False,
-    "no_agg": False,
-    "seed_eval": 5000,
+    "seed_eval": 2000,
     "seed_analisys": 3000,
     "markup_max": 2,
     "markup_start": 1.3,
@@ -215,7 +203,7 @@ env_config_eval["horizon"] = 5000
 
 # we instantiate the environment to extrac relevant info
 " CHANGE HERE "
-env = MonPolicy(env_config)
+env = MonPolicyFlat(env_config)
 
 # common configuration
 
@@ -239,13 +227,13 @@ common_config = {
     # TRAINING CONFIG
     "num_workers": N_WORKERS,
     "create_env_on_driver": False,
-    "num_gpus": NUM_GPUS / NUM_PAR_TRIALS,
+    "num_gpus": NUM_GPUS / NUM_TRIALS,
     "num_envs_per_worker": NUM_ENV_PW,
     "num_cpus_for_driver": NUM_CPUS_DRIVER,
     "rollout_fragment_length": NUM_ROLLOUT,
     "train_batch_size": BATCH_SIZE,
     # EVALUATION
-    "evaluation_interval": EVAL_INTERVAL,
+    "evaluation_interval": 10,
     "evaluation_num_episodes": 1,
     "evaluation_config": {
         "explore": False,
@@ -263,19 +251,18 @@ common_config = {
         },
         "policy_mapping_fn": (lambda agent_id: agent_id.split("_")[0]),
         # "replay_mode": "independent",  # you can change to "lockstep".
-        # OTHERS
     },
 }
 
 # Configs specific to the chosel algorithms, INCLUDING THE LEARNING RATE
 ppo_config = {
-    # "lr": 0.0001,
-    "lr_schedule": [[0, 0.00005], [50000, 0.00001]],
+    # "lr": 0.0005,
+    "lr_schedule": [[0, 0.00005], [100000, 0.000005]],
     # "lr_schedule": tune.grid_search(
     #     [
     #         [[0, 0.00005], [50000, 0.00001]],
-    #         [[0, 0.0008], [50000, 0.00005]],
-    #         [[0, 0.0008], [50000, 0.00001]],
+    #         [[0, 0.00005], [50000, 0.0005]],
+    #         [[0, 0.00005], [50000, 0.000005]],
     #         [[0, 0.00005], [50000, 0.00005]],
     #     ]
     # ),
@@ -286,13 +273,13 @@ ppo_config = {
     # "entropy_coeff": 0,
     # "kl_coeff": 0.2,
     # "vf_loss_coeff": 0.5,
-    "vf_clip_param": np.float("inf"),
+    # "vf_clip_param": tune.choice([5, 10, 20]),
     # "entropy_coeff_schedule": [[0, 0.01], [5120 * 1000, 0]],
     # "clip_param": 0.2,
     "clip_actions": True,
 }
 
-sac_config = {"prioritized_replay": False, "normalize_actions": False}
+sac_config = {"prioritized_replay": True, "normalize_actions": False}
 
 if ALGO == "PPO":
     training_config = {**common_config, **ppo_config}
@@ -304,15 +291,11 @@ else:
 """ STEP 4: run multi firm experiment """
 
 exp_names = []
-trial_logdirs = []
 exp_dirs = []
 checkpoints = []
-configs = []
+best_rewards = []
+best_configs = []
 learning_dta = []
-rewards = []
-mu_ij = []
-freq_p_adj = []
-size_adj = []
 
 
 # RUN TRAINER
@@ -329,7 +312,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
     env_config_eval["n_firms"] = n_firms
 
     """ CHANGE HERE """
-    env = MonPolicy(env_config)
+    env = MonPolicyFlat(env_config)
     training_config["env_config"] = env_config
     training_config["evaluation_config"]["env_config"] = env_config_eval
     training_config["multiagent"] = {
@@ -349,90 +332,35 @@ for ind, n_firms in enumerate(n_firms_LIST):
         ALGO,
         name=EXP_NAME,
         config=training_config,
-        stop=STOP,
+        stop=stop,
         checkpoint_freq=CHKPT_FREQ,
         checkpoint_at_end=True,
         # metric="evaluation/custom_metrics/discounted_rewards_mean",
         metric="custom_metrics/discounted_rewards_mean",
         mode="max",
+        # num_samples=1,
         num_samples=NUM_TRIALS,
         # resources_per_trial={"gpu": 0.5},
     )
 
-    rewards.append(
-        [
-            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
-                "discounted_rewards_mean"
-            ]
-            for i in range(NUM_TRIALS)
-        ]
-    )
-    mu_ij.append(
-        [
-            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
-                "mean_markup_ij_mean"
-            ]
-            for i in range(NUM_TRIALS)
-        ]
-    )
-    freq_p_adj.append(
-        [
-            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
-                "freq_p_adj_mean"
-            ]
-            for i in range(NUM_TRIALS)
-        ]
-    )
-    size_adj.append(
-        [
-            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
-                "size_adj_mean"
-            ]
-            for i in range(NUM_TRIALS)
-        ]
-    )
     exp_names.append(EXP_NAME)
-    exp_dirs.append(analysis._experiment_dir)
-    trial_logdirs.append([analysis.trials[i].logdir for i in range(NUM_TRIALS)])
-    configs.append(
-        [
-            {
-                "env_config": analysis.trials[i].config["env_config"],
-                # "lr": analysis.trials[i].config["lr"],
-                "lr_schedule": analysis.trials[i].config["lr_schedule"],
-            }
-            for i in range(NUM_TRIALS)
-        ]
+    checkpoints.append(analysis.best_checkpoint)
+    best_rewards.append(
+        analysis.best_result["evaluation"]["custom_metrics"]["discounted_rewards_mean"]
     )
-    checkpoints.append([analysis.trials[i].checkpoint.value for i in range(NUM_TRIALS)])
-
+    best_configs.append(analysis.best_config)
+    exp_dirs.append(analysis.best_logdir)
     # learning_dta.append(
     #     analysis.best_dataframe[
     #         ["episodes_total", "evaluation/custom_metrics/discounted_rewards_mean"]
     #     ]
     # )
     learning_dta.append(
-        [
-            list(analysis.trial_dataframes.values())[i][
-                [
-                    "episodes_total",
-                    "evaluation/custom_metrics/discounted_rewards_mean",
-                    "evaluation/custom_metrics/mean_markup_ij_mean",
-                    "evaluation/custom_metrics/freq_p_adj_mean",
-                    "evaluation/custom_metrics/size_adj_mean",
-                ]
-            ]
-            for i in range(NUM_TRIALS)
+        analysis.best_dataframe[
+            ["episodes_total", "custom_metrics/discounted_rewards_mean"]
         ]
     )
-    for i in range(NUM_TRIALS):
-        learning_dta[ind][i].columns = [
-            "episodes_total",
-            f"discounted_rewards_trial_{i}",
-            f"mu_ij_mean_{i}",
-            f"freq_p_adj_{i}",
-            f"size_adj_mean_{i}",
-        ]
+    learning_dta[ind].columns = ["episodes_total", f"{n_firms} firms"]
 
 
 """ STEP 5 (optional): Organize and Plot multi firm expers """
@@ -448,28 +376,34 @@ if len(exp_names) > 1:
 
 # create CSV with information on each experiment
 if SAVE_EXP_INFO:
-    progress_csv_dirs = [
-        OUTPUT_PATH_EXPERS + "progress_" + exp_names[i] + ".csv"
-        for i in range(len(exp_names))
-    ]
+    progress_csv_dirs = [exp_dirs[i] + "/progress.csv" for i in range(len(exp_dirs))]
 
     # Create CSV with economy level
     exp_dict = {
         "n_agents": n_firms_LIST,
         "exp_names": exp_names,
         "exp_dirs": exp_dirs,
-        "trial_dirs": trial_logdirs,
-        "checkpoints": checkpoints,
         "progress_csv_dirs": progress_csv_dirs,
-        "configs": configs,
-        "rewards": rewards,
-        "mu_ij": mu_ij,
-        "freq_p_adj": freq_p_adj,
-        "size_adj": size_adj,
+        "best_rewards": best_rewards,
+        "checkpoints": checkpoints,
+        # "best_config": best_configs,
     }
     # for i in range(len(exp_dict.values())):
     #     print(type(exp_dict.values()[i]))
-    print(exp_dict)
+    print(
+        "exp_names =",
+        exp_names,
+        "\n" "exp_dirs =",
+        exp_dirs,
+        "\n" "progress_csv_dirs =",
+        progress_csv_dirs,
+        "\n" "best_rewards =",
+        best_rewards,
+        "\n" "checkpoints =",
+        checkpoints,
+        # "\n" "best_config =",
+        # best_configs,
+    )
 
     with open(OUTPUT_PATH_EXPERS + "expINFO_" + EXP_NAME + ".json", "w+") as f:
         json.dump(exp_dict, f)
@@ -483,7 +417,7 @@ if PLOT_PROGRESS:
     for ind, n_firms in enumerate(n_firms_LIST):
         learning_plot = sn.lineplot(
             data=learning_dta[ind],
-            y=f"discounted_rewards_trial_0",
+            y=f"{n_firms} firms",
             x="episodes_total",
         )
     learning_plot = learning_plot.get_figure()
@@ -491,17 +425,14 @@ if PLOT_PROGRESS:
     plt.xlabel("Timesteps (thousands)")
     plt.legend(labels=[f"{i} firms" for i in n_firms_LIST])
     learning_plot.savefig(OUTPUT_PATH_FIGURES + "progress_" + EXP_NAME + ".png")
-    plt.show()
+    # plt.show()
 
 # Save progress as CSV
 if SAVE_PROGRESS_CSV:
     # merge data
-    for i in range(len(exp_names)):
-        learning_dta_local = [df.set_index("episodes_total") for df in learning_dta[i]]
-        learning_dta_merged = pd.concat(learning_dta_local, axis=1)
-        learning_dta_merged.to_csv(
-            OUTPUT_PATH_EXPERS + "progress_" + exp_names[i] + ".csv"
-        )
+    learning_dta = [df.set_index("episodes_total") for df in learning_dta]
+    learning_dta_merged = pd.concat(learning_dta, axis=1)
+    learning_dta_merged.to_csv(OUTPUT_PATH_EXPERS + "progress_" + EXP_NAME + ".csv")
 
 # """ STEP 6: run multi industry experiment """
 
@@ -530,7 +461,7 @@ if SAVE_PROGRESS_CSV:
 #     env_config_eval["parameters"]["A"] = 1
 
 #     """ CHANGE HERE """
-#     env = MonPolicy(env_config)
+#     env = MonPolicyFlat(env_config)
 #     training_config["env_config"] = env_config
 #     training_config["evaluation_config"]["env_config"] = env_config_eval
 #     training_config["multiagent"] = {
@@ -680,7 +611,7 @@ if SAVE_PROGRESS_CSV:
 #     env_config_eval["parameters"]["A"] = 1
 
 #     """ CHANGE HERE """
-#     env = MonPolicy(env_config)
+#     env = MonPolicyFlat(env_config)
 #     training_config["env_config"] = env_config
 #     training_config["evaluation_config"]["env_config"] = env_config_eval
 #     training_config["multiagent"] = {
