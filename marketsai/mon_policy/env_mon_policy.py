@@ -85,6 +85,10 @@ class MonPolicy(MultiAgentEnv):
                 for t in range(self.horizon + 1)
             }
 
+            if self.analysis_mode:
+                self.epsilon_g_seeded = {t: 0 for t in range(self.horizon + 1)}
+                self.epsilon_g_seeded[0] = self.params["sigma_g"]
+
         # CREATE SPACES
 
         self.action_space = {
