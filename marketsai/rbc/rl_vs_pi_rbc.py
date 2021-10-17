@@ -23,7 +23,7 @@ env_label = "rbc"
 # Input Directories
 # Rl experiment
 """ CHANGE HERE """
-INPUT_PATH_EXPERS = "/Users/jasonli/Dropbox/RL_macro/Experiments/expINFO_native_rbc_Oct6_PPO_run.json"
+INPUT_PATH_EXPERS = "/Users/jasonli/Dropbox/RL_macro/Experiments/expINFO_native_rbc_Oct14_PPO_run.json"
 # GDSGE policy
 dir_policy_folder = (
     "/Users/jasonli/Dropbox/RL_macro/Econ_algos/rbc_savings/Results/"
@@ -63,7 +63,9 @@ print(exp_data_dict)
 exp_names = exp_data_dict["exp_names"]
 checkpoints_dirs = exp_data_dict["checkpoints"]
 progress_csv_dirs = exp_data_dict["progress_csv_dirs"]
-# best_rewards = exp_data_dict["best_rewards"]
+# print(checkpoints_dirs[0])
+# checkpoints_dirs[0] = "/Users/jasonli/ray_results/native_rbc_Oct4_PPO_run/PPO_rbc_94791_00007_7_lr=0.0008_2021-10-03_22-55-05/checkpoint_000066/checkpoint-66"
+best_rewards = exp_data_dict["best_rewards"]
 
 
 # Create output directory
@@ -112,50 +114,7 @@ exp_data_simul_econ_dict = {
     "Max s": [],
     "Min s": [],
 }
-exp_data_analysis_dict = {
-    "n_firms": [],
-    "max rewards": [],
-    "time to peak": [],
-    "Mean Agg. K": [],
-    "S.D. Agg. K": [],
-    "Mean Avge. K": [],
-    "S.D. Avge. K": [],
-    "S.D. Agg. K": [],
-    "Max K": [],
-    "Min K": [],
-    "Discounted Rewards": [],
-    "Mean Price": [],
-    "S.D. Price": [],
-    "Max Price": [],
-    "Min Price": [],
-    "Discounted Rewards": [],
-    "Mean Agg. s": [],
-    "S.D. Agg. s": [],
-    "Max s": [],
-    "Min s": [],
-}
-exp_data_simul_dict = {
-    "n_firms": [],
-    "max rewards": [],
-    "time to peak": [],
-    "Mean Agg. K": [],
-    "S.D. Agg. K": [],
-    "Mean Avge. K": [],
-    "S.D. Avge. K": [],
-    "S.D. Agg. K": [],
-    "Max K": [],
-    "Min K": [],
-    "Discounted Rewards": [],
-    "Mean Price": [],
-    "S.D. Price": [],
-    "Max Price": [],
-    "Min Price": [],
-    "Discounted Rewards": [],
-    "Mean Agg. s": [],
-    "S.D. Agg. s": [],
-    "Max s": [],
-    "Min s": [],
-}
+
 
 # init ray
 shutdown()
@@ -170,55 +129,10 @@ def process_rewards(r, BETA):
         discounted_r[t] = running_add
     return discounted_r[0]
 
+#register environment
+env_label = "rbc"
+register_env(env_label, Rbc)
 
-
-""" Step 1: Plot progress during learning run """
-
-if PLOT_PROGRESS == True:
-    #Big plot
-
-    data_progress_df = pd.read_csv(progress_csv_dirs[0])
-    max_rewards = abs(data_progress_df[
-        "evaluation/custom_metrics/discounted_rewards_mean"
-    ].max())
-    print(max_rewards)
-    exp_data_simul_dict["max rewards"].append(max_rewards)
-    exp_data_simul_dict["time to peak"].append(0)
-    exp_data_analysis_dict["max rewards"].append(max_rewards)
-    exp_data_analysis_dict["time to peak"].append(0)
-    data_progress_df["evaluation/custom_metrics/discounted_rewards_mean"] = data_progress_df["evaluation/custom_metrics/discounted_rewards_mean"] / max_rewards
-    
-    learning_plot_big = sn.lineplot(
-        data=data_progress_df,
-        y="evaluation/custom_metrics/discounted_rewards_mean",
-        x="episodes_total",
-    )
-
-
-    learning_plot_big = learning_plot_big.get_figure()
-    plt.ylabel("Discounted utility")
-    plt.xlabel("Timesteps (thousands)")
-    plt.xlim([0, 10000])
-    learning_plot_big.savefig(OUTPUT_PATH_FIGURES + "progress_BIG_" + exp_names[-1] + ".png")
-    plt.show()
-    plt.close()
-
-    # small plot
-
-    learning_plot_small = sn.lineplot(
-        data=data_progress_df,
-        y="evaluation/custom_metrics/discounted_rewards_mean",
-        x="episodes_total",
-    )
-
-
-    learning_plot_small = learning_plot_small.get_figure()
-    plt.ylabel("Discounted utility")
-    plt.xlabel("Timesteps (thousands)")
-    plt.xlim([0, 1000])
-    learning_plot_small.savefig(OUTPUT_PATH_FIGURES + "progress_SMALL_" + exp_names[-1] + ".png")
-    plt.show()
-    plt.close()
 
 
 
@@ -243,6 +157,7 @@ env_config_analysis = {
         "beta": beta,
     },
 }
+
 # We instantiate the environment to extract information.
 """ CHANGE HERE """
 env = Rbc(env_config_analysis)
@@ -255,6 +170,7 @@ config_analysis = {
     "framework": "torch",
     "model": {"fcnet_hiddens": [128, 128]}
 }
+
 """ Step 5.1: import matlab struct """
 """ CHANGE HERE """
 dir_model = "rbc_savings_5pts"
@@ -275,6 +191,7 @@ s_on_grid = matlab_struct["IterRslt"]["var_policy"]["s"]
 s_interp = RegularGridInterpolator((shock_grid,) + (K_grid,), s_on_grid)
 
 
+# restore the RL trainer
 def compute_action(obs, policy_list, max_action: float, Kbounds: list):
     K = obs["stock"][0]
     K = min(max(K, Kbounds[0]), Kbounds[1])
@@ -284,7 +201,6 @@ def compute_action(obs, policy_list, max_action: float, Kbounds: list):
     action = 2 * s / max_action - 1
     return action
     
-# restore the RL trainer
 trained_trainer = PPOTrainer(env=env_label, config=config_analysis)
 trained_trainer.restore(checkpoints_dirs[0])
 
@@ -317,8 +233,8 @@ for t in range(env_horizon):
     c_list_pi.append(info["consumption"])
     k_list_pi.append(info["capital"])
     rew_list_pi.append(info["rewards"])
-disc_rew = process_rewards(rew_list_pi, beta)
-print("Discounted_rewards", disc_rew)
+disc_rew_pi = process_rewards(rew_list_pi, beta)
+print("Discounted_rewards", disc_rew_pi)
 print("length of rew", len(rew_list_pi))
 
 # loop for rl
@@ -333,6 +249,10 @@ for t in range(env_horizon):
     k_list_rl.append(info["capital"])
     rew_list_rl.append(info["rewards"])
 rew_disc_rl.append(np.mean(process_rewards(rew_list_rl,beta)))
+disc_rew_rl = process_rewards(rew_list_rl, beta)
+print("Discounted_rewards", disc_rew_rl)
+print("length of rew", len(rew_list_rl))
+print(f"Discounted_rewards_pi:{disc_rew_pi}; Discounted_rewards_rl:{disc_rew_rl}")
 
 """ Step 5.4: Plot individual trajectories """
 
@@ -354,9 +274,10 @@ sn.lineplot(x, y_list_rl[:200], legend=0)
 plt.title("Income")
 
 plt.subplot(2, 2, 4)
-sn.lineplot(x, k_list_pi[:200], legend=0)
-sn.lineplot(x, k_list_rl[:200], legend=0)
+sn.lineplot(x, k_list_pi[:200], legend=0, label="pi")
+sn.lineplot(x, k_list_rl[:200], legend=0, label="rl")
 plt.title("Capital")
+plt.legend(loc="lower right")
 
 plt.tight_layout()
 handles, labels = plt.gca().get_legend_handles_labels()

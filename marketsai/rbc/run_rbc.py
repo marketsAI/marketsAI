@@ -29,8 +29,8 @@ import json
 """ STEP 0: Experiment configs """
 
 # global configs
-DATE = "_Oct2_"
-TEST = True
+DATE = "_Oct14_"
+TEST = False
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = True
 sn.color_palette("Set2")
@@ -53,8 +53,8 @@ else:
 
 ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
-ITERS_TEST = 10  # number of iteration for test
-ITERS_RUN = 10000  # number of iteration for fullrun
+ITERS_TEST = 50  # number of iteration for test
+ITERS_RUN = 5000 # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -64,11 +64,11 @@ BETA = 0.99  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 6  # 12
+NUM_CPUS = 4  # 12
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 1  # 2
+NUM_TRIALS = 4  # 2
 NUM_ROLLOUT = ENV_HORIZON * 1
-NUM_ENV_PW = 2  # num_env_per_worker
+NUM_ENV_PW = 1  # 2
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
 NUM_MINI_BATCH = NUM_CPUS_DRIVER
@@ -84,7 +84,7 @@ if TEST == True:
 else:
     MAX_STEPS = ITERS_RUN * BATCH_SIZE
 
-CHKPT_FREQ = 1
+CHKPT_FREQ = 2  #1
 
 stop = {"timesteps_total": MAX_STEPS}
 # Initialize ray
@@ -92,6 +92,7 @@ shutdown()
 init(
     num_cpus=NUM_CPUS,
     num_gpus=NUM_GPUS,
+    log_to_driver=False,
     # logging_level=logging.ERROR,
 )
 
@@ -228,11 +229,15 @@ common_config = {
 
 # Configs specific to the chosel algorithms, INCLUDING THE LEARNING RATE
 ppo_config = {
-    "lr": 0.0005,
+    "lr": 0.0008,
+    # "lr": tune.grid_search([0.0005, 0.0008, 0.00001, 0.00005, 0.00008, 0.000001]),
     "model": {"fcnet_hiddens": [128, 128], 
-        #"use_attention": True,
+    #"use_attention": True,
         },
-    # "lr_schedule": [[0, 0.00005], [MAX_STEPS * 1 / 2, 0.00001]],
+    "lr_schedule": tune.grid_search([[[0, 0.0008], [MAX_STEPS / 100, 0.00001]],
+        [[0, 0.0008], [MAX_STEPS / 20, 0.00001]],
+         [[0, 0.0008], [MAX_STEPS / 10, 0.00001]],
+          [[0, 0.0008], [MAX_STEPS  / 5, 0.00001]]]),
     # "sgd_minibatch_size": BATCH_SIZE // NUM_MINI_BATCH,
     # "num_sgd_iter": 1,
     # "batch_mode": "complete_episodes",
@@ -240,7 +245,7 @@ ppo_config = {
     # "entropy_coeff": 0,
     # "kl_coeff": 0.1,
     # "vf_loss_coeff": 0.5,
-    # "vf_clip_param": tune.choice([5, 10, 20]),
+     "vf_clip_param": np.float("inf"),
     # "entropy_coeff_schedule": [[0, 0.01], [5120 * 1000, 0]],
     # "clip_param": 0.1,
     # "clip_actions": True,
@@ -260,7 +265,7 @@ elif ALGO == "SAC":
 else:
     training_config = common_config
 
-""" STEP 4: run multi firm experiment """
+""" STEP 4: run experiments """
 
 exp_names = []
 exp_dirs = []
@@ -290,8 +295,8 @@ analysis = tune.run(
     checkpoint_at_end=True,
     metric="evaluation/custom_metrics/discounted_rewards_mean",
     mode="max",
-    num_samples=NUM_TRIALS,
-    # num_samples=2,
+    # num_samples=NUM_TRIALS,
+    num_samples=1,
     # resources_per_trial={"gpu": 0.5},
 )
 
@@ -370,4 +375,4 @@ if PLOT_PROGRESS:
     learning_plot = learning_plot.get_figure()
     plt.ylabel("Discounted utility")
     plt.xlabel("Episodes")
-    plt.show()
+    #plt.show()
