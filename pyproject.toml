@@ -19,7 +19,8 @@ matplotlib = "^3.3.4"
 tensorflow = "^2.4.1"
 torch = "^1.8.1"
 opencv-python = "4.5.1.48"
-ray = "1.5.2"
+ray = "1.4.0"
+aioredis = "1.0"
 
 [tool.poetry.dev-dependencies]
 black = "^20.8b1"

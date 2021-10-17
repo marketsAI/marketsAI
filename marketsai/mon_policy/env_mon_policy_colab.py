@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 """ CREATE ENVIRONMENT """
 
 
-class MonPolicy(MultiAgentEnv):
+class MonPolicyColab(MultiAgentEnv):
     """
     An Rllib compatible environment consisting of a multisector model with monetary policy."""
 
@@ -301,10 +301,15 @@ class MonPolicy(MultiAgentEnv):
             for i in range(self.n_agents)
         }
 
-        # rewards
+        # rewards per firm
+        profits_per_ind = []
+        for counter in range(0, self.n_agents, self.n_firms):
+            profits_per_ind.append(self.profits[counter : counter + self.n_firms])
+        profits_per_ind = [np.mean(elem) for elem in profits_per_ind]
         # print(self.profits)
         self.rew = {
-            f"firm_{i}": (self.profits[i] - self.rew_mean) / self.rew_std
+            f"firm_{i}": (profits_per_ind[self.ind_per_firm[i]] - self.rew_mean)
+            / self.rew_std
             for i in range(self.n_agents)
         }
         # done
@@ -398,7 +403,7 @@ class MonPolicy(MultiAgentEnv):
             np.std(epsilon_g_list),
         ]
 
-        return (mu_ij_stats, rew_stats, mu_stats, epsilon_g_stats)
+        return (mu_ij_stats, rew_stats, epsilon_g_stats)
 
 
 """ TEST AND DEBUG CODE """
@@ -414,7 +419,7 @@ def main():
         "n_firms": n_firms,
         "eval_mode": False,
         "analysis_mode": False,
-        "noagg": False,
+        "no_agg": False,
         "seed_eval": 2000,
         "seed_analisys": 3000,
         "markup_max": 2,
@@ -433,7 +438,7 @@ def main():
         },
     }
 
-    env = MonPolicy(env_config)
+    env = MonPolicyColab(env_config)
     obs = env.reset()
     for i in range(10):
         obs, rew, done, info = env.step(
