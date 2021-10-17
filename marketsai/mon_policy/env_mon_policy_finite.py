@@ -311,10 +311,13 @@ class MonPolicyFinite(MultiAgentEnv):
             for i in range(self.n_agents)
         }
         # done
+        done_ind = 0
         if self.timestep < self.horizon:
             done = {"__all__": False}
+
         else:
             done = {"__all__": True}
+            done_ind = 1
 
         # if self.get_info or self.analysis_mode or self.eval_mode or self.noagg:
 
@@ -325,6 +328,7 @@ class MonPolicyFinite(MultiAgentEnv):
                 "mean_mu_ij": np.mean(self.mu_ij),
                 "log_c": np.log(1 / self.mu),
                 "move_freq": np.mean(self.move_ij),
+                "done": done_ind,
                 "mean_p_change": np.mean(
                     [abs(np.log(elem)) for elem in self.price_changes]
                 ),
@@ -438,7 +442,7 @@ def main():
 
     env = MonPolicyFinite(env_config)
     obs = env.reset()
-    for i in range(10):
+    for i in range(env.horizon):
         obs, rew, done, info = env.step(
             {
                 f"firm_{i}": {

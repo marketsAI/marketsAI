@@ -30,8 +30,8 @@ import json
 """ STEP 0: Experiment configs """
 
 
-DATE = "Oct15_v1_"
-TEST = True
+DATE = "Oct16_v1_"
+TEST = False
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = False
 sn.color_palette("Set2")
@@ -48,12 +48,12 @@ ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [100]
-ITERS_TEST = 4  # number of iteration for test
-ITERS_RUN = 200  # number of iteration for fullrun
+ITERS_TEST = 2  # number of iteration for test
+ITERS_RUN = 5000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
-ENV_HORIZON = 60
+ENV_HORIZON = 36
 BETA = 0.95 ** (1 / 12)  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
@@ -81,7 +81,11 @@ else:
 
 # checkpointing, evaluation during trainging and stopage
 CHKPT_FREQ = 500
-EVAL_INTERVAL = 1
+if TEST:
+    EVAL_INTERVAL = 1
+else:
+    EVAL_INTERVAL = 100
+
 STOP = {"timesteps_total": MAX_STEPS}
 
 # Initialize ray
@@ -129,6 +133,7 @@ class MyCallbacks(DefaultCallbacks):
             "after env reset!"
         )
         episode.user_data["rewards"] = []
+        episode.user_data["done"] = []
         episode.user_data["markup_agg"] = []
         episode.user_data["markup_ij_avge"] = []
         episode.user_data["freq_p_adj"] = []
@@ -152,6 +157,7 @@ class MyCallbacks(DefaultCallbacks):
             mean_p_change = episode.last_info_for("firm_0")["mean_p_change"]
             log_c = episode.last_info_for("firm_0")["log_c"]
             episode.user_data["rewards"].append(rewards)
+            episode.user_data["done"].append(episode.last_info_for("firm_0")["done"])
             episode.user_data["markup_agg"].append(markup)
             episode.user_data["markup_ij_avge"].append(markup_ij_avge)
             episode.user_data["freq_p_adj"].append(move_freq)
@@ -168,6 +174,19 @@ class MyCallbacks(DefaultCallbacks):
         env_index: int,
         **kwargs,
     ):
+        rewards = episode.prev_reward_for("firm_0")
+        markup = episode.last_info_for("firm_0")["mu"]
+        markup_ij_avge = episode.last_info_for("firm_0")["mean_mu_ij"]
+        move_freq = episode.last_info_for("firm_0")["move_freq"]
+        mean_p_change = episode.last_info_for("firm_0")["mean_p_change"]
+        log_c = episode.last_info_for("firm_0")["log_c"]
+        episode.user_data["rewards"].append(rewards)
+        episode.user_data["done"].append(episode.last_info_for("firm_0")["done"])
+        episode.user_data["markup_agg"].append(markup)
+        episode.user_data["markup_ij_avge"].append(markup_ij_avge)
+        episode.user_data["freq_p_adj"].append(move_freq)
+        episode.user_data["size_adj"].append(mean_p_change)
+        episode.user_data["log_c"].append(log_c)
         discounted_rewards = process_rewards(episode.user_data["rewards"])
         mean_markup = np.mean(episode.user_data["markup_agg"])
         mean_markup_ij = np.mean(episode.user_data["markup_ij_avge"])
@@ -175,6 +194,7 @@ class MyCallbacks(DefaultCallbacks):
         size_adj = np.mean(episode.user_data["size_adj"])
         std_log_c = np.std(episode.user_data["log_c"])
         episode.custom_metrics["discounted_rewards"] = discounted_rewards
+        episode.custom_metrics["done"] = max(episode.user_data["done"])
         episode.custom_metrics["mean_markup"] = mean_markup
         episode.custom_metrics["mean_markup_ij"] = mean_markup_ij
         episode.custom_metrics["freq_p_adj"] = mean_freq_p_adj
@@ -212,7 +232,7 @@ env_config = {
 
 env_config_eval = env_config.copy()
 env_config_eval["eval_mode"] = True
-env_config_eval["horizon"] = 60
+# env_config_eval["horizon"] = 60
 
 # we instantiate the environment to extrac relevant info
 " CHANGE HERE "
@@ -311,6 +331,7 @@ checkpoints = []
 configs = []
 learning_dta = []
 rewards = []
+done = []
 mu_ij = []
 freq_p_adj = []
 size_adj = []
@@ -358,6 +379,15 @@ for ind, n_firms in enumerate(n_firms_LIST):
         mode="max",
         num_samples=NUM_TRIALS,
         # resources_per_trial={"gpu": 0.5},
+    )
+
+    done.append(
+        [
+            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
+                "done_mean"
+            ]
+            for i in range(NUM_TRIALS)
+        ]
     )
 
     rewards.append(
@@ -463,6 +493,7 @@ if SAVE_EXP_INFO:
         "checkpoints": checkpoints,
         "progress_csv_dirs": progress_csv_dirs,
         "configs": configs,
+        "done": done,
         "rewards": rewards,
         "mu_ij": mu_ij,
         "freq_p_adj": freq_p_adj,
