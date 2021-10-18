@@ -35,7 +35,8 @@ class MonPolicyColab(MultiAgentEnv):
         self.no_agg = self.env_config.get("no_agg", False)
         self.seed_eval = self.env_config.get("seed_eval", 2000)
         self.seed_analysis = self.env_config.get("seed_analysis", 3000)
-        self.markup_max = self.env_config.get("markup_max", 2)
+        self.markup_min = self.env_config.get("markup_min", 1.2)
+        self.markup_max = self.env_config.get("markup_max", 3)
         self.markup_star = self.env_config.get("markup_star", 1.1)
         self.rew_mean = self.env_config.get("rew_mean", 0)
         self.rew_std = self.env_config.get("rew_std", 1)
@@ -199,10 +200,10 @@ class MonPolicyColab(MultiAgentEnv):
             for i in range(self.n_agents)
         ]
         self.mu_ij_reset = [
-            1
+            self.markup_min
             + (action_dict[f"firm_{i}"]["reset_markup"][0] + 1)
             / 2
-            * (self.markup_max - 1)
+            * (self.markup_max - self.markup_min)
             for i in range(self.n_agents)
         ]
         self.mu_ij = [

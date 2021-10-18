@@ -35,7 +35,8 @@ class MonPolicy(MultiAgentEnv):
         self.no_agg = self.env_config.get("no_agg", False)
         self.seed_eval = self.env_config.get("seed_eval", 2000)
         self.seed_analysis = self.env_config.get("seed_analysis", 3000)
-        self.markup_max = self.env_config.get("markup_max", 2)
+        self.markup_min = self.env_config.get("markup_min", 1.2)
+        self.markup_max = self.env_config.get("markup_max", 3)
         self.markup_star = self.env_config.get("markup_star", 1.1)
         self.rew_mean = self.env_config.get("rew_mean", 0)
         self.rew_std = self.env_config.get("rew_std", 1)
@@ -85,6 +86,9 @@ class MonPolicy(MultiAgentEnv):
                 for t in range(self.horizon + 1)
             }
 
+            self.initial_markup_seeded = [
+                rng.normal(1.3, 0.1) for i in range(self.n_agents)
+            ]
             if self.analysis_mode:
                 self.epsilon_g_seeded = {t: 0 for t in range(self.horizon + 1)}
                 self.epsilon_g_seeded[0] = self.params["sigma_g"]
@@ -125,14 +129,14 @@ class MonPolicy(MultiAgentEnv):
 
         # to evaluate policies, we fix the initial observation
         if self.eval_mode or self.analysis_mode:
-            self.mu_ij_next = [self.markup_star for i in range(self.n_agents)]
+            self.mu_ij_next = self.initial_markup_seeded
             self.epsilon_z = self.epsilon_z_seeded[0]
             self.epsilon_g = self.epsilon_g_seeded[0]
             self.menu_cost = self.menu_cost_seeded[0]
 
         # DEFAULT: when learning, we randomize the initial observations
         else:
-            self.mu_ij_next = [random.uniform(1.05, 1.55) for i in range(self.n_agents)]
+            self.mu_ij_next = [random.uniform(1.2, 1.55) for i in range(self.n_agents)]
             self.epsilon_z = np.random.standard_normal(size=self.n_agents)
             self.epsilon_g = np.random.standard_normal()
             self.menu_cost = [
@@ -203,10 +207,10 @@ class MonPolicy(MultiAgentEnv):
             for i in range(self.n_agents)
         ]
         self.mu_ij_reset = [
-            1
+            self.markup_min
             + (action_dict[f"firm_{i}"]["reset_markup"][0] + 1)
             / 2
-            * (self.markup_max - 1)
+            * (self.markup_max - self.markup_min)
             for i in range(self.n_agents)
         ]
         self.mu_ij = [
@@ -218,7 +222,9 @@ class MonPolicy(MultiAgentEnv):
             self.mu_ij[i] / self.mu_ij_old[i] for i in range(self.n_agents)
         ]
 
-        self.price_changes = filter(lambda x: x != 1, price_change_ij)
+        self.price_changes = list(filter(lambda x: x != 1, price_change_ij))
+        if not self.price_changes:
+            self.price_changes = [1]
 
         # markup per industry:
         mu_perind = []
@@ -421,7 +427,9 @@ def main():
         "noagg": False,
         "seed_eval": 2000,
         "seed_analisys": 3000,
+        "markup_min": 1.2,
         "markup_max": 2,
+        "markup_min": 1.2,
         "markup_start": 1.3,
         "rew_mean": 0,
         "rew_std": 1,

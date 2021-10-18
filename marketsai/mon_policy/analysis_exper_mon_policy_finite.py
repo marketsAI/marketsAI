@@ -1,5 +1,5 @@
 # Imports
-from marketsai.mon_policy.env_mon_policy import MonPolicy
+from marketsai.mon_policy.env_mon_policy_finite import MonPolicyFinite
 import scipy.io as sio
 from scipy.interpolate import RegularGridInterpolator
 from marketsai.utils import encode
@@ -19,17 +19,17 @@ from ray import shutdown, init
 # Script Options
 FOR_PUBLIC = True  # for publication
 SAVE_CSV = False  # save learning CSV
-PLOT_PROGRESS = True  # create plot with progress
+PLOT_PROGRESS = False  # create plot with progress
 SIMUL_PERIODS = 10000
-ENV_HORIZON = 100
+ENV_HORIZON = 12 * 9
 BETA = 0.95 ** (1 / 12)
 
 # register environment
-env_label = "mon_policy"
-register_env(env_label, MonPolicy)
+env_label = "mon_policy_finite"
+register_env(env_label, MonPolicyFinite)
 
 # Input Directories (of json file with experiment data)
-INPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/expINFO_native_mon_policy_2_firms_Oct12_v2PPO_run.json"
+INPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/expINFO_native_mon_policy_2_firms_Oct17_v1_PPO_test.json"
 
 # Output Directories
 if FOR_PUBLIC:
@@ -68,7 +68,7 @@ progress_csv_dirs = exp_data_dict["progress_csv_dirs"]
 results = {
     "discounted_rewards": exp_data_dict["rewards"],
     "E[\mu_{ij}]": exp_data_dict["mu_ij"],
-    "p_adj_freq": exp_data_dict["p_adj_freq"],
+    "p_adj_freq": exp_data_dict["freq_p_adj"],
     "size_adj": exp_data_dict["size_adj"],
 }
 # best_rewards = exp_data_dict["best_rewards"]
@@ -149,8 +149,10 @@ env_config = {
     "seed_eval": 5000,
     "seed_analisys": 3000,
     "no_agg": False,
+    "markup_min": 1.2,
     "markup_max": 2,
-    "markup_start": 1.3,
+    "markup_star": 1.3,
+    "final_stage": 12,
     "rew_mean": 0,
     "rew_std": 1,
     "parameters": {
@@ -168,14 +170,14 @@ env_config = {
 
 env_config_eval = env_config.copy()
 env_config_eval["eval_mode"] = True
-env_config_eval["horizon"] = 5000
+# env_config_eval["horizon"] = ENV_HORIZON
 
 env_config_noagg = env_config_eval.copy()
 env_config_noagg["no_agg"] = True
 
 
 # We instantiate the environment to extract information.
-env = MonPolicy(env_config_eval)
+env = MonPolicyFinite(env_config_eval)
 config_algo = {
     "gamma": BETA,
     "env": env_label,
@@ -183,34 +185,47 @@ config_algo = {
     "horizon": ENV_HORIZON,
     "explore": False,
     "framework": "torch",
+    "multiagent": {
+        "policies": {
+            "firm_even": (
+                None,
+                env.observation_space["firm_0"],
+                env.action_space["firm_0"],
+                {},
+            ),
+            "firm_odd": (
+                None,
+                env.observation_space["firm_0"],
+                env.action_space["firm_0"],
+                {},
+            ),
+        },
+        "policy_mapping_fn": (
+            lambda agent_id: agent_id.split("_")[0] + "_even"
+            if int(agent_id.split("_")[1]) % 2 == 0
+            else agent_id.split("_")[0] + "_odd"
+        ),
+        # "replay_mode": "independent",  # you can change to "lockstep".
+        # OTHERS
+    },
     # "model": {"fcnet_hiddens": [128, 128]}
 }
-""" Step 2.1: restore trainer """
+
 # init ray
 shutdown()
 init(
     log_to_driver=False,
 )
-# restore the trainer
-trained_trainer = PPOTrainer(env=env_label, config=config_algo)
 
-trained_trainer.restore(checkpoints[0])
 
 """ Step 3.0: replicate original environemnt and config """
 
 
 # We instantiate the environment to extract information.
 """ CHANGE HERE """
-env = MonPolicy(env_config_eval)
-env_noagg = MonPolicy(env_config_noagg)
-config_simul = {
-    "gamma": BETA,
-    "env": env_label,
-    "env_config": env_config_eval,
-    "horizon": ENV_HORIZON,
-    "explore": False,
-    "framework": "torch",
-}
+env = MonPolicyFinite(env_config_eval)
+env_noagg = MonPolicyFinite(env_config_noagg)
+
 """ Step 3.1: restore trainer """
 
 simul_results_dict = {
@@ -225,7 +240,7 @@ simul_results_dict = {
 
 # restore the trainer
 for trial in range(len(results["discounted_rewards"])):
-    trained_trainer = PPOTrainer(env=env_label, config=config_simul)
+    trained_trainer = PPOTrainer(env=env_label, config=config_algo)
     trained_trainer.restore(checkpoints[0][trial])
 
     """ Simulate an episode (SIMUL_PERIODS timesteps) """
@@ -243,15 +258,33 @@ for trial in range(len(results["discounted_rewards"])):
 
     # loop with agg
     obs = env.reset()
-    obs_no_agg = env_noagg.reset()
+    obs_noagg = env_noagg.reset()
     for t in range(SIMUL_PERIODS):
-        if t % env.horizon == 0:
+        if t % (env.horizon - env.final_stage) == 0:
+            print(t)
             obs = env.reset()
             obs_noagg = env_noagg.reset()
-        action = trained_trainer.compute_action(obs)
-        action_noagg = trained_trainer.compute_action(obs_noagg)
+        action = {
+            f"firm_{i}": trained_trainer.compute_action(
+                obs[f"firm_{i}"], policy_id="firm_even"
+            )
+            if i % 2 == 0
+            else trained_trainer.compute_action(obs[f"firm_{i}"], policy_id="firm_odd")
+            for i in range(env.n_agents)
+        }
+        action_noagg = {
+            f"firm_{i}": trained_trainer.compute_action(
+                obs_noagg[f"firm_{i}"], policy_id="firm_even"
+            )
+            if i % 2 == 0
+            else trained_trainer.compute_action(
+                obs_noagg[f"firm_{i}"], policy_id="firm_odd"
+            )
+            for i in range(env.n_agents)
+        }
+
         obs, rew, done, info = env.step(action)
-        obs_noagg, rew_noagg, done_noagg, info_noagg = env.step(action_noagg)
+        obs_noagg, rew_noagg, done_noagg, info_noagg = env_noagg.step(action_noagg)
         rew_list.append(info["firm_0"]["mean_profits"])
         mu_ij_list.append(info["firm_0"]["mean_mu_ij"])
         freq_p_adj_list.append(info["firm_0"]["move_freq"])

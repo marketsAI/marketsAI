@@ -31,8 +31,8 @@ import json
 # global configss
 ENV_LABEL = "mon_policy"
 register_env(ENV_LABEL, MonPolicy)
-DATE = "Oct14_v1_"
-TEST = False
+DATE = "Oct17_v1_"
+TEST = True
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = False
 sn.color_palette("Set2")
@@ -49,21 +49,22 @@ ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [100]
-ITERS_TEST = 2  # number of iteration for test
-ITERS_RUN = 2000  # number of iteration for fullrun
+ITERS_TEST = 4  # number of iteration for test
+ITERS_RUN = 1000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
-ENV_HORIZON = 100
+ENV_HORIZON = 12 * 9
+EVAL_HORIZON = 12 * 9
 BETA = 0.95 ** (1 / 12)  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
 NUM_CPUS = 4
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 8
+NUM_TRIALS = 4
 NUM_PAR_TRIALS = 4
-NUM_ROLLOUT = ENV_HORIZON * 1
+NUM_ROLLOUT = ENV_HORIZON * 4
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
@@ -82,7 +83,10 @@ else:
 
 # checkpointing, evaluation during trainging and stopage
 CHKPT_FREQ = 500
-EVAL_INTERVAL = 100
+if TEST:
+    EVAL_INTERVAL = 2
+else:
+    EVAL_INTERVAL = 25
 STOP = {"timesteps_total": MAX_STEPS}
 
 # Initialize ray
@@ -144,18 +148,20 @@ class MyCallbacks(DefaultCallbacks):
         **kwargs,
     ):
         if episode.length > 1:  # at t=0, previous rewards are not defined
-            rewards = episode.prev_reward_for("firm_0")
-            markup = episode.last_info_for("firm_0")["mu"]
-            markup_ij_avge = episode.last_info_for("firm_0")["mean_mu_ij"]
-            move_freq = episode.last_info_for("firm_0")["move_freq"]
-            mean_p_change = episode.last_info_for("firm_0")["mean_p_change"]
-            log_c = episode.last_info_for("firm_0")["log_c"]
-            episode.user_data["rewards"].append(rewards)
-            episode.user_data["markup_agg"].append(markup)
-            episode.user_data["markup_ij_avge"].append(markup_ij_avge)
-            episode.user_data["freq_p_adj"].append(move_freq)
-            episode.user_data["size_adj"].append(mean_p_change)
-            episode.user_data["log_c"].append(log_c)
+            episode.user_data["rewards"].append(episode.prev_reward_for("firm_0"))
+            episode.user_data["markup_agg"].append(
+                episode.last_info_for("firm_0")["mu"]
+            )
+            episode.user_data["markup_ij_avge"].append(
+                episode.last_info_for("firm_0")["mean_mu_ij"]
+            )
+            episode.user_data["freq_p_adj"].append(
+                episode.last_info_for("firm_0")["move_freq"]
+            )
+            episode.user_data["size_adj"].append(
+                episode.last_info_for("firm_0")["mean_p_change"]
+            )
+            episode.user_data["log_c"].append(episode.last_info_for("firm_0")["log_c"])
 
     def on_episode_end(
         self,
@@ -167,18 +173,17 @@ class MyCallbacks(DefaultCallbacks):
         env_index: int,
         **kwargs,
     ):
-        discounted_rewards = process_rewards(episode.user_data["rewards"])
-        mean_markup = np.mean(episode.user_data["markup_agg"])
-        mean_markup_ij = np.mean(episode.user_data["markup_ij_avge"])
-        mean_freq_p_adj = np.mean(episode.user_data["freq_p_adj"])
-        size_adj = np.mean(episode.user_data["size_adj"])
-        std_log_c = np.std(episode.user_data["log_c"])
-        episode.custom_metrics["discounted_rewards"] = discounted_rewards
-        episode.custom_metrics["mean_markup"] = mean_markup
-        episode.custom_metrics["mean_markup_ij"] = mean_markup_ij
-        episode.custom_metrics["freq_p_adj"] = mean_freq_p_adj
-        episode.custom_metrics["size_adj"] = size_adj
-        episode.custom_metrics["std_log_c"] = std_log_c
+
+        episode.custom_metrics["discounted_rewards"] = process_rewards(
+            episode.user_data["rewards"]
+        )
+        episode.custom_metrics["mean_markup"] = np.mean(episode.user_data["markup_agg"])
+        episode.custom_metrics["mean_markup_ij"] = np.mean(
+            episode.user_data["markup_ij_avge"]
+        )
+        episode.custom_metrics["freq_p_adj"] = np.mean(episode.user_data["freq_p_adj"])
+        episode.custom_metrics["size_adj"] = np.mean(episode.user_data["size_adj"])
+        episode.custom_metrics["std_log_c"] = np.std(episode.user_data["log_c"])
 
 
 """ STEP 3: Environment and Algorithm configuration """
@@ -211,7 +216,7 @@ env_config = {
 
 env_config_eval = env_config.copy()
 env_config_eval["eval_mode"] = True
-env_config_eval["horizon"] = 5000
+env_config_eval["horizon"] = EVAL_HORIZON
 
 # we instantiate the environment to extrac relevant info
 " CHANGE HERE "
@@ -248,20 +253,31 @@ common_config = {
     "evaluation_interval": EVAL_INTERVAL,
     "evaluation_num_episodes": 1,
     "evaluation_config": {
+        "horizon": EVAL_HORIZON,
         "explore": False,
         "env_config": env_config_eval,
     },
     # MULTIAGENT,
     "multiagent": {
         "policies": {
-            "firm": (
+            "firm_even": (
+                None,
+                env.observation_space["firm_0"],
+                env.action_space["firm_0"],
+                {},
+            ),
+            "firm_odd": (
                 None,
                 env.observation_space["firm_0"],
                 env.action_space["firm_0"],
                 {},
             ),
         },
-        "policy_mapping_fn": (lambda agent_id: agent_id.split("_")[0]),
+        "policy_mapping_fn": (
+            lambda agent_id: agent_id.split("_")[0] + "_even"
+            if int(agent_id.split("_")[1]) % 2 == 0
+            else agent_id.split("_")[0] + "_odd"
+        ),
         # "replay_mode": "independent",  # you can change to "lockstep".
         # OTHERS
     },
@@ -308,12 +324,10 @@ trial_logdirs = []
 exp_dirs = []
 checkpoints = []
 configs = []
-learning_dta = []
 rewards = []
 mu_ij = []
 freq_p_adj = []
 size_adj = []
-
 
 # RUN TRAINER
 env_configs = []
@@ -334,15 +348,24 @@ for ind, n_firms in enumerate(n_firms_LIST):
     training_config["evaluation_config"]["env_config"] = env_config_eval
     training_config["multiagent"] = {
         "policies": {
-            "firm": (
+            "firm_even": (
+                None,
+                env.observation_space["firm_0"],
+                env.action_space["firm_0"],
+                {},
+            ),
+            "firm_odd": (
                 None,
                 env.observation_space["firm_0"],
                 env.action_space["firm_0"],
                 {},
             ),
         },
-        "policy_mapping_fn": (lambda agent_id: agent_id.split("_")[0]),
-        # "replay_mode": "independent",  # you can change to "lockstep".
+        "policy_mapping_fn": (
+            lambda agent_id: agent_id.split("_")[0] + "_even"
+            if int(agent_id.split("_")[1]) % 2 == 0
+            else agent_id.split("_")[0] + "_odd"
+        ),
     }
 
     analysis = tune.run(
@@ -411,28 +434,28 @@ for ind, n_firms in enumerate(n_firms_LIST):
     #         ["episodes_total", "evaluation/custom_metrics/discounted_rewards_mean"]
     #     ]
     # )
-    learning_dta.append(
-        [
-            list(analysis.trial_dataframes.values())[i][
-                [
-                    "episodes_total",
-                    "evaluation/custom_metrics/discounted_rewards_mean",
-                    "evaluation/custom_metrics/mean_markup_ij_mean",
-                    "evaluation/custom_metrics/freq_p_adj_mean",
-                    "evaluation/custom_metrics/size_adj_mean",
-                ]
-            ]
-            for i in range(NUM_TRIALS)
-        ]
-    )
-    for i in range(NUM_TRIALS):
-        learning_dta[ind][i].columns = [
-            "episodes_total",
-            f"discounted_rewards_trial_{i}",
-            f"mu_ij_mean_{i}",
-            f"freq_p_adj_{i}",
-            f"size_adj_mean_{i}",
-        ]
+    # learning_dta.append(
+    #     [
+    #         list(analysis.trial_dataframes.values())[i][
+    #             [
+    #                 "episodes_total",
+    #                 "evaluation/custom_metrics/discounted_rewards_mean",
+    #                 "evaluation/custom_metrics/mean_markup_ij_mean",
+    #                 "evaluation/custom_metrics/freq_p_adj_mean",
+    #                 "evaluation/custom_metrics/size_adj_mean",
+    #             ]
+    #         ]
+    #         for i in range(NUM_TRIALS)
+    #     ]
+    # )
+    # for i in range(NUM_TRIALS):
+    #     learning_dta[ind][i].columns = [
+    #         "episodes_total",
+    #         f"discounted_rewards_trial_{i}",
+    #         f"mu_ij_mean_{i}",
+    #         f"freq_p_adj_{i}",
+    #         f"size_adj_mean_{i}",
+    #     ]
 
 
 """ STEP 5 (optional): Organize and Plot multi firm expers """
@@ -493,15 +516,6 @@ if PLOT_PROGRESS:
     learning_plot.savefig(OUTPUT_PATH_FIGURES + "progress_" + EXP_NAME + ".png")
     plt.show()
 
-# Save progress as CSV
-if SAVE_PROGRESS_CSV:
-    # merge data
-    for i in range(len(exp_names)):
-        learning_dta_local = [df.set_index("episodes_total") for df in learning_dta[i]]
-        learning_dta_merged = pd.concat(learning_dta_local, axis=1)
-        learning_dta_merged.to_csv(
-            OUTPUT_PATH_EXPERS + "progress_" + exp_names[i] + ".csv"
-        )
 
 # """ STEP 6: run multi industry experiment """
 

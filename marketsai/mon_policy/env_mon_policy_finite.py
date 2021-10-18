@@ -26,7 +26,7 @@ class MonPolicyFinite(MultiAgentEnv):
         self.env_config = env_config
 
         # GLOBAL ENV CONFIGS
-        self.horizon = self.env_config.get("horizon", 100)
+        self.horizon = self.env_config.get("horizon", 60)
         self.n_firms = self.env_config.get("n_firms", 2)
         self.n_inds = self.env_config.get("n_inds", 2)
         self.n_agents = self.n_firms * self.n_inds
@@ -35,8 +35,10 @@ class MonPolicyFinite(MultiAgentEnv):
         self.no_agg = self.env_config.get("no_agg", False)
         self.seed_eval = self.env_config.get("seed_eval", 2000)
         self.seed_analysis = self.env_config.get("seed_analysis", 3000)
-        self.markup_max = self.env_config.get("markup_max", 2)
-        self.markup_star = self.env_config.get("markup_star", 1.1)
+        self.markup_min = self.env_config.get("markup_min", 1.2)
+        self.markup_max = self.env_config.get("markup_max", 3)
+        self.markup_star = self.env_config.get("markup_star", 1.3)
+        self.final_stage = self.env_config.get("final_stage", 1)
         self.rew_mean = self.env_config.get("rew_mean", 0)
         self.rew_std = self.env_config.get("rew_std", 1)
 
@@ -84,6 +86,13 @@ class MonPolicyFinite(MultiAgentEnv):
                 ]
                 for t in range(self.horizon + 1)
             }
+            self.initial_markup_seeded = [
+                rng.normal(1.3, 0.1) for i in range(self.n_agents)
+            ]
+
+            if self.analysis_mode:
+                self.epsilon_g_seeded = {t: 0 for t in range(self.horizon + 1)}
+                self.epsilon_g_seeded[0] = self.params["sigma_g"]
 
         # CREATE SPACES
 
@@ -124,14 +133,14 @@ class MonPolicyFinite(MultiAgentEnv):
 
         # to evaluate policies, we fix the initial observation
         if self.eval_mode or self.analysis_mode:
-            self.mu_ij_next = [self.markup_star for i in range(self.n_agents)]
+            self.mu_ij_next = self.initial_markup_seeded
             self.epsilon_z = self.epsilon_z_seeded[0]
             self.epsilon_g = self.epsilon_g_seeded[0]
             self.menu_cost = self.menu_cost_seeded[0]
 
         # DEFAULT: when learning, we randomize the initial observations
         else:
-            self.mu_ij_next = [random.uniform(1.05, 1.55) for i in range(self.n_agents)]
+            self.mu_ij_next = [random.uniform(1.2, 1.55) for i in range(self.n_agents)]
             self.epsilon_z = np.random.standard_normal(size=self.n_agents)
             self.epsilon_g = np.random.standard_normal()
             self.menu_cost = [
@@ -202,22 +211,28 @@ class MonPolicyFinite(MultiAgentEnv):
             for i in range(self.n_agents)
         ]
         self.mu_ij_reset = [
-            1
+            self.markup_min
             + (action_dict[f"firm_{i}"]["reset_markup"][0] + 1)
             / 2
-            * (self.markup_max - 1)
+            * (self.markup_max - self.markup_min)
             for i in range(self.n_agents)
         ]
-        self.mu_ij = [
-            self.mu_ij_reset[i] if self.move_ij[i] else self.mu_ij_old[i]
-            for i in range(self.n_agents)
-        ]
+        if self.timestep < self.horizon - self.final_stage:
+            self.mu_ij = [
+                self.mu_ij_reset[i] if self.move_ij[i] else self.mu_ij_old[i]
+                for i in range(self.n_agents)
+            ]
+        else:
+            self.mu_ij = [self.markup_min for i in range(self.n_agents)]
 
         price_change_ij = [
             self.mu_ij[i] / self.mu_ij_old[i] for i in range(self.n_agents)
         ]
 
-        self.price_changes = filter(lambda x: x != 1, price_change_ij)
+        self.price_changes = list(filter(lambda x: x != 1, price_change_ij))
+
+        if not self.price_changes:
+            self.price_changes = [1]
 
         # markup per industry:
         mu_perind = []
@@ -328,7 +343,6 @@ class MonPolicyFinite(MultiAgentEnv):
                 "mean_mu_ij": np.mean(self.mu_ij),
                 "log_c": np.log(1 / self.mu),
                 "move_freq": np.mean(self.move_ij),
-                "done": done_ind,
                 "mean_p_change": np.mean(
                     [abs(np.log(elem)) for elem in self.price_changes]
                 ),
@@ -416,7 +430,7 @@ def main():
     n_firms = 2
     n_inds = 2
     env_config = {
-        "horizon": 100,
+        "horizon": 60,
         "n_inds": n_inds,
         "n_firms": n_firms,
         "eval_mode": False,
@@ -424,8 +438,10 @@ def main():
         "noagg": False,
         "seed_eval": 2000,
         "seed_analisys": 3000,
-        "markup_max": 2,
+        "markup_min": 1.2,
+        "markup_max": 3,
         "markup_start": 1.3,
+        "final_stage": 1,
         "rew_mean": 0,
         "rew_std": 1,
         "parameters": {
@@ -454,9 +470,11 @@ def main():
                 for i in range(env.n_agents)
             }
         )
-        print(obs, "\n", rew, "\n", done, "\n", info)
+        print(env.price_changes)
+        print(info["firm_0"]["mean_p_change"])
+        # print(obs, "\n", rew, "\n", done, "\n", info)
 
-    print(env.random_sample(1000))
+    # print(env.random_sample(1000))
 
 
 if __name__ == "__main__":

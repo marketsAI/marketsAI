@@ -30,7 +30,7 @@ import json
 """ STEP 0: Experiment configs """
 
 
-DATE = "Oct16_v1_"
+DATE = "Oct17_v2_"
 TEST = False
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = False
@@ -48,21 +48,21 @@ ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [100]
-ITERS_TEST = 2  # number of iteration for test
-ITERS_RUN = 5000  # number of iteration for fullrun
+ITERS_TEST = 100  # number of iteration for test
+ITERS_RUN = 1000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
-ENV_HORIZON = 48
+ENV_HORIZON = 12 * 6
 BETA = 0.95 ** (1 / 12)  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
 NUM_CPUS = 4
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 8
+NUM_TRIALS = 4
 NUM_PAR_TRIALS = 4
-NUM_ROLLOUT = ENV_HORIZON * 1
+NUM_ROLLOUT = ENV_HORIZON * 4
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
@@ -80,11 +80,11 @@ else:
     MAX_STEPS = ITERS_RUN * BATCH_SIZE
 
 # checkpointing, evaluation during trainging and stopage
-CHKPT_FREQ = 500
+CHKPT_FREQ = 100
 if TEST:
-    EVAL_INTERVAL = 1
+    EVAL_INTERVAL = 10
 else:
-    EVAL_INTERVAL = 100
+    EVAL_INTERVAL = 25
 
 STOP = {"timesteps_total": MAX_STEPS}
 
@@ -150,19 +150,20 @@ class MyCallbacks(DefaultCallbacks):
         **kwargs,
     ):
         if episode.length > 1:  # at t=0, previous rewards are not defined
-            rewards = episode.prev_reward_for("firm_0")
-            markup = episode.last_info_for("firm_0")["mu"]
-            markup_ij_avge = episode.last_info_for("firm_0")["mean_mu_ij"]
-            move_freq = episode.last_info_for("firm_0")["move_freq"]
-            mean_p_change = episode.last_info_for("firm_0")["mean_p_change"]
-            log_c = episode.last_info_for("firm_0")["log_c"]
-            episode.user_data["rewards"].append(rewards)
-            episode.user_data["done"].append(episode.last_info_for("firm_0")["done"])
-            episode.user_data["markup_agg"].append(markup)
-            episode.user_data["markup_ij_avge"].append(markup_ij_avge)
-            episode.user_data["freq_p_adj"].append(move_freq)
-            episode.user_data["size_adj"].append(mean_p_change)
-            episode.user_data["log_c"].append(log_c)
+            episode.user_data["rewards"].append(episode.prev_reward_for("firm_0"))
+            episode.user_data["markup_agg"].append(
+                episode.last_info_for("firm_0")["mu"]
+            )
+            episode.user_data["markup_ij_avge"].append(
+                episode.last_info_for("firm_0")["mean_mu_ij"]
+            )
+            episode.user_data["freq_p_adj"].append(
+                episode.last_info_for("firm_0")["move_freq"]
+            )
+            episode.user_data["size_adj"].append(
+                episode.last_info_for("firm_0")["mean_p_change"]
+            )
+            episode.user_data["log_c"].append(episode.last_info_for("firm_0")["log_c"])
 
     def on_episode_end(
         self,
@@ -174,32 +175,16 @@ class MyCallbacks(DefaultCallbacks):
         env_index: int,
         **kwargs,
     ):
-        rewards = episode.prev_reward_for("firm_0")
-        markup = episode.last_info_for("firm_0")["mu"]
-        markup_ij_avge = episode.last_info_for("firm_0")["mean_mu_ij"]
-        move_freq = episode.last_info_for("firm_0")["move_freq"]
-        mean_p_change = episode.last_info_for("firm_0")["mean_p_change"]
-        log_c = episode.last_info_for("firm_0")["log_c"]
-        episode.user_data["rewards"].append(rewards)
-        episode.user_data["done"].append(episode.last_info_for("firm_0")["done"])
-        episode.user_data["markup_agg"].append(markup)
-        episode.user_data["markup_ij_avge"].append(markup_ij_avge)
-        episode.user_data["freq_p_adj"].append(move_freq)
-        episode.user_data["size_adj"].append(mean_p_change)
-        episode.user_data["log_c"].append(log_c)
-        discounted_rewards = process_rewards(episode.user_data["rewards"])
-        mean_markup = np.mean(episode.user_data["markup_agg"])
-        mean_markup_ij = np.mean(episode.user_data["markup_ij_avge"])
-        mean_freq_p_adj = np.mean(episode.user_data["freq_p_adj"])
-        size_adj = np.mean(episode.user_data["size_adj"])
-        std_log_c = np.std(episode.user_data["log_c"])
-        episode.custom_metrics["discounted_rewards"] = discounted_rewards
-        episode.custom_metrics["done"] = max(episode.user_data["done"])
-        episode.custom_metrics["mean_markup"] = mean_markup
-        episode.custom_metrics["mean_markup_ij"] = mean_markup_ij
-        episode.custom_metrics["freq_p_adj"] = mean_freq_p_adj
-        episode.custom_metrics["size_adj"] = size_adj
-        episode.custom_metrics["std_log_c"] = std_log_c
+        episode.custom_metrics["discounted_rewards"] = process_rewards(
+            episode.user_data["rewards"]
+        )
+        episode.custom_metrics["mean_markup"] = np.mean(episode.user_data["markup_agg"])
+        episode.custom_metrics["mean_markup_ij"] = np.mean(
+            episode.user_data["markup_ij_avge"]
+        )
+        episode.custom_metrics["freq_p_adj"] = np.mean(episode.user_data["freq_p_adj"])
+        episode.custom_metrics["size_adj"] = np.mean(episode.user_data["size_adj"])
+        episode.custom_metrics["std_log_c"] = np.std(episode.user_data["log_c"])
 
 
 """ STEP 3: Environment and Algorithm configuration """
@@ -211,15 +196,17 @@ env_config = {
     "n_firms": n_firms_LIST[0],
     "eval_mode": False,
     "analysis_mode": False,
-    "no_agg": False,
-    "seed_eval": 5000,
+    "noagg": False,
+    "seed_eval": 2000,
     "seed_analisys": 3000,
+    "markup_min": 1.2,
     "markup_max": 2,
-    "markup_start": 1.3,
+    "markup_star": 1.3,
+    "final_stage": 12,
     "rew_mean": 0,
     "rew_std": 1,
     "parameters": {
-        "beta": BETA,
+        "beta": 0.95 ** (1 / 12),
         "log_g_bar": 0.0021,
         "rho_g": 0.61,
         "sigma_g": 0.0019,
@@ -229,6 +216,7 @@ env_config = {
         "sigma_z": 0.038,
     },
 }
+
 
 env_config_eval = env_config.copy()
 env_config_eval["eval_mode"] = True
@@ -275,14 +263,24 @@ common_config = {
     # MULTIAGENT,
     "multiagent": {
         "policies": {
-            "firm": (
+            "firm_even": (
+                None,
+                env.observation_space["firm_0"],
+                env.action_space["firm_0"],
+                {},
+            ),
+            "firm_odd": (
                 None,
                 env.observation_space["firm_0"],
                 env.action_space["firm_0"],
                 {},
             ),
         },
-        "policy_mapping_fn": (lambda agent_id: agent_id.split("_")[0]),
+        "policy_mapping_fn": (
+            lambda agent_id: agent_id.split("_")[0] + "_even"
+            if int(agent_id.split("_")[1]) % 2 == 0
+            else agent_id.split("_")[0] + "_odd"
+        ),
         # "replay_mode": "independent",  # you can change to "lockstep".
         # OTHERS
     },
@@ -291,7 +289,7 @@ common_config = {
 # Configs specific to the chosel algorithms, INCLUDING THE LEARNING RATE
 ppo_config = {
     # "lr": 0.0001,
-    "lr_schedule": [[0, 0.00005], [50000, 0.00001]],
+    "lr_schedule": [[0, 0.00005], [100000, 0.00001]],
     # "lr_schedule": tune.grid_search(
     #     [
     #         [[0, 0.00005], [50000, 0.00001]],
@@ -349,23 +347,44 @@ for ind, n_firms in enumerate(n_firms_LIST):
 
     env_config["n_firms"] = n_firms
     env_config_eval["n_firms"] = n_firms
-
-    """ CHANGE HERE """
-    env = MonPolicyFinite(env_config)
-    training_config["env_config"] = env_config
-    training_config["evaluation_config"]["env_config"] = env_config_eval
     training_config["multiagent"] = {
         "policies": {
-            "firm": (
+            "firm_even": (
+                None,
+                env.observation_space["firm_0"],
+                env.action_space["firm_0"],
+                {},
+            ),
+            "firm_odd": (
                 None,
                 env.observation_space["firm_0"],
                 env.action_space["firm_0"],
                 {},
             ),
         },
-        "policy_mapping_fn": (lambda agent_id: agent_id.split("_")[0]),
-        # "replay_mode": "independent",  # you can change to "lockstep".
+        "policy_mapping_fn": (
+            lambda agent_id: agent_id.split("_")[0] + "_even"
+            if int(agent_id.split("_")[1]) % 2 == 0
+            else agent_id.split("_")[0] + "_odd"
+        ),
     }
+
+    """ CHANGE HERE """
+    env = MonPolicyFinite(env_config)
+    training_config["env_config"] = env_config
+    training_config["evaluation_config"]["env_config"] = env_config_eval
+    # training_config["multiagent"] = {
+    #     "policies": {
+    #         "firm": (
+    #             None,
+    #             env.observation_space["firm_0"],
+    #             env.action_space["firm_0"],
+    #             {},
+    #         ),
+    #     },
+    #     "policy_mapping_fn": (lambda agent_id: agent_id.split("_")[0]),
+    #     # "replay_mode": "independent",  # you can change to "lockstep".
+    # }
 
     analysis = tune.run(
         ALGO,
@@ -379,15 +398,6 @@ for ind, n_firms in enumerate(n_firms_LIST):
         mode="max",
         num_samples=NUM_TRIALS,
         # resources_per_trial={"gpu": 0.5},
-    )
-
-    done.append(
-        [
-            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
-                "done_mean"
-            ]
-            for i in range(NUM_TRIALS)
-        ]
     )
 
     rewards.append(
