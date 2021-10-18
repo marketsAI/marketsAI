@@ -2,6 +2,7 @@
 from marketsai.mon_policy.env_mon_policy import MonPolicy
 import scipy.io as sio
 from scipy.interpolate import RegularGridInterpolator
+from scipy.stats import linregress
 from marketsai.utils import encode
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -22,7 +23,7 @@ from ray import shutdown, init
 FOR_PUBLIC = True  # for publication
 SAVE_CSV = False  # save learning CSV
 PLOT_PROGRESS = False  # create plot with progress
-SIMUL_PERIODS = 10000
+SIMUL_PERIODS = 120
 ENV_HORIZON = 120
 BETA = 0.95 ** (1 / 12)
 
@@ -68,10 +69,10 @@ exp_names = exp_data_dict["exp_names"]
 checkpoints = exp_data_dict["checkpoints"]
 progress_csv_dirs = exp_data_dict["progress_csv_dirs"]
 results = {
-    "discounted_rewards": exp_data_dict["rewards"],
-    "E[\mu_{ij}]": exp_data_dict["mu_ij"],
-    "p_adj_freq": exp_data_dict["freq_p_adj"],
-    "size_adj": exp_data_dict["size_adj"],
+    "discounted_rewards": exp_data_dict["rewards"][0],
+    "E[\mu_{ij}]": exp_data_dict["mu_ij"][0],
+    "p_adj_freq": exp_data_dict["freq_p_adj"][0],
+    "size_adj": exp_data_dict["size_adj"][0],
 }
 # best_rewards = exp_data_dict["best_rewards"]
 
@@ -212,16 +213,12 @@ config_algo = {
     # "model": {"fcnet_hiddens": [128, 128]}
 }
 
-# init ray
+
+""" Step 3.0: replicate original environemnt and config """
 shutdown()
 init(
     log_to_driver=False,
 )
-
-
-""" Step 3.0: replicate original environemnt and config """
-
-
 # We instantiate the environment to extract information.
 """ CHANGE HERE """
 env = MonPolicy(env_config_eval)
@@ -240,6 +237,7 @@ simul_results_dict = {
 }
 
 # restore the trainer
+print(len(results["discounted_rewards"]))
 for trial in range(len(results["discounted_rewards"])):
     trained_trainer = PPOTrainer(env=env_label, config=config_algo)
     trained_trainer.restore(checkpoints[0][trial])
@@ -301,10 +299,12 @@ for trial in range(len(results["discounted_rewards"])):
     log_c_filt_list = [
         log_c_list[t] - log_c_list_noagg[t] for t in range(SIMUL_PERIODS)
     ]
-    IRs = [0 for t in range(1, 12)]
-    for t in range(1, 12):
-        IRs[t] = 0
-    cum_IRs = [np.sum(IRs[:t]) for t in range(1, 12)]
+    delta_log_c = [j - i for i, j in zip(log_c_filt_list[:-1], log_c_filt_list[1:])]
+    IRs = [0 for t in range(0, 12)]
+    for t in range(0, 12):
+        slope = linregress(delta_log_c[t:], epsilon_g_list[: SIMUL_PERIODS - (t + 1)])
+        IRs[t] = slope
+    cum_IRs = [np.sum(IRs[:t]) for t in range(12)]
     simul_results_dict["trial"].append(trial)
     simul_results_dict["discounted_rewards"].append(process_rewards(rew_list, 0.98))
     simul_results_dict["mu_ij"].append(np.mean(mu_ij_list))
@@ -314,3 +314,5 @@ for trial in range(len(results["discounted_rewards"])):
     simul_results_dict["log_c_std"].append(np.std(log_c_filt_list))
 
     print(f"trial_{trial}", "std_log_c", np.std(log_c_filt_list))
+
+shutdown()

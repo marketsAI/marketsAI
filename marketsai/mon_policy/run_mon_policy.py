@@ -32,7 +32,7 @@ import json
 ENV_LABEL = "mon_policy"
 register_env(ENV_LABEL, MonPolicy)
 DATE = "Oct17_v1_"
-TEST = True
+TEST = False
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = False
 sn.color_palette("Set2")
@@ -49,13 +49,13 @@ ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [100]
-ITERS_TEST = 4  # number of iteration for test
-ITERS_RUN = 1000  # number of iteration for fullrun
+ITERS_TEST = 10  # number of iteration for test
+ITERS_RUN = 400  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
-ENV_HORIZON = 12 * 9
-EVAL_HORIZON = 12 * 9
+ENV_HORIZON = 12 * 10
+EVAL_HORIZON = 12 * 10
 BETA = 0.95 ** (1 / 12)  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
@@ -82,11 +82,11 @@ else:
     MAX_STEPS = ITERS_RUN * BATCH_SIZE
 
 # checkpointing, evaluation during trainging and stopage
-CHKPT_FREQ = 500
+CHKPT_FREQ = 200
 if TEST:
-    EVAL_INTERVAL = 2
+    EVAL_INTERVAL = 5
 else:
-    EVAL_INTERVAL = 25
+    EVAL_INTERVAL = 50
 STOP = {"timesteps_total": MAX_STEPS}
 
 # Initialize ray
@@ -502,19 +502,19 @@ if SAVE_EXP_INFO:
     print(OUTPUT_PATH_EXPERS + "expINFO_" + EXP_NAME + ".json")
 
 # Plot and save progress
-if PLOT_PROGRESS:
-    for ind, n_firms in enumerate(n_firms_LIST):
-        learning_plot = sn.lineplot(
-            data=learning_dta[ind],
-            y=f"discounted_rewards_trial_0",
-            x="episodes_total",
-        )
-    learning_plot = learning_plot.get_figure()
-    plt.ylabel("Discounted utility")
-    plt.xlabel("Timesteps (thousands)")
-    plt.legend(labels=[f"{i} firms" for i in n_firms_LIST])
-    learning_plot.savefig(OUTPUT_PATH_FIGURES + "progress_" + EXP_NAME + ".png")
-    plt.show()
+# if PLOT_PROGRESS:
+#     for ind, n_firms in enumerate(n_firms_LIST):
+#         learning_plot = sn.lineplot(
+#             data=learning_dta[ind],
+#             y=f"discounted_rewards_trial_0",
+#             x="episodes_total",
+#         )
+#     learning_plot = learning_plot.get_figure()
+#     plt.ylabel("Discounted utility")
+#     plt.xlabel("Timesteps (thousands)")
+#     plt.legend(labels=[f"{i} firms" for i in n_firms_LIST])
+#     learning_plot.savefig(OUTPUT_PATH_FIGURES + "progress_" + EXP_NAME + ".png")
+#     plt.show()
 
 
 # """ STEP 6: run multi industry experiment """
