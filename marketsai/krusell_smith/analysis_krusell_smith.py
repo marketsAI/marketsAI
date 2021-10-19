@@ -89,7 +89,7 @@ k_agg_list = [[] for i in n_agents_list]
 shock_agg_list = [[] for i in n_agents_list]
 init()
 for ind, n_hh in enumerate(n_agents_list):
-    """ Step 2.0: replicate original environemnt and config """
+    """Step 2.0: replicate original environemnt and config"""
     env_label = "cap_market"
     register_env(env_label, CapitalMarket)
     env_horizon = 1000

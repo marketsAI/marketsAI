@@ -97,7 +97,7 @@ shock_agg_list = [[] for i in n_agents_list]
 
 
 for ind, n_hh in enumerate(n_agents_list):
-    """ Step 2.0: replicate original environemnt and config """
+    """Step 2.0: replicate original environemnt and config"""
     env_label = "capital_const_plan"
     register_env(env_label, CapitalConstPlan)
     env_horizon = 1000
