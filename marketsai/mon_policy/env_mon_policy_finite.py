@@ -217,13 +217,18 @@ class MonPolicyFinite(MultiAgentEnv):
             * (self.markup_max - self.markup_min)
             for i in range(self.n_agents)
         ]
-        if self.timestep < self.horizon - self.final_stage:
-            self.mu_ij = [
-                self.mu_ij_reset[i] if self.move_ij[i] else self.mu_ij_old[i]
-                for i in range(self.n_agents)
-            ]
-        else:
-            self.mu_ij = [self.markup_min for i in range(self.n_agents)]
+        # if self.timestep < self.horizon - self.final_stage:
+        #     self.mu_ij = [
+        #         self.mu_ij_reset[i] if self.move_ij[i] else self.mu_ij_old[i]
+        #         for i in range(self.n_agents)
+        #     ]
+        # else:
+        #     self.mu_ij = [self.markup_min for i in range(self.n_agents)]
+
+        self.mu_ij = [
+            self.mu_ij_reset[i] if self.move_ij[i] else self.mu_ij_old[i]
+            for i in range(self.n_agents)
+        ]
 
         price_change_ij = [
             self.mu_ij[i] / self.mu_ij_old[i] for i in range(self.n_agents)
@@ -271,10 +276,13 @@ class MonPolicyFinite(MultiAgentEnv):
         else:
             self.epsilon_z = np.random.standard_normal(size=self.n_agents)
             self.epsilon_g = np.random.standard_normal()
-            self.menu_cost = [
-                random.uniform(0, self.params["menu_cost"])
-                for i in range(self.n_agents)
-            ]
+            if self.timestep < self.horizon - self.final_stage:
+                self.menu_cost = [
+                    random.uniform(0, self.params["menu_cost"])
+                    for i in range(self.n_agents)
+                ]
+            else:
+                self.menu_cost = [0 for i in range(self.n_agents)]
 
         if self.no_agg:
             self.epsilon_g = 0
@@ -326,13 +334,11 @@ class MonPolicyFinite(MultiAgentEnv):
             for i in range(self.n_agents)
         }
         # done
-        done_ind = 0
         if self.timestep < self.horizon:
             done = {"__all__": False}
 
         else:
             done = {"__all__": True}
-            done_ind = 1
 
         # if self.get_info or self.analysis_mode or self.eval_mode or self.noagg:
 

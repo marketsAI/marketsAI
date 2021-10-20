@@ -33,6 +33,7 @@ class MonPolicy(MultiAgentEnv):
         self.eval_mode = self.env_config.get("eval_mode", False)
         self.analysis_mode = self.env_config.get("analysis_mode", False)
         self.no_agg = self.env_config.get("no_agg", False)
+        self.obs_idshock = self.env_config.get("obs_idshock", False)
         self.seed_eval = self.env_config.get("seed_eval", 2000)
         self.seed_analysis = self.env_config.get("seed_analysis", 3000)
         self.markup_min = self.env_config.get("markup_min", 1.2)
@@ -106,16 +107,38 @@ class MonPolicy(MultiAgentEnv):
         }
 
         self.n_obs_markups = self.n_firms
+        self.n_obs_shocks = self.n_firms
         self.n_obs_agg = 2
-        self.observation_space = {
-            f"firm_{i}": Box(
-                low=np.array([0 for i in range(self.n_firms)] + [0, 0]),
-                high=np.array([10 for i in range(self.n_firms)] + [5, np.float("inf")]),
-                shape=(self.n_obs_markups + self.n_obs_agg,),
-                dtype=np.float32,
-            )
-            for i in range(self.n_agents)
-        }
+        if self.obs_idshock:
+            self.observation_space = {
+                f"firm_{i}": Box(
+                    low=np.array(
+                        [0 for i in range(self.n_firms)]
+                        + [0 for i in range(self.n_firms)]
+                        + [0, 0]
+                    ),
+                    high=np.array(
+                        [10 for i in range(self.n_firms)]
+                        + [np.float("inf") for i in range(self.n_firms)]
+                        + [5, np.float("inf")]
+                    ),
+                    shape=(self.n_obs_markups + self.n_obs_shocks + self.n_obs_agg,),
+                    dtype=np.float32,
+                )
+                for i in range(self.n_agents)
+            }
+        else:
+            self.observation_space = {
+                f"firm_{i}": Box(
+                    low=np.array([0 for i in range(self.n_firms)] + [0, 0]),
+                    high=np.array(
+                        [10 for i in range(self.n_firms)] + [5, np.float("inf")]
+                    ),
+                    shape=(self.n_obs_markups + self.n_obs_agg,),
+                    dtype=np.float32,
+                )
+                for i in range(self.n_agents)
+            }
         self.timestep = None
 
     def reset(self):
@@ -155,8 +178,22 @@ class MonPolicy(MultiAgentEnv):
         self.g = math.e ** self.log_g
         # mu vector per industry:
         mu_perind = []
+
         for counter in range(0, self.n_agents, self.n_firms):
             mu_perind.append(self.mu_ij_next[counter : counter + self.n_firms])
+        if self.obs_idshock:
+            self.z = [math.e ** self.log_z[i] for i in range(self.n_agents)]
+            z_perind = []
+            for counter in range(0, self.n_agents, self.n_firms):
+                z_perind.append(self.z[counter : counter + self.n_firms])
+            z_obsperfirm = [[] for i in range(self.n_agents)]
+            for i in range(self.n_agents):
+                z_obsperfirm[i] = [self.z[i]] + [
+                    x
+                    for z, x in enumerate(z_perind[self.ind_per_firm[i]])
+                    if z != i % self.n_firms
+                ]
+
         # collapse to markup index:
         self.mu_j = [
             np.sum([i ** (1 - self.params["eta"]) for i in elem])
@@ -180,13 +217,22 @@ class MonPolicy(MultiAgentEnv):
             ]
 
         # create Dictionary wtih agents as keys and with Tuple spaces as values
-        self.obs_next = {
-            f"firm_{i}": np.array(
-                mu_obsperfirm[i] + [self.mu, self.g],
-                dtype=np.float32,
-            )
-            for i in range(self.n_agents)
-        }
+        if self.obs_idshock:
+            self.obs_next = {
+                f"firm_{i}": np.array(
+                    mu_obsperfirm[i] + z_obsperfirm[i] + [self.mu, self.g],
+                    dtype=np.float32,
+                )
+                for i in range(self.n_agents)
+            }
+        else:
+            self.obs_next = {
+                f"firm_{i}": np.array(
+                    mu_obsperfirm[i] + [self.mu, self.g],
+                    dtype=np.float32,
+                )
+                for i in range(self.n_agents)
+            }
 
         return self.obs_next
 
@@ -236,6 +282,14 @@ class MonPolicy(MultiAgentEnv):
             ** (1 / (1 - self.params["eta"]))
             for elem in mu_perind
         ]
+
+        # identify high and low markup firms:
+        mu_j_max = [np.max(elem) for elem in mu_perind]
+        high_mu_ind = [
+            1 if self.mu_ij[i] == mu_j_max[self.ind_per_firm[i]] else 0
+            for i in range(self.n_agents)
+        ]
+
         # Aggregate markup
         self.mu = np.sum(
             [
@@ -300,16 +354,39 @@ class MonPolicy(MultiAgentEnv):
                 for z, x in enumerate(mu_next_perind[self.ind_per_firm[i]])
                 if z != i % self.n_firms
             ]
+
+        # idiosynctratic shock obs
+        if self.obs_idshock:
+            self.z = [math.e ** self.log_z[i] for i in range(self.n_agents)]
+            z_perind = []
+            for counter in range(0, self.n_agents, self.n_firms):
+                z_perind.append(self.z[counter : counter + self.n_firms])
+            z_obsperfirm = [[] for i in range(self.n_agents)]
+            for i in range(self.n_agents):
+                z_obsperfirm[i] = [self.z[i]] + [
+                    x
+                    for z, x in enumerate(z_perind[self.ind_per_firm[i]])
+                    if z != i % self.n_firms
+                ]
         self.M = self.M * self.g
 
         # new observation
-        self.obs_next = {
-            f"firm_{i}": np.array(
-                mu_obsperfirm[i] + [self.mu, self.g],
-                dtype=np.float32,
-            )
-            for i in range(self.n_agents)
-        }
+        if self.obs_idshock:
+            self.obs_next = {
+                f"firm_{i}": np.array(
+                    mu_obsperfirm[i] + z_obsperfirm[i] + [self.mu, self.g],
+                    dtype=np.float32,
+                )
+                for i in range(self.n_agents)
+            }
+        else:
+            self.obs_next = {
+                f"firm_{i}": np.array(
+                    mu_obsperfirm[i] + [self.mu, self.g],
+                    dtype=np.float32,
+                )
+                for i in range(self.n_agents)
+            }
 
         # rewards
         # print(self.profits)
@@ -425,6 +502,7 @@ def main():
         "eval_mode": False,
         "analysis_mode": False,
         "noagg": False,
+        "obs_idshock": False,
         "seed_eval": 2000,
         "seed_analisys": 3000,
         "markup_min": 1.2,

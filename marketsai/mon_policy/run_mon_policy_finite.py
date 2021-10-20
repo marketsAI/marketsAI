@@ -30,7 +30,7 @@ import json
 """ STEP 0: Experiment configs """
 
 
-DATE = "Oct17_v2_"
+DATE = "Oct18_v1_"
 TEST = False
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = False
@@ -47,9 +47,9 @@ else:
 ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
 n_firms_LIST = [2]  # list with number of agents for each run
-n_inds_LIST = [100]
-ITERS_TEST = 100  # number of iteration for test
-ITERS_RUN = 1000  # number of iteration for fullrun
+n_inds_LIST = [200]
+ITERS_TEST = 10  # number of iteration for test
+ITERS_RUN = 4000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -58,11 +58,11 @@ BETA = 0.95 ** (1 / 12)  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 4
+NUM_CPUS = 5
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 4
-NUM_PAR_TRIALS = 4
-NUM_ROLLOUT = ENV_HORIZON * 4
+NUM_TRIALS = 5
+NUM_PAR_TRIALS = 5
+NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
@@ -80,11 +80,11 @@ else:
     MAX_STEPS = ITERS_RUN * BATCH_SIZE
 
 # checkpointing, evaluation during trainging and stopage
-CHKPT_FREQ = 100
+CHKPT_FREQ = 500
 if TEST:
     EVAL_INTERVAL = 10
 else:
-    EVAL_INTERVAL = 25
+    EVAL_INTERVAL = 500
 
 STOP = {"timesteps_total": MAX_STEPS}
 
@@ -176,15 +176,21 @@ class MyCallbacks(DefaultCallbacks):
         **kwargs,
     ):
         episode.custom_metrics["discounted_rewards"] = process_rewards(
-            episode.user_data["rewards"]
+            episode.user_data["rewards"][:-12]
         )
-        episode.custom_metrics["mean_markup"] = np.mean(episode.user_data["markup_agg"])
+        episode.custom_metrics["mean_markup"] = np.mean(
+            episode.user_data["markup_agg"][:-12]
+        )
         episode.custom_metrics["mean_markup_ij"] = np.mean(
-            episode.user_data["markup_ij_avge"]
+            episode.user_data["markup_ij_avge"][:-12]
         )
-        episode.custom_metrics["freq_p_adj"] = np.mean(episode.user_data["freq_p_adj"])
-        episode.custom_metrics["size_adj"] = np.mean(episode.user_data["size_adj"])
-        episode.custom_metrics["std_log_c"] = np.std(episode.user_data["log_c"])
+        episode.custom_metrics["freq_p_adj"] = np.mean(
+            episode.user_data["freq_p_adj"][:-12]
+        )
+        episode.custom_metrics["size_adj"] = np.mean(
+            episode.user_data["size_adj"][:-12]
+        )
+        episode.custom_metrics["std_log_c"] = np.std(episode.user_data["log_c"][-12:])
 
 
 """ STEP 3: Environment and Algorithm configuration """
@@ -199,7 +205,7 @@ env_config = {
     "noagg": False,
     "seed_eval": 2000,
     "seed_analisys": 3000,
-    "markup_min": 1.2,
+    "markup_min": 1,
     "markup_max": 2,
     "markup_star": 1.3,
     "final_stage": 12,

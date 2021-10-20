@@ -23,8 +23,8 @@ from ray import shutdown, init
 FOR_PUBLIC = True  # for publication
 SAVE_CSV = False  # save learning CSV
 PLOT_PROGRESS = False  # create plot with progress
-SIMUL_PERIODS = 120
-ENV_HORIZON = 120
+SIMUL_PERIODS = 1000
+ENV_HORIZON = 5000
 BETA = 0.95 ** (1 / 12)
 
 # register environment
@@ -32,7 +32,7 @@ env_label = "mon_policy"
 register_env(env_label, MonPolicy)
 
 # Input Directories (of json file with experiment data)
-INPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/expINFO_native_mon_policy_2_firms_Oct17_v1_PPO_test.json"
+INPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/expINFO_native_mon_policy_2_firms_Oct18_v1_PPO_run.json"
 
 # Output Directories
 if FOR_PUBLIC:
@@ -210,6 +210,17 @@ config_algo = {
         # "replay_mode": "independent",  # you can change to "lockstep".
         # OTHERS
     },
+    # "multiagent": {
+    #     "policies": {
+    #         "firm": (
+    #             None,
+    #             env.observation_space["firm_0"],
+    #             env.action_space["firm_0"],
+    #             {},
+    #         )
+    #     },
+    #     "policy_mapping_fn": (lambda agent_id: agent_id.split("_")[0]),
+    # },
     # "model": {"fcnet_hiddens": [128, 128]}
 }
 
@@ -234,11 +245,12 @@ simul_results_dict = {
     "size_adj": [],
     "log_c_mean": [],
     "log_c_std": [],
+    "IRs": [],
+    "cum_IRs": [],
 }
 
 # restore the trainer
-print(len(results["discounted_rewards"]))
-for trial in range(len(results["discounted_rewards"])):
+for trial in [0, 1, 2, 3]:
     trained_trainer = PPOTrainer(env=env_label, config=config_algo)
     trained_trainer.restore(checkpoints[0][trial])
 
@@ -259,10 +271,10 @@ for trial in range(len(results["discounted_rewards"])):
     obs = env.reset()
     obs_noagg = env_noagg.reset()
     for t in range(SIMUL_PERIODS):
-        if t % env.horizon == 0:
-            print(t)
-            obs = env.reset()
-            obs_noagg = env_noagg.reset()
+        if t % 100 == 0:
+            print("time:", t)
+            # obs = env.reset()
+            # obs_noagg = env_noagg.reset()
         action = {
             f"firm_{i}": trained_trainer.compute_action(
                 obs[f"firm_{i}"], policy_id="firm_even"
@@ -282,6 +294,19 @@ for trial in range(len(results["discounted_rewards"])):
             for i in range(env.n_agents)
         }
 
+        # action = {
+        #     f"firm_{i}": trained_trainer.compute_action(
+        #         obs[f"firm_{i}"], policy_id="firm"
+        #     )
+        #     for i in range(env.n_agents)
+        # }
+        # action_noagg = {
+        #     f"firm_{i}": trained_trainer.compute_action(
+        #         obs_noagg[f"firm_{i}"], policy_id="firm"
+        #     )
+        #     for i in range(env.n_agents)
+        # }
+
         obs, rew, done, info = env.step(action)
         obs_noagg, rew_noagg, done_noagg, info_noagg = env_noagg.step(action_noagg)
         rew_list.append(info["firm_0"]["mean_profits"])
@@ -300,11 +325,12 @@ for trial in range(len(results["discounted_rewards"])):
         log_c_list[t] - log_c_list_noagg[t] for t in range(SIMUL_PERIODS)
     ]
     delta_log_c = [j - i for i, j in zip(log_c_filt_list[:-1], log_c_filt_list[1:])]
-    IRs = [0 for t in range(0, 12)]
+    IRs = [0 for t in range(12)]
     for t in range(0, 12):
-        slope = linregress(delta_log_c[t:], epsilon_g_list[: SIMUL_PERIODS - (t + 1)])
-        IRs[t] = slope
+        reg = linregress(delta_log_c[t:], epsilon_g_list[: SIMUL_PERIODS - (t + 1)])
+        IRs[t] = reg[0] * env.params["sigma_g"] * 100
     cum_IRs = [np.sum(IRs[:t]) for t in range(12)]
+
     simul_results_dict["trial"].append(trial)
     simul_results_dict["discounted_rewards"].append(process_rewards(rew_list, 0.98))
     simul_results_dict["mu_ij"].append(np.mean(mu_ij_list))
@@ -312,7 +338,34 @@ for trial in range(len(results["discounted_rewards"])):
     simul_results_dict["size_adj"].append(np.mean(size_adj_list))
     simul_results_dict["log_c_mean"].append(np.mean(log_c_list))
     simul_results_dict["log_c_std"].append(np.std(log_c_filt_list))
+    simul_results_dict["IRs"].append(IRs)
+    simul_results_dict["cum_IRs"].append(np.std(cum_IRs))
 
     print(f"trial_{trial}", "std_log_c", np.std(log_c_filt_list))
 
 shutdown()
+
+""" Plot IRs """
+
+for trial in [0, 1, 2, 3]:
+    x = [i for i in range(12)]
+    IRs = simul_results_dict["IRs"][trial]
+    plt.plot(x, IRs)
+    # learning_plot = learning_plot.get_figure()
+    plt.ylabel("Delta log C_t * 100")
+    plt.xlabel("Month t")
+    plt.title("A. IRF - Consumption")
+    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_" + exp_names[0] + f"trial_{trial}" + ".png")
+    plt.close()
+    # plt.show()
+    cumIRs = simul_results_dict["cum_IRs"][trial]
+    plt.plot(x, cum_IRs)
+    # learning_plot = learning_plot.get_figure()
+    plt.ylabel("Delta log C_t * 100")
+    plt.xlabel("Month t")
+    plt.title("B. Cumulative IRF - Consumption")
+    plt.savefig(
+        OUTPUT_PATH_FIGURES + "cum_IRs_" + exp_names[0] + f"trial_{trial}" + ".png"
+    )
+    plt.close()
+    # plt.show()
