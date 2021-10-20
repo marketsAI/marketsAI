@@ -54,7 +54,7 @@ else:
 ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
 ITERS_TEST = 50  # number of iteration for test
-ITERS_RUN = 5000 # number of iteration for fullrun
+ITERS_RUN = 5000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -84,7 +84,7 @@ if TEST == True:
 else:
     MAX_STEPS = ITERS_RUN * BATCH_SIZE
 
-CHKPT_FREQ = 2  #1
+CHKPT_FREQ = 2  # 1
 
 stop = {"timesteps_total": MAX_STEPS}
 # Initialize ray
@@ -231,13 +231,18 @@ common_config = {
 ppo_config = {
     "lr": 0.0008,
     # "lr": tune.grid_search([0.0005, 0.0008, 0.00001, 0.00005, 0.00008, 0.000001]),
-    "model": {"fcnet_hiddens": [128, 128], 
-    #"use_attention": True,
-        },
-    "lr_schedule": tune.grid_search([[[0, 0.0008], [MAX_STEPS / 100, 0.00001]],
-        [[0, 0.0008], [MAX_STEPS / 20, 0.00001]],
-         [[0, 0.0008], [MAX_STEPS / 10, 0.00001]],
-          [[0, 0.0008], [MAX_STEPS  / 5, 0.00001]]]),
+    "model": {
+        "fcnet_hiddens": [128, 128],
+        # "use_attention": True,
+    },
+    "lr_schedule": tune.grid_search(
+        [
+            [[0, 0.0008], [MAX_STEPS / 100, 0.00001]],
+            [[0, 0.0008], [MAX_STEPS / 20, 0.00001]],
+            [[0, 0.0008], [MAX_STEPS / 10, 0.00001]],
+            [[0, 0.0008], [MAX_STEPS / 5, 0.00001]],
+        ]
+    ),
     # "sgd_minibatch_size": BATCH_SIZE // NUM_MINI_BATCH,
     # "num_sgd_iter": 1,
     # "batch_mode": "complete_episodes",
@@ -245,7 +250,7 @@ ppo_config = {
     # "entropy_coeff": 0,
     # "kl_coeff": 0.1,
     # "vf_loss_coeff": 0.5,
-     "vf_clip_param": np.float("inf"),
+    "vf_clip_param": np.float("inf"),
     # "entropy_coeff_schedule": [[0, 0.01], [5120 * 1000, 0]],
     # "clip_param": 0.1,
     # "clip_actions": True,
@@ -375,4 +380,4 @@ if PLOT_PROGRESS:
     learning_plot = learning_plot.get_figure()
     plt.ylabel("Discounted utility")
     plt.xlabel("Episodes")
-    #plt.show()
+    # plt.show()
