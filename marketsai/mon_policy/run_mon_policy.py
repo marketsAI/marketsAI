@@ -31,8 +31,9 @@ import json
 # global configss
 ENV_LABEL = "mon_policy"
 register_env(ENV_LABEL, MonPolicy)
-DATE = "Oct19_v1_"
-TEST = False
+DATE = "Oct20_v1_"
+NATIVE = True
+TEST = True
 SAVE_EXP_INFO = True
 SAVE_PROGRESS = True
 PLOT_PROGRESS = True
@@ -40,18 +41,33 @@ sn.color_palette("Set2")
 SAVE_PROGRESS_CSV = True
 
 if TEST:
-    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
-    OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
+    if NATIVE:
+        OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
+        OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
+        OUTPUT_PATH_RESULTS = "~/ray_results/"
+    else:
+        OUTPUT_PATH_EXPERS = "/mc5851/scratch/RL_macro/Tests"
+        OUTPUT_PATH_FIGURES = "/mc5851/scratch/Dropbox/RL_macro/Tests/"
+        OUTPUT_PATH_RESULTS = "/mc5851/scratch/ray_results/"
+
 else:
-    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/"
-    OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/"
+    if NATIVE:
+        OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/"
+        OUTPUT_PATH_FIGURES = (
+            "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/"
+        )
+        OUTPUT_PATH_RESULTS = "~/ray_results"
+    else:
+        OUTPUT_PATH_EXPERS = "/mc5851/scratch/RL_macro/Experiments/"
+        OUTPUT_PATH_FIGURES = "/mc5851/scratch/RL_macro/Documents/Figures/"
+        OUTPUT_PATH_RESULTS = "/mc5851/scratch/ray_results"
 
 ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [200]
 ITERS_TEST = 10  # number of iteration for test
-ITERS_RUN = 20  # number of iteration for fullrun
+ITERS_RUN = 5000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -69,7 +85,7 @@ NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
-NUM_MINI_BATCH = NUM_CPUS_DRIVER
+NUM_MINI_BATCH = 1
 
 N_WORKERS = (NUM_CPUS - NUM_PAR_TRIALS * NUM_CPUS_DRIVER) // NUM_PAR_TRIALS
 BATCH_SIZE = NUM_ROLLOUT * (max(N_WORKERS, 1)) * NUM_ENV_PW * BATCH_ROLLOUT
@@ -83,11 +99,11 @@ else:
     MAX_STEPS = ITERS_RUN * BATCH_SIZE
 
 # checkpointing, evaluation during trainging and stopage
-CHKPT_FREQ = 500
+CHKPT_FREQ = 1000
 if TEST:
     EVAL_INTERVAL = 5
 else:
-    EVAL_INTERVAL = 10
+    EVAL_INTERVAL = 100
 STOP = {"timesteps_total": MAX_STEPS}
 
 # Initialize ray
@@ -197,7 +213,7 @@ env_config = {
     "eval_mode": False,
     "analysis_mode": False,
     "no_agg": False,
-    "obs_idshock": True,
+    "obs_idshock": False,
     "seed_eval": 10000,
     "seed_analisys": 3000,
     "markup_min": 1,
@@ -378,13 +394,14 @@ for ind, n_firms in enumerate(n_firms_LIST):
         name=EXP_NAME,
         config=training_config,
         stop=STOP,
-        checkpoint_freq=CHKPT_FREQ,
+        # checkpoint_freq=CHKPT_FREQ,
         checkpoint_at_end=True,
         # metric="evaluation/custom_metrics/discounted_rewards_mean",
         metric="custom_metrics/discounted_rewards_mean",
         mode="max",
         num_samples=NUM_TRIALS,
         # resources_per_trial={"gpu": 0.5},
+        local_dir=OUTPUT_PATH_RESULTS,
     )
 
     rewards.append(

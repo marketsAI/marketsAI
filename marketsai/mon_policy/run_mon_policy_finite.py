@@ -32,17 +32,33 @@ import json
 
 DATE = "Oct18_v1_"
 TEST = False
+NATIVE = True
 SAVE_EXP_INFO = True
 PLOT_PROGRESS = False
 sn.color_palette("Set2")
 SAVE_PROGRESS_CSV = False
 
 if TEST:
-    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
-    OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
+    if NATIVE:
+        OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
+        OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
+        OUTPUT_PATH_RESULTS = "~/ray_results/"
+    else:
+        OUTPUT_PATH_EXPERS = "/mc5851/scratch/RL_macro/Tests"
+        OUTPUT_PATH_FIGURES = "/mc5851/scratch/Dropbox/RL_macro/Tests/"
+        OUTPUT_PATH_RESULTS = "/mc5851/scratch/ray_results/"
+
 else:
-    OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/"
-    OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/"
+    if NATIVE:
+        OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/"
+        OUTPUT_PATH_FIGURES = (
+            "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/"
+        )
+        OUTPUT_PATH_RESULTS = "~/ray_results"
+    else:
+        OUTPUT_PATH_EXPERS = "/mc5851/scratch/RL_macro/Experiments/"
+        OUTPUT_PATH_FIGURES = "/mc5851/scratch/RL_macro/Documents/Figures/"
+        OUTPUT_PATH_RESULTS = "/mc5851/scratch/ray_results"
 
 ALGO = "PPO"  # either PPO" or "SAC"
 DEVICE = "native_"  # either "native" or "server"
@@ -403,6 +419,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
         metric="custom_metrics/discounted_rewards_mean",
         mode="max",
         num_samples=NUM_TRIALS,
+        log_dir=OUTPUT_PATH_RESULTS,
         # resources_per_trial={"gpu": 0.5},
     )
 
