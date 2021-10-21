@@ -30,12 +30,12 @@ import json
 """ STEP 0: Experiment configs """
 
 
-DATE = "Oct20_v2_"
-TEST = True
+DATE = "Oct20_v1_"
+TEST = False
 NATIVE = True
 SAVE_EXP_INFO = True
 SAVE_PROGRESS = True
-PLOT_PROGRESS = False
+PLOT_PROGRESS = True
 sn.color_palette("Set2")
 SAVE_PROGRESS_CSV = False
 
@@ -102,7 +102,7 @@ else:
     MAX_STEPS = ITERS_RUN * BATCH_SIZE
 
 # checkpointing, evaluation during trainging and stopage
-CHKPT_FREQ = 100
+CHKPT_FREQ = 1000
 if TEST:
     EVAL_INTERVAL = 1
 else:
