@@ -20,7 +20,7 @@ scikit-learn = "^1.0"
 seaborn = "^0.11.2"
 black = {extras = ["jupyter"], version = "^21.9b0"}
 numpy = "^1.21.2"
-ray = {extras = ["rllib"], version = "^1.7.0"}
+ray = {version = "1.4.0", extras = ["rllib"]}
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.2"
