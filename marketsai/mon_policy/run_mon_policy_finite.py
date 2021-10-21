@@ -30,10 +30,11 @@ import json
 """ STEP 0: Experiment configs """
 
 
-DATE = "Oct18_v1_"
-TEST = False
+DATE = "Oct20_v2_"
+TEST = True
 NATIVE = True
 SAVE_EXP_INFO = True
+SAVE_PROGRESS = True
 PLOT_PROGRESS = False
 sn.color_palette("Set2")
 SAVE_PROGRESS_CSV = False
@@ -61,23 +62,28 @@ else:
         OUTPUT_PATH_RESULTS = "/mc5851/scratch/ray_results"
 
 ALGO = "PPO"  # either PPO" or "SAC"
-DEVICE = "native_"  # either "native" or "server"
+if NATIVE:
+    device = "native_"  # either "native" or "server"
+else:
+    device = "server_"
+
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [200]
 ITERS_TEST = 10  # number of iteration for test
-ITERS_RUN = 4000  # number of iteration for fullrun
+ITERS_RUN = 5000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
 ENV_HORIZON = 12 * 6
+EVAL_HORIZON = 12 * 6
 BETA = 0.95 ** (1 / 12)  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 5
+NUM_CPUS = 4
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 5
-NUM_PAR_TRIALS = 5
+NUM_TRIALS = 4
+NUM_PAR_TRIALS = 4
 NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
@@ -96,11 +102,11 @@ else:
     MAX_STEPS = ITERS_RUN * BATCH_SIZE
 
 # checkpointing, evaluation during trainging and stopage
-CHKPT_FREQ = 500
+CHKPT_FREQ = 100
 if TEST:
-    EVAL_INTERVAL = 10
+    EVAL_INTERVAL = 1
 else:
-    EVAL_INTERVAL = 500
+    EVAL_INTERVAL = 100
 
 STOP = {"timesteps_total": MAX_STEPS}
 
@@ -206,7 +212,10 @@ class MyCallbacks(DefaultCallbacks):
         episode.custom_metrics["size_adj"] = np.mean(
             episode.user_data["size_adj"][:-12]
         )
-        episode.custom_metrics["std_log_c"] = np.std(episode.user_data["log_c"][-12:])
+        episode.custom_metrics["std_log_c"] = np.std(episode.user_data["log_c"][:-12])
+        episode.custom_metrics["mean_markup_ij"] = np.mean(
+            episode.user_data["markup_ij_avge"][-12:]
+        )
 
 
 """ STEP 3: Environment and Algorithm configuration """
@@ -219,7 +228,7 @@ env_config = {
     "eval_mode": False,
     "analysis_mode": False,
     "noagg": False,
-    "seed_eval": 2000,
+    "seed_eval": 10000,
     "seed_analisys": 3000,
     "markup_min": 1,
     "markup_max": 2,
@@ -242,7 +251,7 @@ env_config = {
 
 env_config_eval = env_config.copy()
 env_config_eval["eval_mode"] = True
-# env_config_eval["horizon"] = 60
+env_config_eval["horizon"] = EVAL_HORIZON
 
 # we instantiate the environment to extrac relevant info
 " CHANGE HERE "
@@ -355,13 +364,14 @@ done = []
 mu_ij = []
 freq_p_adj = []
 size_adj = []
+std_log_c = []
 
 
 # RUN TRAINER
 env_configs = []
 
 for ind, n_firms in enumerate(n_firms_LIST):
-    EXP_LABEL = DEVICE + ENV_LABEL + f"_{n_firms}_firms_"
+    EXP_LABEL = device + ENV_LABEL + f"_{n_firms}_firms_"
     if TEST == True:
         EXP_NAME = EXP_LABEL + DATE + ALGO + "_test"
     else:
@@ -416,10 +426,10 @@ for ind, n_firms in enumerate(n_firms_LIST):
         checkpoint_freq=CHKPT_FREQ,
         checkpoint_at_end=True,
         # metric="evaluation/custom_metrics/discounted_rewards_mean",
-        metric="custom_metrics/discounted_rewards_mean",
-        mode="max",
+        # metric="custom_metrics/discounted_rewards_mean",
+        # mode="max",
         num_samples=NUM_TRIALS,
-        log_dir=OUTPUT_PATH_RESULTS,
+        local_dir=OUTPUT_PATH_RESULTS,
         # resources_per_trial={"gpu": 0.5},
     )
 
@@ -455,6 +465,12 @@ for ind, n_firms in enumerate(n_firms_LIST):
             for i in range(NUM_TRIALS)
         ]
     )
+    std_log_c.append(
+        [
+            list(analysis.results.values())[i]["custom_metrics"]["std_log_c_mean"]
+            for i in range(NUM_TRIALS)
+        ]
+    )
     exp_names.append(EXP_NAME)
     exp_dirs.append(analysis._experiment_dir)
     trial_logdirs.append([analysis.trials[i].logdir for i in range(NUM_TRIALS)])
@@ -475,35 +491,42 @@ for ind, n_firms in enumerate(n_firms_LIST):
     #         ["episodes_total", "evaluation/custom_metrics/discounted_rewards_mean"]
     #     ]
     # )
-    # learning_dta.append(
-    #     [
-    #         list(analysis.trial_dataframes.values())[i][
-    #             [
-    #                 "episodes_total",
-    #                 "evaluation/custom_metrics/discounted_rewards_mean",
-    #                 "evaluation/custom_metrics/mean_markup_ij_mean",
-    #                 "evaluation/custom_metrics/freq_p_adj_mean",
-    #                 "evaluation/custom_metrics/size_adj_mean",
-    #             ]
-    #         ]
-    #         for i in range(NUM_TRIALS)
-    #     ]
-    # # )
-    # for i in range(NUM_TRIALS):
-    #     learning_dta[ind][i].columns = [
-    #         "episodes_total",
-    #         f"discounted_rewards_trial_{i}",
-    #         f"mu_ij_mean_{i}",
-    #         f"freq_p_adj_{i}",
-    #         f"size_adj_mean_{i}",
-    #     ]
+    if SAVE_PROGRESS:
+        learning_dta.append(
+            [
+                list(analysis.trial_dataframes.values())[i][
+                    [
+                        # "episodes_total",
+                        "custom_metrics/discounted_rewards_mean",
+                        "custom_metrics/mean_markup_ij_mean",
+                        "custom_metrics/freq_p_adj_mean",
+                        "custom_metrics/size_adj_mean",
+                        "custom_metrics/std_log_c_mean",
+                    ]
+                ]
+                for i in range(NUM_TRIALS)
+            ]
+        )
+        for i in range(NUM_TRIALS):
+            learning_dta[ind][i].columns = [
+                # "episodes_total",
+                f"discounted_rewards_trial_{i}",
+                f"mu_ij_trial_{i}",
+                f"freq_p_adj_trial_{i}",
+                f"size_adj_trial_{i}",
+                f"log_c_mean_trial_{i}",
+            ]
+            # learning_dta[ind][i].set_index("episodes_total")
+        pd.concat(learning_dta[ind], axis=1).to_csv(
+            OUTPUT_PATH_EXPERS + "progress_" + exp_names[ind] + ".csv"
+        )
 
 
 """ STEP 5 (optional): Organize and Plot multi firm expers """
 
 # global experiment name
 if len(exp_names) > 1:
-    EXP_LABEL = DEVICE + f"_multi_firm_"
+    EXP_LABEL = device + f"_multi_firm_"
     if TEST == True:
         EXP_NAME = EXP_LABEL + ENV_LABEL + "_test_" + DATE + ALGO
     else:
@@ -512,19 +535,13 @@ if len(exp_names) > 1:
 
 # create CSV with information on each experiment
 if SAVE_EXP_INFO:
-    progress_csv_dirs = [
-        OUTPUT_PATH_EXPERS + "progress_" + exp_names[i] + ".csv"
-        for i in range(len(exp_names))
-    ]
 
-    # Create CSV with economy level
     exp_dict = {
         "n_agents": n_firms_LIST,
         "exp_names": exp_names,
         "exp_dirs": exp_dirs,
         "trial_dirs": trial_logdirs,
         "checkpoints": checkpoints,
-        "progress_csv_dirs": progress_csv_dirs,
         "configs": configs,
         "done": done,
         "rewards": rewards,
@@ -532,9 +549,8 @@ if SAVE_EXP_INFO:
         "freq_p_adj": freq_p_adj,
         "size_adj": size_adj,
     }
-    # for i in range(len(exp_dict.values())):
-    #     print(type(exp_dict.values()[i]))
-    print(exp_dict)
+
+    print("mu_ij", mu_ij, "freq_p_adj:", freq_p_adj, "size_adj", size_adj)
 
     with open(OUTPUT_PATH_EXPERS + "expINFO_" + EXP_NAME + ".json", "w+") as f:
         json.dump(exp_dict, f)
@@ -546,333 +562,66 @@ if SAVE_EXP_INFO:
 # Plot and save progress
 if PLOT_PROGRESS:
     for ind, n_firms in enumerate(n_firms_LIST):
-        learning_plot = sn.lineplot(
-            data=learning_dta[ind],
-            y=f"discounted_rewards_trial_0",
-            x="episodes_total",
+        for i in range(NUM_TRIALS):
+            learning_plot = sn.lineplot(
+                data=learning_dta[ind][i],
+                y=f"discounted_rewards_trial_{i}",
+                x="episodes_total",
+            )
+        learning_plot = learning_plot.get_figure()
+        plt.ylabel("Discounted utility")
+        plt.xlabel("Timesteps (thousands)")
+        plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
+        learning_plot.savefig(
+            OUTPUT_PATH_FIGURES + "progress_rewards" + EXP_NAME + ".png"
         )
-    learning_plot = learning_plot.get_figure()
-    plt.ylabel("Discounted utility")
-    plt.xlabel("Timesteps (thousands)")
-    plt.legend(labels=[f"{i} firms" for i in n_firms_LIST])
-    learning_plot.savefig(OUTPUT_PATH_FIGURES + "progress_" + EXP_NAME + ".png")
-    plt.show()
+        # plt.show()
+        plt.close()
 
-# Save progress as CSV
-if SAVE_PROGRESS_CSV:
-    # merge data
-    for i in range(len(exp_names)):
-        learning_dta_local = [df.set_index("episodes_total") for df in learning_dta[i]]
-        learning_dta_merged = pd.concat(learning_dta_local, axis=1)
-        learning_dta_merged.to_csv(
-            OUTPUT_PATH_EXPERS + "progress_" + exp_names[i] + ".csv"
+        for i in range(NUM_TRIALS):
+            learning_plot = sn.lineplot(
+                data=learning_dta[ind][i],
+                y=f"mu_ij_trial_{i}",
+                x="episodes_total",
+            )
+        learning_plot = learning_plot.get_figure()
+        plt.ylabel("E[mu_ij]")
+        plt.xlabel("Timesteps (thousands)")
+        plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
+        learning_plot.savefig(
+            OUTPUT_PATH_FIGURES + "progress_mu_ij" + EXP_NAME + ".png"
         )
+        # plt.show()
+        plt.close()
 
+        for i in range(NUM_TRIALS):
+            learning_plot = sn.lineplot(
+                data=learning_dta[ind][i],
+                y=f"freq_p_adj_trial_{i}",
+                x="episodes_total",
+            )
+        learning_plot = learning_plot.get_figure()
+        plt.ylabel("Frequency of price adjustment")
+        plt.xlabel("Timesteps (thousands)")
+        plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
+        learning_plot.savefig(
+            OUTPUT_PATH_FIGURES + "progress_freq_p_adj" + EXP_NAME + ".png"
+        )
+        # plt.show()
+        plt.close()
 
-# """ STEP 6: run multi industry experiment """
-
-# exp_names = []
-# exp_dirs = []
-# checkpoints = []
-# best_rewards = []
-# best_configs = []
-# learning_dta = []
-
-
-# # RUN TRAINER
-# env_configs = []
-
-# for ind, n_inds in enumerate(n_inds_LIST):
-#     EXP_LABEL = DEVICE + ENV_LABEL + f"_{n_inds}_inds_"
-#     if TEST == True:
-#         EXP_NAME = EXP_LABEL + DATE + ALGO + "_test"
-#     else:
-#         EXP_NAME = EXP_LABEL + DATE + ALGO + "_run"
-#     env_config["n_inds"] = n_inds
-#     env_config["n_firms"] = 1
-#     env_config["parameters"]["A"] = 1
-#     env_config_eval["n_inds"] = n_inds
-#     env_config_eval["n_firms"] = 1
-#     env_config_eval["parameters"]["A"] = 1
-
-#     """ CHANGE HERE """
-#     env = MonPolicyFinite(env_config)
-#     training_config["env_config"] = env_config
-#     training_config["evaluation_config"]["env_config"] = env_config_eval
-#     training_config["multiagent"] = {
-#         "policies": {
-#             "firm": (
-#                 None,
-#                 env.observation_space["firm_0"],
-#                 env.action_space["firm_0"],
-#                 {},
-#             ),
-#         },
-#         "policy_mapping_fn": (lambda agent_id: agent_id.split("_")[0]),
-#         "replay_mode": "independent",  # you can change to "lockstep".
-#     }
-
-#     analysis = tune.run(
-#         ALGO,
-#         name=EXP_NAME,
-#         config=training_config,
-#         stop=stop,
-#         checkpoint_freq=CHKPT_FREQ,
-#         checkpoint_at_end=True,
-#         metric="evaluation/custom_metrics/discounted_rewards_mean",
-#         mode="max",
-#         num_samples=2 * NUM_TRIALS,
-#         # resources_per_trial={"gpu": 0.5},
-#     )
-
-#     exp_names.append(EXP_NAME)
-#     checkpoints.append(analysis.best_checkpoint)
-#     best_rewards.append(
-#         analysis.best_result["evaluation"]["custom_metrics"]["discounted_rewards_mean"]
-#     )
-#     best_configs.append(analysis.best_config)
-#     exp_dirs.append(analysis.best_logdir)
-#     learning_dta.append(
-#         analysis.best_dataframe[
-#             ["episodes_total", "evaluation/custom_metrics/discounted_rewards_mean"]
-#         ]
-#     )
-#     learning_dta[ind].columns = ["episodes_total", f"{n_inds} industries"]
-
-
-# """ STEP 7 (optional): Organize and Plot multi industry expers"""
-
-# # global experiment name
-# if len(exp_names) > 1:
-#     EXP_LABEL = DEVICE + f"_multi_inds_"
-#     if TEST == True:
-#         EXP_NAME = EXP_LABEL + ENV_LABEL + "_test_" + DATE + ALGO
-#     else:
-#         EXP_NAME = EXP_LABEL + ENV_LABEL + "_run_" + DATE + ALGO
-
-
-# # create CSV with information on each experiment
-# if SAVE_EXP_INFO:
-#     progress_csv_dirs = [exp_dirs[i] + "/progress.csv" for i in range(len(exp_dirs))]
-
-#     # Create CSV with economy level
-#     exp_dict = {
-#         "n_agents": n_firms_LIST,
-#         "exp_names": exp_names,
-#         "exp_dirs": exp_dirs,
-#         "progress_csv_dirs": progress_csv_dirs,
-#         "best_rewards": best_rewards,
-#         "checkpoints": checkpoints,
-#         # "best_config": best_configs,
-#     }
-#     # for i in range(len(exp_dict.values())):
-#     #     print(type(exp_dict.values()[i]))
-#     print(
-#         "exp_names =",
-#         exp_names,
-#         "\n" "exp_dirs =",
-#         exp_dirs,
-#         "\n" "progress_csv_dirs =",
-#         progress_csv_dirs,
-#         "\n" "best_rewards =",
-#         best_rewards,
-#         "\n" "checkpoints =",
-#         checkpoints,
-#         # "\n" "best_config =",
-#         # best_configs,
-#     )
-
-#     with open(OUTPUT_PATH_EXPERS + "expINFO_" + EXP_NAME + ".json", "w+") as f:
-#         json.dump(exp_dict, f)
-
-#     # exp_df = pd.DataFrame(exp_dict)
-#     # exp_df.to_csv(OUTPUT_PATH_EXPERS + "exp_info" + EXP_NAME + ".csv")
-#     print(OUTPUT_PATH_EXPERS + "expINFO_" + EXP_NAME + ".json")
-
-# # Plot and save progress
-# if PLOT_PROGRESS:
-#     for ind, n_inds in enumerate(n_inds_LIST):
-#         learning_plot = sn.lineplot(
-#             data=learning_dta[ind],
-#             y=f"{n_inds} industries",
-#             x="episodes_total",
-#         )
-#     learning_plot = learning_plot.get_figure()
-#     plt.ylabel("Discounted utility")
-#     plt.xlabel("Timesteps (thousands)")
-#     plt.legend(labels=[f"{i} industries" for i in n_inds_LIST])
-#     learning_plot.savefig(OUTPUT_PATH_FIGURES + "progress_" + EXP_NAME + ".png")
-
-# # Save progress as CSV
-# if SAVE_PROGRESS_CSV:
-#     # merge data
-#     learning_dta = [df.set_index("episodes_total") for df in learning_dta]
-#     learning_dta_merged = pd.concat(learning_dta, axis=1)
-#     learning_dta_merged.to_csv(OUTPUT_PATH_EXPERS + "progress_" + EXP_NAME + ".csv")
-
-# """ STEP 8: run nonlinear f(), mulit industry experiment """
-
-# exp_names = []
-# exp_dirs = []
-# checkpoints = []
-# best_rewards = []
-# best_configs = []
-# learning_dta = []
-
-
-# # RUN TRAINER
-# env_configs = []
-
-# for ind, n_inds in enumerate(n_inds_LIST):
-#     EXP_LABEL = DEVICE + ENV_LABEL + f"_{n_inds}_inds_nonlinear_"
-#     if TEST == True:
-#         EXP_NAME = EXP_LABEL + DATE + ALGO + "_test"
-#     else:
-#         EXP_NAME = EXP_LABEL + DATE + ALGO + "_run"
-#     env_config["parameters"]["alpha"] = 0.5
-#     env_config["parameters"]["max_price"] = 50
-#     env_config["rew_mean"] = 40.0
-#     env_config["rew_std"] = 14.0
-#     env_config["n_inds"] = n_inds
-#     env_config["n_firms"] = 1
-#     env_config["parameters"]["A"] = 1
-
-#     env_config_eval["parameters"]["alpha"] = 0.5
-#     env_config_eval["parameters"]["max_price"] = 50
-#     env_config_eval["rew_mean"] = 46.0
-#     env_config_eval["rew_std"] = 15.1
-#     env_config_eval["n_inds"] = n_inds
-#     env_config_eval["n_firms"] = 1
-#     env_config_eval["parameters"]["A"] = 1
-
-#     """ CHANGE HERE """
-#     env = MonPolicyFinite(env_config)
-#     training_config["env_config"] = env_config
-#     training_config["evaluation_config"]["env_config"] = env_config_eval
-#     training_config["multiagent"] = {
-#         "policies": {
-#             "firm": (
-#                 None,
-#                 env.observation_space["firm_0"],
-#                 env.action_space["firm_0"],
-#                 {},
-#             ),
-#         },
-#         "policy_mapping_fn": (lambda agent_id: agent_id.split("_")[0]),
-#         "replay_mode": "independent",  # you can change to "lockstep".
-#     }
-
-#     analysis = tune.run(
-#         ALGO,
-#         name=EXP_NAME,
-#         config=training_config,
-#         stop=stop,
-#         checkpoint_freq=CHKPT_FREQ,
-#         checkpoint_at_end=True,
-#         metric="evaluation/custom_metrics/discounted_rewards_mean",
-#         mode="max",
-#         num_samples=2 * NUM_TRIALS,
-#         # resources_per_trial={"gpu": 0.5},
-#     )
-
-#     exp_names.append(EXP_NAME)
-#     checkpoints.append(analysis.best_checkpoint)
-#     best_rewards.append(
-#         analysis.best_result["evaluation"]["custom_metrics"]["discounted_rewards_mean"]
-#     )
-#     best_configs.append(analysis.best_config)
-#     exp_dirs.append(analysis.best_logdir)
-#     learning_dta.append(
-#         analysis.best_dataframe[
-#             ["episodes_total", "evaluation/custom_metrics/discounted_rewards_mean"]
-#         ]
-#     )
-#     learning_dta[ind].columns = ["episodes_total", f"{n_inds} industries"]
-# shutdown()
-
-# """ STEP 9 (optional): Organize and Plot multi industry nonlinear expers"""
-
-# # global experiment name
-# if len(exp_names) > 1:
-#     EXP_LABEL = DEVICE + f"_multi_inds_nonlinear"
-#     if TEST == True:
-#         EXP_NAME = EXP_LABEL + ENV_LABEL + "_test_" + DATE + ALGO
-#     else:
-#         EXP_NAME = EXP_LABEL + ENV_LABEL + "_run_" + DATE + ALGO
-
-
-# # create CSV with information on each experiment
-# if SAVE_EXP_INFO:
-#     progress_csv_dirs = [exp_dirs[i] + "/progress.csv" for i in range(len(exp_dirs))]
-
-#     # Create CSV with economy level
-#     exp_dict = {
-#         "n_agents": n_firms_LIST,
-#         "exp_names": exp_names,
-#         "exp_dirs": exp_dirs,
-#         "progress_csv_dirs": progress_csv_dirs,
-#         "best_rewards": best_rewards,
-#         "checkpoints": checkpoints,
-#         # "best_config": best_configs,
-#     }
-#     # for i in range(len(exp_dict.values())):
-#     #     print(type(exp_dict.values()[i]))
-#     print(
-#         "exp_names =",
-#         exp_names,
-#         "\n" "exp_dirs =",
-#         exp_dirs,
-#         "\n" "progress_csv_dirs =",
-#         progress_csv_dirs,
-#         "\n" "best_rewards =",
-#         best_rewards,
-#         "\n" "checkpoints =",
-#         checkpoints,
-#         # "\n" "best_config =",
-#         # best_configs,
-#     )
-
-#     with open(OUTPUT_PATH_EXPERS + "expINFO_" + EXP_NAME + ".json", "w+") as f:
-#         json.dump(exp_dict, f)
-
-#     # exp_df = pd.DataFrame(exp_dict)
-#     # exp_df.to_csv(OUTPUT_PATH_EXPERS + "exp_info" + EXP_NAME + ".csv")
-#     print(OUTPUT_PATH_EXPERS + "expINFO_" + EXP_NAME + ".json")
-
-# # Plot and save progress
-# if PLOT_PROGRESS:
-#     for ind, n_inds in enumerate(n_inds_LIST):
-#         learning_plot = sn.lineplot(
-#             data=learning_dta[ind],
-#             y=f"{n_inds} industries",
-#             x="episodes_total",
-#         )
-#     learning_plot = learning_plot.get_figure()
-#     plt.ylabel("Discounted utility")
-#     plt.xlabel("Timesteps (thousands)")
-#     plt.legend(labels=[f"{i} industries" for i in n_inds_LIST])
-#     learning_plot.savefig(OUTPUT_PATH_FIGURES + "progress_" + EXP_NAME + ".png")
-
-# # Save progress as CSV
-# if SAVE_PROGRESS_CSV:
-#     # merge data
-#     learning_dta = [df.set_index("episodes_total") for df in learning_dta]
-#     learning_dta_merged = pd.concat(learning_dta, axis=1)
-#     learning_dta_merged.to_csv(OUTPUT_PATH_EXPERS + "progress_" + EXP_NAME + ".csv")
-
-
-# """ Annex_env_hyp: For Environment hyperparameter tuning"""
-
-# # # We create a list that contain the main config + altered copies.
-# env_configs = [env_config]
-# for i in range(1, 15):
-#     env_configs.append(env_config.copy())
-#     env_configs[i]["parameteres"] = (
-#         {
-#             "depreciation": np.random.choice([0.02, 0.04, 0.06, 0.08]),
-#             "alpha": 0.3,
-#             "phi": 0.3,
-#             "beta": 0.98,
-#         },
-#     )
-#     env_configs[i]["bgt_penalty"] = np.random.choice([1, 5, 10, 50])
+        for i in range(NUM_TRIALS):
+            learning_plot = sn.lineplot(
+                data=learning_dta[ind][i],
+                y=f"size_adj_trial_{i}",
+                x="episodes_total",
+            )
+        learning_plot = learning_plot.get_figure()
+        plt.ylabel("Frequency of price adjustment")
+        plt.xlabel("Timesteps (thousands)")
+        plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
+        learning_plot.savefig(
+            OUTPUT_PATH_FIGURES + "progress_size_adj" + EXP_NAME + ".png"
+        )
+        # plt.show()
+        plt.close()
