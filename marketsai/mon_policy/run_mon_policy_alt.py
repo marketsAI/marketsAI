@@ -29,16 +29,13 @@ import json
 """ STEP 0: Experiment configs """
 
 # global configss
-ENV_LABEL = "mon_policy_alt"
-register_env(ENV_LABEL, MonPolicy)
-DATE = "Oct21_v1_"
+DATE = "Oct22_v1_"
 NATIVE = True
 TEST = True
 SAVE_EXP_INFO = True
 SAVE_PROGRESS = True
 PLOT_PROGRESS = True
 sn.color_palette("Set2")
-SAVE_PROGRESS_CSV = True
 
 if TEST:
     if NATIVE:
@@ -46,9 +43,9 @@ if TEST:
         OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
         OUTPUT_PATH_RESULTS = "~/ray_results/"
     else:
-        OUTPUT_PATH_EXPERS = "/mc5851/scratch/RL_macro/Tests"
-        OUTPUT_PATH_FIGURES = "/mc5851/scratch/Dropbox/RL_macro/Tests/"
-        OUTPUT_PATH_RESULTS = "/mc5851/scratch/ray_results/"
+        OUTPUT_PATH_EXPERS = "/scratch/mc5851/ray_results/"
+        OUTPUT_PATH_FIGURES = "/scratch/mc5851/ray_results/"
+        OUTPUT_PATH_RESULTS = "/scratch/mc5851/ray_results/"
 
 else:
     if NATIVE:
@@ -58,9 +55,9 @@ else:
         )
         OUTPUT_PATH_RESULTS = "~/ray_results"
     else:
-        OUTPUT_PATH_EXPERS = "/mc5851/scratch/RL_macro/Experiments/"
-        OUTPUT_PATH_FIGURES = "/mc5851/scratch/RL_macro/Documents/Figures/"
-        OUTPUT_PATH_RESULTS = "/mc5851/scratch/ray_results"
+        OUTPUT_PATH_EXPERS = "/scratch/mc5851/ray_results/"
+        OUTPUT_PATH_FIGURES = "/scratch/mc5851/ray_results/"
+        OUTPUT_PATH_RESULTS = "/scratch/mc5851/ray_results/"
 
 ALGO = "PPO"  # either PPO" or "SAC"
 if NATIVE:
@@ -117,6 +114,8 @@ init(
     log_to_driver=False,
 )
 
+ENV_LABEL = "mon_policy_alt"
+register_env(ENV_LABEL, MonPolicy)
 
 """ STEP 2: set custom metrics such as discounted rewards to keep track of through leraning"""
 # Define custom metrics using the Callbacks class
@@ -395,7 +394,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
 
     rewards.append(
         [
-            list(analysis.results.values())[i]["custom_metrics"][
+            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
                 "discounted_rewards_mean"
             ]
             for i in range(NUM_TRIALS)
@@ -403,32 +402,42 @@ for ind, n_firms in enumerate(n_firms_LIST):
     )
     mu_ij.append(
         [
-            list(analysis.results.values())[i]["custom_metrics"]["mean_markup_ij_mean"]
+            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
+                "mean_markup_ij_mean"
+            ]
             for i in range(NUM_TRIALS)
         ]
     )
     freq_p_adj.append(
         [
-            list(analysis.results.values())[i]["custom_metrics"]["freq_p_adj_mean"]
+            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
+                "freq_p_adj_mean"
+            ]
             for i in range(NUM_TRIALS)
         ]
     )
     size_adj.append(
         [
-            list(analysis.results.values())[i]["custom_metrics"]["size_adj_mean"]
+            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
+                "size_adj_mean"
+            ]
             for i in range(NUM_TRIALS)
         ]
     )
 
     std_log_c.append(
         [
-            list(analysis.results.values())[i]["custom_metrics"]["std_log_c_mean"]
+            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
+                "std_log_c_mean"
+            ]
             for i in range(NUM_TRIALS)
         ]
     )
     profits.append(
         [
-            list(analysis.results.values())[i]["custom_metrics"]["profits_mean"]
+            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
+                "profits_mean"
+            ]
             for i in range(NUM_TRIALS)
         ]
     )
