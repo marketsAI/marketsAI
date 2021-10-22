@@ -30,12 +30,12 @@ import json
 """ STEP 0: Experiment configs """
 
 
-DATE = "Oct20_v1_"
-TEST = False
+DATE = "Oct21_v1_"
+TEST = True
 NATIVE = True
 SAVE_EXP_INFO = True
 SAVE_PROGRESS = True
-PLOT_PROGRESS = True
+PLOT_PROGRESS = False
 sn.color_palette("Set2")
 SAVE_PROGRESS_CSV = False
 
@@ -69,7 +69,7 @@ else:
 
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [200]
-ITERS_TEST = 10  # number of iteration for test
+ITERS_TEST = 2  # number of iteration for test
 ITERS_RUN = 5000  # number of iteration for fullrun
 
 
@@ -155,8 +155,6 @@ class MyCallbacks(DefaultCallbacks):
             "after env reset!"
         )
         episode.user_data["rewards"] = []
-        episode.user_data["done"] = []
-        episode.user_data["markup_agg"] = []
         episode.user_data["markup_ij_avge"] = []
         episode.user_data["freq_p_adj"] = []
         episode.user_data["size_adj"] = []
@@ -173,9 +171,7 @@ class MyCallbacks(DefaultCallbacks):
     ):
         if episode.length > 1:  # at t=0, previous rewards are not defined
             episode.user_data["rewards"].append(episode.prev_reward_for("firm_0"))
-            episode.user_data["markup_agg"].append(
-                episode.last_info_for("firm_0")["mu"]
-            )
+
             episode.user_data["markup_ij_avge"].append(
                 episode.last_info_for("firm_0")["mean_mu_ij"]
             )
@@ -198,22 +194,21 @@ class MyCallbacks(DefaultCallbacks):
         **kwargs,
     ):
         episode.custom_metrics["discounted_rewards"] = process_rewards(
-            episode.user_data["rewards"][:-12]
+            episode.user_data["rewards"][:-24]
         )
-        episode.custom_metrics["mean_markup"] = np.mean(
-            episode.user_data["markup_agg"][:-12]
-        )
+
         episode.custom_metrics["mean_markup_ij"] = np.mean(
-            episode.user_data["markup_ij_avge"][:-12]
+            episode.user_data["markup_ij_avge"][:-24]
         )
         episode.custom_metrics["freq_p_adj"] = np.mean(
-            episode.user_data["freq_p_adj"][:-12]
+            episode.user_data["freq_p_adj"][:-24]
         )
         episode.custom_metrics["size_adj"] = np.mean(
-            episode.user_data["size_adj"][:-12]
+            episode.user_data["size_adj"][:-24]
         )
-        episode.custom_metrics["std_log_c"] = np.std(episode.user_data["log_c"][:-12])
-        episode.custom_metrics["mean_markup_ij"] = np.mean(
+        episode.custom_metrics["std_log_c"] = np.std(episode.user_data["log_c"][:-24])
+
+        episode.custom_metrics["mean_markup_ij_final"] = np.mean(
             episode.user_data["markup_ij_avge"][-12:]
         )
 
@@ -336,7 +331,7 @@ ppo_config = {
     # "entropy_coeff": 0,
     # "kl_coeff": 0.2,
     # "vf_loss_coeff": 0.5,
-    "vf_clip_param": np.float("inf"),
+    "vf_clip_param": float("inf"),
     # "entropy_coeff_schedule": [[0, 0.01], [5120 * 1000, 0]],
     # "clip_param": 0.2,
     "clip_actions": True,
