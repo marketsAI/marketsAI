@@ -29,7 +29,7 @@ import json
 """ STEP 0: Experiment configs """
 
 # global configss
-ENV_LABEL = "mon_policy"
+ENV_LABEL = "mon_policy_alt"
 register_env(ENV_LABEL, MonPolicy)
 DATE = "Oct21_v1_"
 NATIVE = True
@@ -69,7 +69,7 @@ else:
     device = "server_"
 n_firms_LIST = [2, 2, 2]  # list with number of agents for each run
 n_inds_LIST = [200]
-ITERS_TEST = 4  # number of iteration for test
+ITERS_TEST = 2  # number of iteration for test
 ITERS_RUN = 5000  # number of iteration for fullrun
 
 
@@ -104,7 +104,7 @@ else:
 # checkpointing, evaluation during trainging and stopage
 CHKPT_FREQ = 1000
 if TEST:
-    EVAL_INTERVAL = 2
+    EVAL_INTERVAL = 1
 else:
     EVAL_INTERVAL = 100
 STOP = {"timesteps_total": MAX_STEPS}
@@ -156,6 +156,7 @@ class MyCallbacks(DefaultCallbacks):
         episode.user_data["freq_p_adj"] = []
         episode.user_data["size_adj"] = []
         episode.user_data["log_c"] = []
+        episode.user_data["profits"] = []
 
     def on_episode_step(
         self,
@@ -179,6 +180,9 @@ class MyCallbacks(DefaultCallbacks):
                 episode.last_info_for(0)["mean_p_change"]
             )
             episode.user_data["log_c"].append(episode.last_info_for(0)["log_c"])
+            episode.user_data["profits"].append(
+                episode.last_info_for(0)["mean_profits"]
+            )
 
     def on_episode_end(
         self,
@@ -200,6 +204,7 @@ class MyCallbacks(DefaultCallbacks):
         episode.custom_metrics["freq_p_adj"] = np.mean(episode.user_data["freq_p_adj"])
         episode.custom_metrics["size_adj"] = np.mean(episode.user_data["size_adj"])
         episode.custom_metrics["std_log_c"] = np.std(episode.user_data["log_c"])
+        episode.custom_metrics["profits"] = np.mean(episode.user_data["profits"])
 
 
 """ STEP 3: Environment and Algorithm configuration """
@@ -212,7 +217,7 @@ env_config = {
     "eval_mode": False,
     "analysis_mode": False,
     "no_agg": False,
-    "obs_idshock": False,
+    "obs_idshock": True,
     "seed_eval": 10000,
     "seed_analisys": 3000,
     "markup_min": 1,
@@ -334,6 +339,7 @@ mu_ij = []
 freq_p_adj = []
 size_adj = []
 std_log_c = []
+profits = []
 
 # RUN TRAINER
 env_configs = []
@@ -420,6 +426,12 @@ for ind, n_firms in enumerate(n_firms_LIST):
             for i in range(NUM_TRIALS)
         ]
     )
+    profits.append(
+        [
+            list(analysis.results.values())[i]["custom_metrics"]["profits_mean"]
+            for i in range(NUM_TRIALS)
+        ]
+    )
     exp_names.append(EXP_NAME)
     exp_dirs.append(analysis._experiment_dir)
     trial_logdirs.append([analysis.trials[i].logdir for i in range(NUM_TRIALS)])
@@ -451,6 +463,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
                         "custom_metrics/freq_p_adj_mean",
                         "custom_metrics/size_adj_mean",
                         "custom_metrics/std_log_c_mean",
+                        "custom_metrics/profits_mean",
                     ]
                 ]
                 for i in range(NUM_TRIALS)
@@ -464,6 +477,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
                 f"freq_p_adj_trial_{i}",
                 f"size_adj_trial_{i}",
                 f"log_c_mean_trial_{i}",
+                f"profits_trial_{i}",
             ]
             # learning_dta[ind][i].set_index("episodes_total")
         pd.concat(learning_dta[ind], axis=1).to_csv(
@@ -549,7 +563,7 @@ if PLOT_PROGRESS:
             )
         learning_plot = learning_plot.get_figure()
         plt.ylabel("Frequency of price adjustment")
-        plt.xlabel("Timesteps (thousands)")
+        plt.xlabel("Episodes (5 years)")
         plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
         learning_plot.savefig(
             OUTPUT_PATH_FIGURES + "progress_freq_p_adj" + exp_names[ind] + ".png"
@@ -565,7 +579,7 @@ if PLOT_PROGRESS:
             )
         learning_plot = learning_plot.get_figure()
         plt.ylabel("Frequency of price adjustment")
-        plt.xlabel("Timesteps (thousands)")
+        plt.xlabel("Episodes (5 years)")
         plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
         learning_plot.savefig(
             OUTPUT_PATH_FIGURES + "progress_size_adj" + exp_names[ind] + ".png"

@@ -26,7 +26,7 @@ class MonPolicy(MultiAgentEnv):
         self.env_config = env_config
 
         # GLOBAL ENV CONFIGS
-        self.horizon = self.env_config.get("horizon", 100)
+        self.horizon = self.env_config.get("horizon", 60)
         self.n_firms = self.env_config.get("n_firms", 2)
         self.n_inds = self.env_config.get("n_inds", 2)
         self.n_agents = self.n_firms * self.n_inds
@@ -34,7 +34,7 @@ class MonPolicy(MultiAgentEnv):
         self.analysis_mode = self.env_config.get("analysis_mode", False)
         self.no_agg = self.env_config.get("no_agg", False)
         self.obs_idshock = self.env_config.get("obs_idshock", False)
-        self.seed_eval = self.env_config.get("seed_eval", 2000)
+        self.seed_eval = self.env_config.get("seed_eval", 10000)
         self.seed_analysis = self.env_config.get("seed_analysis", 3000)
         self.markup_min = self.env_config.get("markup_min", 1.2)
         self.markup_max = self.env_config.get("markup_max", 3)
@@ -90,7 +90,7 @@ class MonPolicy(MultiAgentEnv):
             }
 
             self.initial_markup_seeded = np.array(
-                [rng.normal(1.3, 0.1) for i in range(self.n_agents)]
+                [rng.normal(1.3, 0.2) for i in range(self.n_agents)]
             )
             if self.analysis_mode:
                 self.epsilon_g_seeded = {t: 0 for t in range(self.horizon + 1)}
@@ -121,8 +121,8 @@ class MonPolicy(MultiAgentEnv):
                     ),
                     high=np.array(
                         [10 for i in range(self.n_firms)]
-                        + [np.float("inf") for i in range(self.n_firms)]
-                        + [5, np.float("inf")]
+                        + [float("inf") for i in range(self.n_firms)]
+                        + [5, float("inf")]
                     ),
                     shape=(self.n_obs_markups + self.n_obs_shocks + self.n_obs_agg,),
                     dtype=np.float32,
@@ -442,6 +442,7 @@ class MonPolicy(MultiAgentEnv):
                         [abs(np.log(elem)) for elem in price_changes]
                     ),
                     "log_c": np.log(1 / self.mu),
+                    "mean_profits": np.mean(self.profits),
                 }
             }
 

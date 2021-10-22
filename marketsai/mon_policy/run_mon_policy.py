@@ -31,7 +31,7 @@ import json
 # global configss
 ENV_LABEL = "mon_policy"
 register_env(ENV_LABEL, MonPolicy)
-DATE = "Oct20_v1_"
+DATE = "Oct21_v1_"
 NATIVE = True
 TEST = True
 SAVE_EXP_INFO = True
@@ -67,9 +67,9 @@ if NATIVE:
     device = "native_"  # either "native" or "server"
 else:
     device = "server_"
-n_firms_LIST = [2]  # list with number of agents for each run
+n_firms_LIST = [2, 2, 2]  # list with number of agents for each run
 n_inds_LIST = [200]
-ITERS_TEST = 10  # number of iteration for test
+ITERS_TEST = 2  # number of iteration for test
 ITERS_RUN = 5000  # number of iteration for fullrun
 
 
@@ -104,7 +104,7 @@ else:
 # checkpointing, evaluation during trainging and stopage
 CHKPT_FREQ = 1000
 if TEST:
-    EVAL_INTERVAL = 5
+    EVAL_INTERVAL = 1
 else:
     EVAL_INTERVAL = 100
 STOP = {"timesteps_total": MAX_STEPS}
@@ -156,6 +156,7 @@ class MyCallbacks(DefaultCallbacks):
         episode.user_data["freq_p_adj"] = []
         episode.user_data["size_adj"] = []
         episode.user_data["log_c"] = []
+        episode.user_data["profits_mean"] = []
 
     def on_episode_step(
         self,
@@ -167,18 +168,21 @@ class MyCallbacks(DefaultCallbacks):
         **kwargs,
     ):
         if episode.length > 1:  # at t=0, previous rewards are not defined
-            episode.user_data["rewards"].append(episode.prev_reward_for("firm_0"))
+            episode.user_data["rewards"].append(episode.prev_reward_for(0))
 
             episode.user_data["markup_ij_avge"].append(
-                episode.last_info_for("firm_0")["mean_mu_ij"]
+                episode.last_info_for(0)["mean_mu_ij"]
             )
             episode.user_data["freq_p_adj"].append(
-                episode.last_info_for("firm_0")["move_freq"]
+                episode.last_info_for(0)["move_freq"]
             )
             episode.user_data["size_adj"].append(
-                episode.last_info_for("firm_0")["mean_p_change"]
+                episode.last_info_for(0)["mean_p_change"]
             )
-            episode.user_data["log_c"].append(episode.last_info_for("firm_0")["log_c"])
+            episode.user_data["log_c"].append(episode.last_info_for(0)["log_c"])
+            episode.user_data["profits_mean"].append(
+                episode.last_info_for(0)["mean_profits"]
+            )
 
     def on_episode_end(
         self,
@@ -200,6 +204,7 @@ class MyCallbacks(DefaultCallbacks):
         episode.custom_metrics["freq_p_adj"] = np.mean(episode.user_data["freq_p_adj"])
         episode.custom_metrics["size_adj"] = np.mean(episode.user_data["size_adj"])
         episode.custom_metrics["std_log_c"] = np.std(episode.user_data["log_c"])
+        episode.custom_metrics["profits"] = np.mean(episode.user_data["profits_mean"])
 
 
 """ STEP 3: Environment and Algorithm configuration """
@@ -280,21 +285,19 @@ common_config = {
         "policies": {
             "firm_even": (
                 None,
-                env.observation_space["firm_0"],
-                env.action_space["firm_0"],
+                env.observation_space[0],
+                env.action_space[0],
                 {},
             ),
             "firm_odd": (
                 None,
-                env.observation_space["firm_0"],
-                env.action_space["firm_0"],
+                env.observation_space[0],
+                env.action_space[0],
                 {},
             ),
         },
         "policy_mapping_fn": (
-            lambda agent_id: agent_id.split("_")[0] + "_even"
-            if int(agent_id.split("_")[1]) % 2 == 0
-            else agent_id.split("_")[0] + "_odd"
+            lambda agent_id: "firm_even" if agent_id % 2 == 0 else "firm_odd"
         ),
         # "replay_mode": "independent",  # you can change to "lockstep".
         # OTHERS
@@ -305,14 +308,6 @@ common_config = {
 ppo_config = {
     # "lr": 0.0001,
     "lr_schedule": [[0, 0.00005], [100000, 0.00001]],
-    # "lr_schedule": tune.grid_search(
-    #     [
-    #         [[0, 0.00005], [50000, 0.00001]],
-    #         [[0, 0.0008], [50000, 0.00005]],
-    #         [[0, 0.0008], [50000, 0.00001]],
-    #         [[0, 0.00005], [50000, 0.00005]],
-    #     ]
-    # ),
     "sgd_minibatch_size": BATCH_SIZE // NUM_MINI_BATCH,
     "num_sgd_iter": 1,
     "batch_mode": "complete_episodes",
@@ -320,7 +315,7 @@ ppo_config = {
     # "entropy_coeff": 0,
     # "kl_coeff": 0.2,
     # "vf_loss_coeff": 0.5,
-    "vf_clip_param": np.float("inf"),
+    "vf_clip_param": float("inf"),
     # "entropy_coeff_schedule": [[0, 0.01], [5120 * 1000, 0]],
     # "clip_param": 0.2,
     "clip_actions": True,
@@ -348,12 +343,13 @@ mu_ij = []
 freq_p_adj = []
 size_adj = []
 std_log_c = []
+profits = []
 
 # RUN TRAINER
 env_configs = []
 
 for ind, n_firms in enumerate(n_firms_LIST):
-    EXP_LABEL = device + ENV_LABEL + f"_{n_firms}_firms_"
+    EXP_LABEL = device + ENV_LABEL + f"_round_{ind}_"
     if TEST == True:
         EXP_NAME = EXP_LABEL + DATE + ALGO + "_test"
     else:
@@ -370,21 +366,19 @@ for ind, n_firms in enumerate(n_firms_LIST):
         "policies": {
             "firm_even": (
                 None,
-                env.observation_space["firm_0"],
-                env.action_space["firm_0"],
+                env.observation_space[0],
+                env.action_space[0],
                 {},
             ),
             "firm_odd": (
                 None,
-                env.observation_space["firm_0"],
-                env.action_space["firm_0"],
+                env.observation_space[0],
+                env.action_space[0],
                 {},
             ),
         },
         "policy_mapping_fn": (
-            lambda agent_id: agent_id.split("_")[0] + "_even"
-            if int(agent_id.split("_")[1]) % 2 == 0
-            else agent_id.split("_")[0] + "_odd"
+            lambda agent_id: "firm_even" if agent_id % 2 == 0 else "firm_odd"
         ),
     }
 
@@ -436,6 +430,13 @@ for ind, n_firms in enumerate(n_firms_LIST):
             for i in range(NUM_TRIALS)
         ]
     )
+
+    profits.append(
+        [
+            list(analysis.results.values())[i]["custom_metrics"]["profits_mean"]
+            for i in range(NUM_TRIALS)
+        ]
+    )
     exp_names.append(EXP_NAME)
     exp_dirs.append(analysis._experiment_dir)
     trial_logdirs.append([analysis.trials[i].logdir for i in range(NUM_TRIALS)])
@@ -467,6 +468,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
                         "custom_metrics/freq_p_adj_mean",
                         "custom_metrics/size_adj_mean",
                         "custom_metrics/std_log_c_mean",
+                        "custom_metrics/profits_mean",
                     ]
                 ]
                 for i in range(NUM_TRIALS)
@@ -480,6 +482,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
                 f"freq_p_adj_trial_{i}",
                 f"size_adj_trial_{i}",
                 f"log_c_mean_trial_{i}",
+                f"profits_trial_{i}",
             ]
             # learning_dta[ind][i].set_index("episodes_total")
         pd.concat(learning_dta[ind], axis=1).to_csv(
@@ -490,7 +493,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
 
 # global experiment name
 if len(exp_names) > 1:
-    EXP_LABEL = device + f"_multi_firm_"
+    EXP_LABEL = device + f"_multiround_"
     if TEST == True:
         EXP_NAME = EXP_LABEL + ENV_LABEL + "_test_" + DATE + ALGO
     else:
@@ -511,6 +514,7 @@ if SAVE_EXP_INFO:
         "mu_ij": mu_ij,
         "freq_p_adj": freq_p_adj,
         "size_adj": size_adj,
+        "profits": profits,
     }
 
     print("mu_ij", mu_ij, "freq_p_adj:", freq_p_adj, "size_adj", size_adj)
@@ -529,14 +533,14 @@ if PLOT_PROGRESS:
             learning_plot = sn.lineplot(
                 data=learning_dta[ind][i],
                 y=f"discounted_rewards_trial_{i}",
-                x="episodes_total",
+                x=learning_dta[ind][i].index,
             )
         learning_plot = learning_plot.get_figure()
         plt.ylabel("Discounted utility")
-        plt.xlabel("Timesteps (thousands)")
+        plt.xlabel("Episodes (5 years)")
         plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
         learning_plot.savefig(
-            OUTPUT_PATH_FIGURES + "progress_rewards" + EXP_NAME + ".png"
+            OUTPUT_PATH_FIGURES + "progress_rewards" + exp_names[ind] + ".png"
         )
         # plt.show()
         plt.close()
@@ -545,14 +549,14 @@ if PLOT_PROGRESS:
             learning_plot = sn.lineplot(
                 data=learning_dta[ind][i],
                 y=f"mu_ij_trial_{i}",
-                x="episodes_total",
+                x=learning_dta[ind][i].index,
             )
         learning_plot = learning_plot.get_figure()
         plt.ylabel("E[mu_ij]")
-        plt.xlabel("Timesteps (thousands)")
+        plt.xlabel("Episodes (5 years)")
         plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
         learning_plot.savefig(
-            OUTPUT_PATH_FIGURES + "progress_mu_ij" + EXP_NAME + ".png"
+            OUTPUT_PATH_FIGURES + "progress_mu_ij" + exp_names[ind] + ".png"
         )
         # plt.show()
         plt.close()
@@ -561,14 +565,14 @@ if PLOT_PROGRESS:
             learning_plot = sn.lineplot(
                 data=learning_dta[ind][i],
                 y=f"freq_p_adj_trial_{i}",
-                x="episodes_total",
+                x=learning_dta[ind][i].index,
             )
         learning_plot = learning_plot.get_figure()
         plt.ylabel("Frequency of price adjustment")
-        plt.xlabel("Timesteps (thousands)")
+        plt.xlabel("Episodes (5 years)")
         plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
         learning_plot.savefig(
-            OUTPUT_PATH_FIGURES + "progress_freq_p_adj" + EXP_NAME + ".png"
+            OUTPUT_PATH_FIGURES + "progress_freq_p_adj" + exp_names[ind] + ".png"
         )
         # plt.show()
         plt.close()
@@ -577,14 +581,14 @@ if PLOT_PROGRESS:
             learning_plot = sn.lineplot(
                 data=learning_dta[ind][i],
                 y=f"size_adj_trial_{i}",
-                x="episodes_total",
+                x=learning_dta[ind][i].index,
             )
         learning_plot = learning_plot.get_figure()
         plt.ylabel("Frequency of price adjustment")
-        plt.xlabel("Timesteps (thousands)")
+        plt.xlabel("Episodes (5 years)")
         plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
         learning_plot.savefig(
-            OUTPUT_PATH_FIGURES + "progress_size_adj" + EXP_NAME + ".png"
+            OUTPUT_PATH_FIGURES + "progress_size_adj" + exp_names[ind] + ".png"
         )
         # plt.show()
         plt.close()
