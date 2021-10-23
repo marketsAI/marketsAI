@@ -116,53 +116,99 @@ class MonPolicyFinite(MultiAgentEnv):
             )
             for i in range(self.n_agents)
         }
-
+        n_obs_ind = self.n_firms * 1
+        n_obs_agg = 2
+        low_ind = np.array([0 for i in range(n_obs_ind)])
+        low_agg = np.array([0 for i in range(n_obs_agg)])
+        high_ind = np.array([10 for i in range(self.n_firms)])
+        high_agg = np.array([5, float("inf")])
         if self.obs_flex_index and self.regime_change:
-            n_obs_ind = self.n_firms
-            n_obs_agg = 5
-            low = np.array(
-                [0 for i in range(n_obs_ind)] + [0 for i in range(n_obs_agg)]
-            )
-            high = np.array(
-                [10 for i in range(self.n_firms)]
-                + [5, float("inf"), self.horizon, 1, 1]
-            )
+            self.observation_space = {
+                i: Dict(
+                    {
+                        "obs_ind": Box(
+                            low=low_ind,
+                            high=high_ind,
+                            shape=(n_obs_ind,),
+                            dtype=np.float32,
+                        ),
+                        "obs_agg": Box(
+                            low=low_agg,
+                            high=high_agg,
+                            shape=(n_obs_agg,),
+                            dtype=np.float32,
+                        ),
+                        "time": Discrete(self.horizon + 1),
+                        "flex_index": Discrete(2),
+                        "regime": Discrete(2),
+                    }
+                )
+                for i in range(self.n_agents)
+            }
         elif self.obs_flex_index and not self.regime_change:
-            n_obs_ind = self.n_firms
-            n_obs_agg = 4
-            low = np.array(
-                [0 for i in range(n_obs_ind)] + [0 for i in range(n_obs_agg)]
-            )
-            high = np.array(
-                [10 for i in range(self.n_firms)] + [5, float("inf"), self.horizon, 1]
-            )
+            self.observation_space = {
+                i: Dict(
+                    {
+                        "obs_ind": Box(
+                            low=low_ind,
+                            high=high_ind,
+                            shape=(n_obs_ind,),
+                            dtype=np.float32,
+                        ),
+                        "obs_agg": Box(
+                            low=low_agg,
+                            high=high_agg,
+                            shape=(n_obs_agg,),
+                            dtype=np.float32,
+                        ),
+                        "time": Discrete(self.horizon + 1),
+                        "flex_index": Discrete(2),
+                    }
+                )
+                for i in range(self.n_agents)
+            }
 
         elif not self.obs_flex_index and self.regime_change:
-            n_obs_ind = self.n_firms
-            n_obs_agg = 4
-            low = np.array(
-                [0 for i in range(n_obs_ind)] + [0 for i in range(n_obs_agg)]
-            )
-            high = np.array(
-                [10 for i in range(self.n_firms)] + [5, float("inf"), self.horizon, 1]
-            )
+            self.observation_space = {
+                i: Dict(
+                    {
+                        "obs_ind": Box(
+                            low=low_ind,
+                            high=high_ind,
+                            shape=(n_obs_ind,),
+                            dtype=np.float32,
+                        ),
+                        "obs_agg": Box(
+                            low=low_agg,
+                            high=high_agg,
+                            shape=(n_obs_agg,),
+                            dtype=np.float32,
+                        ),
+                        "time": Discrete(self.horizon + 1),
+                        "regime": Discrete(2),
+                    }
+                )
+                for i in range(self.n_agents)
+            }
 
         else:
-            n_obs_ind = self.n_firms
-            n_obs_agg = 3
-            low = np.array(
-                [0 for i in range(n_obs_ind)] + [0 for i in range(n_obs_agg)]
-            )
-            high = np.array(
-                [10 for i in range(self.n_firms)] + [5, float("inf"), self.horizon]
-            )
-
             self.observation_space = {
-                i: Box(
-                    low=low,
-                    high=high,
-                    shape=(n_obs_ind + n_obs_agg),
-                    dtype=np.float32,
+                i: Dict(
+                    {
+                        "obs_ind": Box(
+                            low=low_ind,
+                            high=high_ind,
+                            shape=(n_obs_ind,),
+                            dtype=np.float32,
+                        ),
+                        "obs_agg": Box(
+                            low=low_agg,
+                            high=high_agg,
+                            shape=(n_obs_agg,),
+                            dtype=np.float32,
+                        ),
+                        "time": Discrete(self.horizon + 1),
+                    }
                 )
                 for i in range(self.n_agents)
             }
@@ -240,52 +286,70 @@ class MonPolicyFinite(MultiAgentEnv):
         # create Dictionary wtih agents as keys and with Tuple spaces as values
         if self.obs_flex_index and self.regime_change:
             self.obs_next = {
-                i: np.array(
-                    mu_obsperfirm[i]
-                    + [
-                        self.mu,
-                        self.g,
-                        self.timestep,
-                        flex_index,
-                        high_regime_index,
-                    ],
-                    dtype=np.float32,
-                )
+                i: {
+                    "obs_ind": np.array(
+                        mu_obsperfirm[i],
+                        dtype=np.float32,
+                    ),
+                    "obs_agg": np.array(
+                        [self.mu, self.g],
+                        dtype=np.float32,
+                    ),
+                    "time": self.timestep,
+                    "regime": high_regime_index,
+                    "flex_index": flex_index,
+                }
                 for i in range(self.n_agents)
             }
+
         elif self.obs_flex_index and not self.regime_change:
             self.obs_next = {
-                i: np.array(
-                    mu_obsperfirm[i] + [self.mu, self.g, self.timestep, flex_index],
-                    dtype=np.float32,
-                )
+                i: {
+                    "obs_ind": np.array(
+                        mu_obsperfirm[i],
+                        dtype=np.float32,
+                    ),
+                    "obs_agg": np.array(
+                        [self.mu, self.g],
+                        dtype=np.float32,
+                    ),
+                    "time": self.timestep,
+                    "flex_index": flex_index,
+                }
                 for i in range(self.n_agents)
             }
         elif not self.obs_flex_index and self.regime_change:
             self.obs_next = {
-                i: np.array(
-                    mu_obsperfirm[i]
-                    + [
-                        self.mu,
-                        self.g,
-                        self.timestep,
-                        high_regime_index,
-                    ],
-                    dtype=np.float32,
-                )
+                i: {
+                    "obs_ind": np.array(
+                        mu_obsperfirm[i],
+                        dtype=np.float32,
+                    ),
+                    "obs_agg": np.array(
+                        [self.mu, self.g],
+                        dtype=np.float32,
+                    ),
+                    "time": np.array(
+                        [self.timestep],
+                        dtype=np.int,
+                    ),
+                    "regime": high_regime_index,
+                }
                 for i in range(self.n_agents)
             }
         else:
             self.obs_next = {
-                i: np.array(
-                    mu_obsperfirm[i]
-                    + [
-                        self.mu,
-                        self.g,
-                        self.timestep,
-                    ],
-                    dtype=np.float32,
-                )
+                i: {
+                    "obs_ind": np.array(
+                        mu_obsperfirm[i],
+                        dtype=np.float32,
+                    ),
+                    "obs_agg": np.array(
+                        [self.mu, self.g],
+                        dtype=np.float32,
+                    ),
+                    "time": self.timestep,
+                }
                 for i in range(self.n_agents)
             }
 
@@ -302,7 +366,7 @@ class MonPolicyFinite(MultiAgentEnv):
             rho_g = self.params["rho_g"] * self.infl_regime_scale[1]
             sigma_g = self.params["sigma_g"] * self.infl_regime_scale[2]
         else:
-            high_regime_index = 1
+            high_regime_index = 0
             log_g_bar = self.params["log_g_bar"]
             rho_g = self.params["rho_g"]
             sigma_g = self.params["sigma_g"]
@@ -409,9 +473,10 @@ class MonPolicyFinite(MultiAgentEnv):
             (1 - rho_g) * log_g_bar + rho_g * self.log_g + sigma_g * self.epsilon_g
         )
         self.g = math.e ** self.log_g
-        self.infl_regime = random.choices(
-            ["low", "high"], self.infl_transprob[high_regime_index]
-        )[0]
+        if self.regime_change:
+            self.infl_regime = random.choices(
+                ["low", "high"], self.infl_transprob[high_regime_index]
+            )[0]
         self.mu_ij_next = [
             self.mu_ij[i]
             / (self.g * math.e ** (self.params["sigma_z"] * self.epsilon_z[i]))
@@ -434,47 +499,67 @@ class MonPolicyFinite(MultiAgentEnv):
         # new observation
         if self.obs_flex_index and self.regime_change:
             self.obs_next = {
-                i: np.array(
-                    mu_obsperfirm[i]
-                    + [
-                        self.mu,
-                        self.g,
-                        self.timestep,
-                        flex_index,
-                        high_regime_index,
-                    ],
-                    dtype=np.float32,
-                )
+                i: {
+                    "obs_ind": np.array(
+                        mu_obsperfirm[i],
+                        dtype=np.float32,
+                    ),
+                    "obs_agg": np.array(
+                        [self.mu, self.g],
+                        dtype=np.float32,
+                    ),
+                    "time": self.timestep,
+                    "regime": high_regime_index,
+                    "flex_index": flex_index,
+                }
                 for i in range(self.n_agents)
             }
+
         elif self.obs_flex_index and not self.regime_change:
             self.obs_next = {
-                i: np.array(
-                    mu_obsperfirm[i] + [self.mu, self.g, flex_index],
-                    dtype=np.float32,
-                )
+                i: {
+                    "obs_ind": np.array(
+                        mu_obsperfirm[i],
+                        dtype=np.float32,
+                    ),
+                    "obs_agg": np.array(
+                        [self.mu, self.g],
+                        dtype=np.float32,
+                    ),
+                    "time": self.timestep,
+                    "flex_index": flex_index,
+                }
                 for i in range(self.n_agents)
             }
         elif not self.obs_flex_index and self.regime_change:
             self.obs_next = {
-                i: np.array(
-                    mu_obsperfirm[i]
-                    + [
-                        self.mu,
-                        self.g,
-                        self.timestep,
-                        high_regime_index,
-                    ],
-                    dtype=np.float32,
-                )
+                i: {
+                    "obs_ind": np.array(
+                        mu_obsperfirm[i],
+                        dtype=np.float32,
+                    ),
+                    "obs_agg": np.array(
+                        [self.mu, self.g],
+                        dtype=np.float32,
+                    ),
+                    "time": self.timestep,
+                    "regime": high_regime_index,
+                }
                 for i in range(self.n_agents)
             }
         else:
             self.obs_next = {
-                i: np.array(
-                    mu_obsperfirm[i] + [self.mu, self.g, self.timestep],
-                    dtype=np.float32,
-                )
+                i: {
+                    "obs_ind": np.array(
+                        mu_obsperfirm[i],
+                        dtype=np.float32,
+                    ),
+                    "obs_agg": np.array(
+                        [self.mu, self.g],
+                        dtype=np.float32,
+                    ),
+                    "time": self.timestep,
+                }
                 for i in range(self.n_agents)
             }
 
@@ -652,7 +737,7 @@ def main():
             env.move_ij[0],
             "\n",
             "OBS:",
-            obs[0],
+            obs[0]["regime"],
             "\n",
             "REW:",
             rew[0],

@@ -1,5 +1,5 @@
 # import environment
-from marketsai.mon_policy.env_mon_policy import MonPolicy
+from marketsai.mon_policy.env_mon_policy_dict import MonPolicy
 
 # import ray
 from ray import tune, shutdown, init
@@ -31,7 +31,7 @@ import json
 # global configss
 DATE = "Oct23_v1_"
 NATIVE = True
-TEST = True
+TEST = False
 SAVE_EXP_INFO = True
 SAVE_PROGRESS = True
 PLOT_PROGRESS = True
@@ -68,7 +68,7 @@ else:
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [200]
 ITERS_TEST = 4  # number of iteration for test
-ITERS_RUN = 5000  # number of iteration for fullrun
+ITERS_RUN = 500  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -78,10 +78,10 @@ BETA = 0.95 ** (1 / 12)  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 8
+NUM_CPUS = 4
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 8
-NUM_PAR_TRIALS = 8
+NUM_TRIALS = 4
+NUM_PAR_TRIALS = 4
 NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0

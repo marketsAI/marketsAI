@@ -1,7 +1,8 @@
 # Imports
-from marketsai.mon_policy.env_mon_policy import MonPolicy
-import scipy.io as sio
-from scipy.interpolate import RegularGridInterpolator
+from marketsai.mon_policy.env_mon_policy_finite import MonPolicyFinite
+
+# import scipy.io as sio
+# from scipy.interpolate import RegularGridInterpolator
 from scipy.stats import linregress
 from marketsai.utils import encode
 import matplotlib.pyplot as plt
@@ -22,14 +23,15 @@ from ray import shutdown, init
 # Script Options
 FOR_PUBLIC = False  # for publication
 SAVE_CSV = False  # save learning CSV
+PLOT_HIST = True
 PLOT_PROGRESS = False  # create plot with progress
-SIMUL_PERIODS = 1000
-ENV_HORIZON = 5000
+SIMUL_PERIODS = 5040
+ENV_HORIZON = 72
 BETA = 0.95 ** (1 / 12)
 
 # register environment
-env_label = "mon_policy"
-register_env(env_label, MonPolicy)
+env_label = "mon_policy_finite"
+register_env(env_label, MonPolicyFinite)
 
 # Input Directories (of json file with experiment data)
 INPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/expINFO_native_mon_policy_finite_2_firms_Oct18_v1_PPO_run.json"
@@ -62,9 +64,10 @@ sn.set_context(
 """ Step 0: import experiment data and initalize empty output data """
 with open(INPUT_PATH_EXPERS) as f:
     exp_data_dict = json.load(f)
-print(exp_data_dict)
+
 
 # UNPACK USEFUL DATA
+num_trials = len(exp_data_dict["rewards"][0])
 exp_names = exp_data_dict["exp_names"]
 checkpoints = exp_data_dict["checkpoints"]
 progress_csv_dirs = exp_data_dict["progress_csv_dirs"]
@@ -74,6 +77,14 @@ results = {
     "p_adj_freq": exp_data_dict["freq_p_adj"][0],
     "size_adj": exp_data_dict["size_adj"][0],
 }
+print(results)
+if PLOT_HIST:
+    for i, x in enumerate(results):
+        plt.hist(x)
+        plt.savefig(
+            OUTPUT_PATH_FIGURES + "hist_" + f"{i}" + "_" + exp_names[0] + ".jpg"
+        )
+
 # best_rewards = exp_data_dict["best_rewards"]
 
 
@@ -145,16 +156,17 @@ if PLOT_PROGRESS == True:
 # environment config
 env_config = {
     "horizon": ENV_HORIZON,
-    "n_inds": 100,
+    "n_inds": 200,
     "n_firms": 2,
     "eval_mode": False,
     "analysis_mode": False,
-    "seed_eval": 10000,
+    "seed_eval": 50000,
     "seed_analisys": 3000,
     "no_agg": False,
     "markup_min": 1,
     "markup_max": 2,
     "markup_star": 1.3,
+    "final_stage": 12,
     "rew_mean": 0,
     "rew_std": 1,
     "parameters": {
@@ -171,7 +183,7 @@ env_config = {
 
 
 env_config_eval = env_config.copy()
-env_config_eval["eval_mode"] = True
+env_config_eval["eval_mode"] = False
 # env_config_eval["horizon"] = ENV_HORIZON
 
 env_config_noagg = env_config_eval.copy()
@@ -179,13 +191,13 @@ env_config_noagg["no_agg"] = True
 
 
 # We instantiate the environment to extract information.
-env = MonPolicy(env_config_eval)
+env = MonPolicyFinite(env_config_eval)
 config_algo = {
     "gamma": BETA,
     "env": env_label,
     "env_config": env_config_eval,
     "horizon": ENV_HORIZON,
-    "explore": False,
+    "explore": True,
     "framework": "torch",
     "multiagent": {
         "policies": {
@@ -203,25 +215,9 @@ config_algo = {
             ),
         },
         "policy_mapping_fn": (
-            lambda agent_id: agent_id.split("_")[0] + "_even"
-            if int(agent_id.split("_")[1]) % 2 == 0
-            else agent_id.split("_")[0] + "_odd"
+            lambda agent_id: "firm_even" if agent_id % 2 == 0 else "firm_odd"
         ),
-        # "replay_mode": "independent",  # you can change to "lockstep".
-        # OTHERS
     },
-    # "multiagent": {
-    #     "policies": {
-    #         "firm": (
-    #             None,
-    #             env.observation_space[0],
-    #             env.action_space[0],
-    #             {},
-    #         )
-    #     },
-    #     "policy_mapping_fn": (lambda agent_id: agent_id.split("_")[0]),
-    # },
-    # "model": {"fcnet_hiddens": [128, 128]}
 }
 
 
@@ -232,8 +228,8 @@ init(
 )
 # We instantiate the environment to extract information.
 """ CHANGE HERE """
-env = MonPolicy(env_config_eval)
-env_noagg = MonPolicy(env_config_noagg)
+env = MonPolicyFinite(env_config_eval)
+env_noagg = MonPolicyFinite(env_config_noagg)
 
 """ Step 3.1: restore trainer """
 
@@ -241,6 +237,7 @@ simul_results_dict = {
     "trial": [],
     "discounted_rewards": [],
     "mu_ij": [],
+    "mu_ij_final": [],
     "freq_p_adj": [],
     "size_adj": [],
     "log_c_mean": [],
@@ -257,6 +254,7 @@ for trial in [0, 1, 2, 3]:
     """ Simulate an episode (SIMUL_PERIODS timesteps) """
     rew_list = []
     mu_ij_list = []
+    mu_ij_final_list = []
     freq_p_adj_list = []
     size_adj_list = []
     log_c_list = []
@@ -266,15 +264,16 @@ for trial in [0, 1, 2, 3]:
     freq_p_adj_list_noagg = []
     size_adj_list_noagg = []
     log_c_list_noagg = []
+    log_c_filt_list = []
 
     # loop with agg
     obs = env.reset()
     obs_noagg = env_noagg.reset()
     for t in range(SIMUL_PERIODS):
-        if t % 100 == 0:
+        if t % env.horizon == 0:
             print("time:", t)
-            # obs = env.reset()
-            # obs_noagg = env_noagg.reset()
+            obs = env.reset()
+            obs_noagg = env_noagg.reset()
         action = {
             i: trained_trainer.compute_action(obs[i], policy_id="firm_even")
             if i % 2 == 0
@@ -288,61 +287,62 @@ for trial in [0, 1, 2, 3]:
             for i in range(env.n_agents)
         }
 
-        # action = {
-        #     i: trained_trainer.compute_action(
-        #         obs[i], policy_id="firm"
-        #     )
-        #     for i in range(env.n_agents)
-        # }
-        # action_noagg = {
-        #     i: trained_trainer.compute_action(
-        #         obs_noagg[i], policy_id="firm"
-        #     )
-        #     for i in range(env.n_agents)
-        # }
-
         obs, rew, done, info = env.step(action)
         obs_noagg, rew_noagg, done_noagg, info_noagg = env_noagg.step(action_noagg)
         rew_list.append(info[0]["mean_profits"])
-        mu_ij_list.append(info[0]["mean_mu_ij"])
-        freq_p_adj_list.append(info[0]["move_freq"])
-        size_adj_list.append(info[0]["mean_p_change"])
-        log_c_list.append(info[0]["log_c"])
-        epsilon_g_list.append(env.epsilon_g)
-        rew_list_noagg.append(info_noagg[0]["mean_profits"])
-        mu_ij_list_noagg.append(info_noagg[0]["mean_mu_ij"])
-        freq_p_adj_list_noagg.append(info_noagg[0]["move_freq"])
-        size_adj_list_noagg.append(info_noagg[0]["mean_p_change"])
-        log_c_list_noagg.append(info_noagg[0]["log_c"])
+        if t % env.horizon < 49:
+            mu_ij_list.append(info[0]["mean_mu_ij"])
+            freq_p_adj_list.append(info[0]["move_freq"])
+            size_adj_list.append(info[0]["mean_p_change"])
+            log_c_list.append(info[0]["log_c"])
+            epsilon_g_list.append(env.epsilon_g)
+            rew_list_noagg.append(info_noagg[0]["mean_profits"])
+            mu_ij_list_noagg.append(info_noagg[0]["mean_mu_ij"])
+            freq_p_adj_list_noagg.append(info_noagg[0]["move_freq"])
+            size_adj_list_noagg.append(info_noagg[0]["mean_p_change"])
+            log_c_list_noagg.append(info_noagg[0]["log_c"])
+            log_c_filt_list.append(log_c_list[-1] - log_c_list_noagg[-1])
+        if t % env.horizon > 59:
+            mu_ij_final_list.append(info[0]["mean_mu_ij"])
 
-    log_c_filt_list = [
-        log_c_list[t] - log_c_list_noagg[t] for t in range(SIMUL_PERIODS)
-    ]
     delta_log_c = [j - i for i, j in zip(log_c_filt_list[:-1], log_c_filt_list[1:])]
-    IRs = [0 for t in range(12)]
-    for t in range(0, 12):
-        reg = linregress(delta_log_c[t:], epsilon_g_list[: SIMUL_PERIODS - (t + 1)])
+    IRs = [0 for t in range(13)]
+    for t in range(0, 13):
+        reg = linregress(delta_log_c[t:], epsilon_g_list[: -(t + 1)])
         IRs[t] = reg[0] * env.params["sigma_g"] * 100
-    cum_IRs = [np.sum(IRs[:t]) for t in range(12)]
+    cum_IRs = [np.sum(IRs[:t]) for t in range(13)]
 
     simul_results_dict["trial"].append(trial)
-    simul_results_dict["discounted_rewards"].append(process_rewards(rew_list, 0.98))
+    simul_results_dict["discounted_rewards"].append(process_rewards(rew_list, BETA))
     simul_results_dict["mu_ij"].append(np.mean(mu_ij_list))
+    simul_results_dict["mu_ij_final"].append(np.mean(mu_ij_final_list))
     simul_results_dict["freq_p_adj"].append(np.mean(freq_p_adj_list))
     simul_results_dict["size_adj"].append(np.mean(size_adj_list))
     simul_results_dict["log_c_mean"].append(np.mean(log_c_list))
     simul_results_dict["log_c_std"].append(np.std(log_c_filt_list))
     simul_results_dict["IRs"].append(IRs)
-    simul_results_dict["cum_IRs"].append(np.std(cum_IRs))
+    simul_results_dict["cum_IRs"].append(cum_IRs)
 
-    print(f"trial_{trial}", "std_log_c", np.std(log_c_filt_list))
+    print(
+        f"trial_{trial}",
+        "\n" + "std_log_c:",
+        simul_results_dict["log_c_std"][trial],
+        "n" + "mu_ij:",
+        simul_results_dict["mu_ij"][trial],
+        "\n" + "freq_p_adj:",
+        simul_results_dict["freq_p_adj"][trial],
+        "\n" + "size_adj:",
+        simul_results_dict["size_adj"][trial],
+        "\n" + "mu_ij_final:",
+        simul_results_dict["mu_ij_final"][trial],
+    )
 
 shutdown()
 
 """ Plot IRs """
 
 for trial in [0, 1, 2, 3]:
-    x = [i for i in range(12)]
+    x = [i for i in range(13)]
     IRs = simul_results_dict["IRs"][trial]
     plt.plot(x, IRs)
     # learning_plot = learning_plot.get_figure()
@@ -362,4 +362,4 @@ for trial in [0, 1, 2, 3]:
         OUTPUT_PATH_FIGURES + "cum_IRs_" + exp_names[0] + f"trial_{trial}" + ".png"
     )
     plt.close()
-    # plt.show()
+    plt.show()
