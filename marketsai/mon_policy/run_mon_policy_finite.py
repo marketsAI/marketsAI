@@ -30,9 +30,9 @@ import json
 """ STEP 0: Experiment configs """
 
 
-DATE = "Oct22_v1_"
-TEST = True
-NATIVE = True
+DATE = "Oct23_finnormal2_"
+TEST = False
+NATIVE = False
 SAVE_EXP_INFO = True
 SAVE_PROGRESS = True
 PLOT_PROGRESS = True
@@ -66,10 +66,10 @@ if NATIVE:
 else:
     device = "server_"
 
-n_firms_LIST = [2, 2, 2]  # list with number of agents for each run
+n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [200]
-ITERS_TEST = 2  # number of iteration for test
-ITERS_RUN = 3500  # number of iteration for fullrun
+ITERS_TEST = 10 # number of iteration for test
+ITERS_RUN = 3000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -79,11 +79,11 @@ BETA = 0.95 ** (1 / 12)  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 4
+NUM_CPUS = 34
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 4
-NUM_PAR_TRIALS = 4
-NUM_ROLLOUT = ENV_HORIZON * 1
+NUM_TRIALS = 34
+NUM_PAR_TRIALS = 34
+NUM_ROLLOUT = ENV_HORIZON * 2
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
@@ -103,7 +103,7 @@ else:
 # checkpointing, evaluation during trainging and stopage
 CHKPT_FREQ = 1000
 if TEST:
-    EVAL_INTERVAL = 1
+    EVAL_INTERVAL = 5
 else:
     EVAL_INTERVAL = 100
 
@@ -228,16 +228,16 @@ env_config = {
     "analysis_mode": False,
     "noagg": False,
     "obs_flex_index": True,
-    "regime_change": True,
-    "infl_regime": "high",
+    "regime_change": False,
+    "infl_regime": "low",
     "infl_regime_scale": [3, 1.3, 2],
     "infl_transprob": [[23 / 24, 1 / 24], [1 / 24, 23 / 24]],
     "seed_eval": 10000,
     "seed_analisys": 3000,
-    "markup_min": 1.2,
-    "markup_max": 3,
+    "markup_min": 1,
+    "markup_max": 2,
     "markup_start": 1.3,
-    "final_stage": 1,
+    "final_stage": 12,
     "rew_mean": 0,
     "rew_std": 1,
     "parameters": {
@@ -322,7 +322,7 @@ common_config = {
 # Configs specific to the chosel algorithms, INCLUDING THE LEARNING RATE
 ppo_config = {
     # "lr": 0.0001,
-    "lr_schedule": [[0, 0.00005], [100000, 0.00001]],
+    "lr_schedule": [[0, 0.0005], [200000, 0.00001]],
     "sgd_minibatch_size": BATCH_SIZE // NUM_MINI_BATCH,
     "num_sgd_iter": 1,
     "batch_mode": "complete_episodes",

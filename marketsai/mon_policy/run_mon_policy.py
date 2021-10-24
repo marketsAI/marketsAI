@@ -30,7 +30,7 @@ import json
 
 # global configss
 DATE = "Oct23_v1_"
-NATIVE = True
+NATIVE = False
 TEST = True
 SAVE_EXP_INFO = True
 SAVE_PROGRESS = True
@@ -67,8 +67,8 @@ else:
     device = "server_"
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [200]
-ITERS_TEST = 4  # number of iteration for test
-ITERS_RUN = 5000  # number of iteration for fullrun
+ITERS_TEST = 10  # number of iteration for test
+ITERS_RUN = 3500  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -78,11 +78,11 @@ BETA = 0.95 ** (1 / 12)  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 8
+NUM_CPUS = 34
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 8
-NUM_PAR_TRIALS = 8
-NUM_ROLLOUT = ENV_HORIZON * 1
+NUM_TRIALS = 16
+NUM_PAR_TRIALS = 34
+NUM_ROLLOUT = ENV_HORIZON * 2
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
@@ -102,7 +102,7 @@ else:
 # checkpointing, evaluation during trainging and stopage
 CHKPT_FREQ = 1000
 if TEST:
-    EVAL_INTERVAL = 2
+    EVAL_INTERVAL = 5
 else:
     EVAL_INTERVAL = 100
 STOP = {"timesteps_total": MAX_STEPS}
@@ -212,39 +212,42 @@ class MyCallbacks(DefaultCallbacks):
 # environment config including evaluation environment (without exploration)
 
 env_config = {
-    "horizon": ENV_HORIZON,
-    "n_inds": n_inds_LIST[0],
-    "n_firms": n_firms_LIST[0],
-    "eval_mode": False,
-    "analysis_mode": False,
-    "noagg": False,
-    "obs_idshock": True,
-    "regime_change": True,
-    "infl_regime": "high",
-    "infl_regime_scale": [3, 1.3, 2],
-    # "infl_transprob": [[0.5, 0.5], [0.5, 0.5]],
-    "infl_transprob": [[23 / 24, 1 / 24], [1 / 24, 23 / 24]],
-    "seed_eval": 10000,
-    "seed_analisys": 3000,
-    "markup_min": 1,
-    "markup_max": 2,
-    "markup_min": 1.2,
-    "markup_start": 1.3,
-    "rew_mean": 0,
-    "rew_std": 1,
-    "parameters": {
-        "beta": 0.95 ** (1 / 12),
-        "log_g_bar": 0.0021,
-        "rho_g": 0.61,
-        "sigma_g": 0.0019,
-        "theta": 1.5,
-        "eta": 10.5,
-        "menu_cost": 0.17,
-        "sigma_z": 0.038,
-    },
+    # "horizon": ENV_HORIZON,
+    # "n_inds": n_inds_LIST[0],
+    # "n_firms": n_firms_LIST[0],
+    # "eval_mode": False,
+    # "analysis_mode": False,
+    # "noagg": False,
+    # "obs_idshock": True,
+    # "regime_change": True,
+    # "infl_regime": "high",
+    # "infl_regime_scale": [3, 1.3, 2],
+    # # "infl_transprob": [[0.5, 0.5], [0.5, 0.5]],
+    # "infl_transprob": [[23 / 24, 1 / 24], [1 / 24, 23 / 24]],
+    # "seed_eval": 10000,
+    # "seed_analisys": 3000,
+    # "markup_min": 1,
+    # "markup_max": 2,
+    # "markup_min": 1.2,
+    # "markup_start": 1.3,
+    # "rew_mean": 0,
+    # "rew_std": 1,
+    # "parameters": {
+    #     "beta": 0.95 ** (1 / 12),
+    #     "log_g_bar": 0.0021,
+    #     "rho_g": 0.61,
+    #     "sigma_g": 0.0019,
+    #     "theta": 1.5,
+    #     "eta": 10.5,
+    #     "menu_cost": 0.17,
+    #     "sigma_z": 0.038,
+    # },
 }
 
-
+env_config_2 = env_config.copy()
+env_config_2["infl_regime"] = "High"
+env_config_3 = env_config.copy()
+env_config_3["noagg"] = True
 env_config_eval = env_config.copy()
 env_config_eval["eval_mode"] = True
 env_config_eval["horizon"] = EVAL_HORIZON
@@ -267,7 +270,8 @@ common_config = {
     # ENVIRONMENT
     "gamma": BETA,
     "env": ENV_LABEL,
-    "env_config": env_config,
+    "env_config": tune.grid_search([env_config, env_config_3]),
+    #"env_config": env_config_2,
     "horizon": ENV_HORIZON,
     # MODEL
     "framework": "torch",
@@ -315,7 +319,7 @@ common_config = {
 # Configs specific to the chosel algorithms, INCLUDING THE LEARNING RATE
 ppo_config = {
     # "lr": 0.0001,
-    "lr_schedule": [[0, 0.00005], [100000, 0.00001]],
+    "lr_schedule": [[0, 0.0008], [200000, 0.00001]],
     "sgd_minibatch_size": BATCH_SIZE // NUM_MINI_BATCH,
     "num_sgd_iter": 1,
     "batch_mode": "complete_episodes",
@@ -363,32 +367,32 @@ for ind, n_firms in enumerate(n_firms_LIST):
     else:
         EXP_NAME = EXP_LABEL + DATE + ALGO + "_run"
 
-    env_config["n_firms"] = n_firms
-    env_config_eval["n_firms"] = n_firms
+    # env_config["n_firms"] = n_firms
+    # env_config_eval["n_firms"] = n_firms
 
     """ CHANGE HERE """
-    env = MonPolicy(env_config)
-    training_config["env_config"] = env_config
-    training_config["evaluation_config"]["env_config"] = env_config_eval
-    training_config["multiagent"] = {
-        "policies": {
-            "firm_even": (
-                None,
-                env.observation_space[0],
-                env.action_space[0],
-                {},
-            ),
-            "firm_odd": (
-                None,
-                env.observation_space[0],
-                env.action_space[0],
-                {},
-            ),
-        },
-        "policy_mapping_fn": (
-            lambda agent_id: "firm_even" if agent_id % 2 == 0 else "firm_odd"
-        ),
-    }
+    # env = MonPolicy(env_config)
+    # # training_config["env_config"] = env_config
+    # training_config["evaluation_config"]["env_config"] = env_config_eval
+    # training_config["multiagent"] = {
+    #     "policies": {
+    #         "firm_even": (
+    #             None,
+    #             env.observation_space[0],
+    #             env.action_space[0],
+    #             {},
+    #         ),
+    #         "firm_odd": (
+    #             None,
+    #             env.observation_space[0],
+    #             env.action_space[0],
+    #             {},
+    #         ),
+    #     },
+    #     "policy_mapping_fn": (
+    #         lambda agent_id: "firm_even" if agent_id % 2 == 0 else "firm_odd"
+    #     ),
+    # }
 
     analysis = tune.run(
         ALGO,

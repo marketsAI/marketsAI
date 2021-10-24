@@ -157,15 +157,15 @@ class MonPolicyFinite(MultiAgentEnv):
                 [10 for i in range(self.n_firms)] + [5, float("inf"), self.horizon]
             )
 
-            self.observation_space = {
-                i: Box(
-                    low=low,
-                    high=high,
-                    shape=(n_obs_ind + n_obs_agg),
-                    dtype=np.float32,
-                )
-                for i in range(self.n_agents)
-            }
+        self.observation_space = {
+            i: Box(
+                low=low,
+                high=high,
+                shape=(n_obs_ind + n_obs_agg,),
+                dtype=np.float32,
+            )
+            for i in range(self.n_agents)
+        }
         self.timestep = None
 
     def reset(self):
@@ -450,7 +450,7 @@ class MonPolicyFinite(MultiAgentEnv):
         elif self.obs_flex_index and not self.regime_change:
             self.obs_next = {
                 i: np.array(
-                    mu_obsperfirm[i] + [self.mu, self.g, flex_index],
+                    mu_obsperfirm[i] + [self.mu, self.g, self.timestep, flex_index],
                     dtype=np.float32,
                 )
                 for i in range(self.n_agents)
