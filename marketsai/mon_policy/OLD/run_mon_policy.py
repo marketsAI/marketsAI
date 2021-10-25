@@ -103,7 +103,7 @@ else:
 # checkpointing, evaluation during trainging and stopage
 CHKPT_FREQ = 1000
 if TEST:
-    EVAL_INTERVAL = 2
+    EVAL_INTERVAL = 5
 else:
     EVAL_INTERVAL = 100
 STOP = {"timesteps_total": MAX_STEPS}
@@ -245,7 +245,10 @@ env_config = {
     },
 }
 
-
+env_config_2 = env_config.copy()
+env_config_2["infl_regime"] = "High"
+env_config_3 = env_config.copy()
+env_config_3["noagg"] = True
 env_config_eval = env_config.copy()
 env_config_eval["eval_mode"] = True
 env_config_eval["horizon"] = EVAL_HORIZON
@@ -268,7 +271,8 @@ common_config = {
     # ENVIRONMENT
     "gamma": BETA,
     "env": ENV_LABEL,
-    "env_config": env_config,
+    "env_config": tune.grid_search([env_config, env_config_3]),
+    # "env_config": env_config_2,
     "horizon": ENV_HORIZON,
     # MODEL
     "framework": "torch",
@@ -316,7 +320,7 @@ common_config = {
 # Configs specific to the chosel algorithms, INCLUDING THE LEARNING RATE
 ppo_config = {
     # "lr": 0.0001,
-    "lr_schedule": [[0, 0.00005], [100000, 0.00001]],
+    "lr_schedule": [[0, 0.0008], [200000, 0.00001]],
     "sgd_minibatch_size": BATCH_SIZE // NUM_MINI_BATCH,
     "num_sgd_iter": 1,
     "batch_mode": "complete_episodes",
@@ -372,32 +376,32 @@ for ind, n_firms in enumerate(n_firms_LIST):
     else:
         EXP_NAME = EXP_LABEL + DATE + ALGO + "_run"
 
-    env_config["n_firms"] = n_firms
-    env_config_eval["n_firms"] = n_firms
+    # env_config["n_firms"] = n_firms
+    # env_config_eval["n_firms"] = n_firms
 
     """ CHANGE HERE """
-    env = MonPolicy(env_config)
-    training_config["env_config"] = env_config
-    training_config["evaluation_config"]["env_config"] = env_config_eval
-    training_config["multiagent"] = {
-        "policies": {
-            "firm_even": (
-                None,
-                env.observation_space[0],
-                env.action_space[0],
-                {},
-            ),
-            "firm_odd": (
-                None,
-                env.observation_space[0],
-                env.action_space[0],
-                {},
-            ),
-        },
-        "policy_mapping_fn": (
-            lambda agent_id: "firm_even" if agent_id % 2 == 0 else "firm_odd"
-        ),
-    }
+    # env = MonPolicy(env_config)
+    # # training_config["env_config"] = env_config
+    # training_config["evaluation_config"]["env_config"] = env_config_eval
+    # training_config["multiagent"] = {
+    #     "policies": {
+    #         "firm_even": (
+    #             None,
+    #             env.observation_space[0],
+    #             env.action_space[0],
+    #             {},
+    #         ),
+    #         "firm_odd": (
+    #             None,
+    #             env.observation_space[0],
+    #             env.action_space[0],
+    #             {},
+    #         ),
+    #     },
+    #     "policy_mapping_fn": (
+    #         lambda agent_id: "firm_even" if agent_id % 2 == 0 else "firm_odd"
+    #     ),
+    # }
 
     analysis = tune.run(
         ALGO,

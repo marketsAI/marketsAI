@@ -28,13 +28,13 @@ class MonPolicy(MultiAgentEnv):
         # GLOBAL ENV CONFIGS
         self.horizon = self.env_config.get("horizon", 60)
         self.n_firms = self.env_config.get("n_firms", 2)
-        self.n_inds = self.env_config.get("n_inds", 2)
+        self.n_inds = self.env_config.get("n_inds", 200)
         self.n_agents = self.n_firms * self.n_inds
         self.eval_mode = self.env_config.get("eval_mode", False)
         self.analysis_mode = self.env_config.get("analysis_mode", False)
         self.no_agg = self.env_config.get("no_agg", False)
         self.infl_regime = self.env_config.get("infl_regime", "low")
-        self.infl_regime_scale = self.env_config.get("infl_regime_scale", [3, 1.3, 2])
+        self.infl_regime_scale = self.env_config.get("infl_regime_scale", [2, 1.3, 2])
         self.regime_change = self.env_config.get("regime_change", False)
         self.infl_transprob = self.env_config.get(
             "infl_transprob", [[23 / 24, 1 / 24], [1 / 24, 23 / 24]]
@@ -42,9 +42,9 @@ class MonPolicy(MultiAgentEnv):
         self.obs_idshock = self.env_config.get("obs_idshock", False)
         self.seed_eval = self.env_config.get("seed_eval", 10000)
         self.seed_analysis = self.env_config.get("seed_analysis", 3000)
-        self.markup_min = self.env_config.get("markup_min", 1.2)
-        self.markup_max = self.env_config.get("markup_max", 3)
-        self.markup_star = self.env_config.get("markup_star", 1.2)
+        self.markup_min = self.env_config.get("markup_min", 1)
+        self.markup_max = self.env_config.get("markup_max", 2)
+        self.markup_star = self.env_config.get("markup_star", 1.3)
         self.rew_mean = self.env_config.get("rew_mean", 0)
         self.rew_std = self.env_config.get("rew_std", 1)
 
