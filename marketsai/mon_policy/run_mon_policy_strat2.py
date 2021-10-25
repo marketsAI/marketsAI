@@ -1,5 +1,5 @@
 # import environment
-from marketsai.mon_policy.env_mon_policy import MonPolicy
+from marketsai.mon_policy.env_mon_policy_flat import MonPolicy
 
 # import ray
 from ray import tune, shutdown, init
@@ -29,7 +29,8 @@ import json
 """ STEP 0: Experiment configs """
 
 # global configss
-DATE = "Oct23_v1_"
+DATE = "Oct25_"
+ENV_LABEL = "mon_infin"
 NATIVE = True
 TEST = True
 SAVE_EXP_INFO = True
@@ -67,8 +68,8 @@ else:
     device = "server_"
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [200]
-ITERS_TEST = 4  # number of iteration for test
-ITERS_RUN = 5000  # number of iteration for fullrun
+ITERS_TEST = 100  # number of iteration for test
+ITERS_RUN = 1000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -78,10 +79,10 @@ BETA = 0.95 ** (1 / 12)  # discount parameter
 
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 8
+NUM_CPUS = 4
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 8
-NUM_PAR_TRIALS = 8
+NUM_TRIALS = 4
+NUM_PAR_TRIALS = 4
 NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
@@ -102,7 +103,7 @@ else:
 # checkpointing, evaluation during trainging and stopage
 CHKPT_FREQ = 1000
 if TEST:
-    EVAL_INTERVAL = 2
+    EVAL_INTERVAL = 5
 else:
     EVAL_INTERVAL = 100
 STOP = {"timesteps_total": MAX_STEPS}
@@ -115,7 +116,7 @@ init(
     log_to_driver=False,
 )
 
-ENV_LABEL = "mon_policy"
+
 register_env(ENV_LABEL, MonPolicy)
 
 """ STEP 2: set custom metrics such as discounted rewards to keep track of through leraning"""
@@ -219,7 +220,7 @@ env_config = {
     "analysis_mode": False,
     "noagg": False,
     "obs_idshock": True,
-    "regime_change": True,
+    "regime_change": False,
     "infl_regime": "high",
     "infl_regime_scale": [3, 1.3, 2],
     # "infl_transprob": [[0.5, 0.5], [0.5, 0.5]],
@@ -271,7 +272,7 @@ common_config = {
     "horizon": ENV_HORIZON,
     # MODEL
     "framework": "torch",
-    # "model": tune.grid_search([{"use_lstm": True}, {"use_lstm": False}]),
+    "model": {"use_attention": True},
     # TRAINING CONFIG
     "num_workers": N_WORKERS,
     "create_env_on_driver": False,
@@ -346,6 +347,14 @@ exp_dirs = []
 checkpoints = []
 learning_dta = []
 configs = []
+
+rewards_eval = []
+mu_ij_eval = []
+freq_p_adj_eval = []
+size_adj_eval = []
+std_log_c_eval = []
+profits_eval = []
+
 rewards = []
 mu_ij = []
 freq_p_adj = []
@@ -357,7 +366,7 @@ profits = []
 env_configs = []
 
 for ind, n_firms in enumerate(n_firms_LIST):
-    EXP_LABEL = device + ENV_LABEL + f"_round_{ind}_"
+    EXP_LABEL = device + ENV_LABEL + f"_exp_{ind}_"
     if TEST == True:
         EXP_NAME = EXP_LABEL + DATE + ALGO + "_test"
     else:
@@ -405,7 +414,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
         local_dir=OUTPUT_PATH_RESULTS,
     )
 
-    rewards.append(
+    rewards_eval.append(
         [
             list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
                 "discounted_rewards_mean"
@@ -413,7 +422,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
             for i in range(NUM_TRIALS)
         ]
     )
-    mu_ij.append(
+    mu_ij_eval.append(
         [
             list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
                 "mean_markup_ij_mean"
@@ -421,7 +430,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
             for i in range(NUM_TRIALS)
         ]
     )
-    freq_p_adj.append(
+    freq_p_adj_eval.append(
         [
             list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
                 "freq_p_adj_mean"
@@ -429,7 +438,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
             for i in range(NUM_TRIALS)
         ]
     )
-    size_adj.append(
+    size_adj_eval.append(
         [
             list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
                 "size_adj_mean"
@@ -438,7 +447,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
         ]
     )
 
-    std_log_c.append(
+    std_log_c_eval.append(
         [
             list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
                 "std_log_c_mean"
@@ -447,11 +456,49 @@ for ind, n_firms in enumerate(n_firms_LIST):
         ]
     )
 
+    profits_eval.append(
+        [
+            list(analysis.results.values())[i]["custom_metrics"]["profits_mean"]
+            for i in range(NUM_TRIALS)
+        ]
+    )
+    rewards.append(
+        [
+            list(analysis.results.values())[i]["custom_metrics"][
+                "discounted_rewards_mean"
+            ]
+            for i in range(NUM_TRIALS)
+        ]
+    )
+    mu_ij.append(
+        [
+            list(analysis.results.values())[i]["custom_metrics"]["mean_markup_ij_mean"]
+            for i in range(NUM_TRIALS)
+        ]
+    )
+    freq_p_adj.append(
+        [
+            list(analysis.results.values())[i]["custom_metrics"]["freq_p_adj_mean"]
+            for i in range(NUM_TRIALS)
+        ]
+    )
+    size_adj.append(
+        [
+            list(analysis.results.values())[i]["custom_metrics"]["size_adj_mean"]
+            for i in range(NUM_TRIALS)
+        ]
+    )
+
+    std_log_c.append(
+        [
+            list(analysis.results.values())[i]["custom_metrics"]["std_log_c_mean"]
+            for i in range(NUM_TRIALS)
+        ]
+    )
+
     profits.append(
         [
-            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
-                "profits_mean"
-            ]
+            list(analysis.results.values())[i]["custom_metrics"]["profits_mean"]
             for i in range(NUM_TRIALS)
         ]
     )
@@ -499,7 +546,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
                 f"mu_ij_trial_{i}",
                 f"freq_p_adj_trial_{i}",
                 f"size_adj_trial_{i}",
-                f"log_c_mean_trial_{i}",
+                f"std_log_c_trial_{i}",
                 f"profits_trial_{i}",
             ]
             # learning_dta[ind][i].set_index("episodes_total")
@@ -511,7 +558,7 @@ for ind, n_firms in enumerate(n_firms_LIST):
 
 # global experiment name
 if len(exp_names) > 1:
-    EXP_LABEL = device + f"_multiround_"
+    EXP_LABEL = device + f"_multiexp_"
     if TEST == True:
         EXP_NAME = EXP_LABEL + ENV_LABEL + "_test_" + DATE + ALGO
     else:
@@ -528,14 +575,27 @@ if SAVE_EXP_INFO:
         "trial_dirs": trial_logdirs,
         "checkpoints": checkpoints,
         "configs": configs,
-        "rewards": rewards,
-        "mu_ij": mu_ij,
-        "freq_p_adj": freq_p_adj,
-        "size_adj": size_adj,
-        "profits": profits,
+        "results_eval": [
+            rewards_eval,
+            mu_ij_eval,
+            freq_p_adj_eval,
+            size_adj_eval,
+            std_log_c_eval,
+            profits_eval,
+        ],
+        "results": [
+            rewards,
+            mu_ij,
+            freq_p_adj,
+            size_adj,
+            std_log_c,
+            profits,
+        ],
     }
 
-    print("mu_ij", mu_ij, "freq_p_adj:", freq_p_adj, "size_adj", size_adj)
+    print(
+        "mu_ij", mu_ij_eval, "freq_p_adj:", freq_p_adj_eval, "size_adj", size_adj_eval
+    )
 
     with open(OUTPUT_PATH_EXPERS + "expINFO_" + EXP_NAME + ".json", "w+") as f:
         json.dump(exp_dict, f)
@@ -555,8 +615,8 @@ if PLOT_PROGRESS:
             )
         learning_plot = learning_plot.get_figure()
         plt.ylabel("Discounted utility")
-        plt.xlabel("Episodes (5 years)")
-        plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
+        plt.xlabel("Episodes (10 years)")
+        # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
         learning_plot.savefig(
             OUTPUT_PATH_FIGURES + "progress_rewards" + exp_names[ind] + ".png"
         )
@@ -570,9 +630,9 @@ if PLOT_PROGRESS:
                 x=learning_dta[ind][i].index,
             )
         learning_plot = learning_plot.get_figure()
-        plt.ylabel("E[mu_ij]")
-        plt.xlabel("Episodes (5 years)")
-        plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
+        plt.ylabel("Average Markup")
+        plt.xlabel("Episodes (10 years)")
+        # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
         learning_plot.savefig(
             OUTPUT_PATH_FIGURES + "progress_mu_ij" + exp_names[ind] + ".png"
         )
@@ -587,8 +647,8 @@ if PLOT_PROGRESS:
             )
         learning_plot = learning_plot.get_figure()
         plt.ylabel("Frequency of price adjustment")
-        plt.xlabel("Episodes (5 years)")
-        plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
+        plt.xlabel("Episodes (10 years)")
+        # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
         learning_plot.savefig(
             OUTPUT_PATH_FIGURES + "progress_freq_p_adj" + exp_names[ind] + ".png"
         )
@@ -602,9 +662,9 @@ if PLOT_PROGRESS:
                 x=learning_dta[ind][i].index,
             )
         learning_plot = learning_plot.get_figure()
-        plt.ylabel("Frequency of price adjustment")
-        plt.xlabel("Episodes (5 years)")
-        plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
+        plt.ylabel("Size of Adjustment")
+        plt.xlabel("Episodes (10 years)")
+        # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
         learning_plot.savefig(
             OUTPUT_PATH_FIGURES + "progress_size_adj" + exp_names[ind] + ".png"
         )

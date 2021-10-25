@@ -105,129 +105,58 @@ class MonPolicy(MultiAgentEnv):
         # CREATE SPACES
 
         self.action_space = {
-            i: Dict(
-                {
-                    "move_prob": Box(low=-1, high=1, shape=(1,), dtype=np.float32),
-                    "reset_markup": Box(low=-1, high=1, shape=(1,), dtype=np.float32),
-                }
-            )
+            i: Box(low=-1, high=1, shape=(2,), dtype=np.float32)
             for i in range(self.n_agents)
         }
 
         if self.obs_idshock and self.regime_change:
             n_obs_ind = self.n_firms * 2
-            n_obs_agg = 2
-            low_ind = np.array([0 for i in range(n_obs_ind)])
-            low_agg = np.array([0 for i in range(n_obs_agg)])
-            high_ind = np.array(
+            n_obs_agg = 3
+            low = np.array(
+                [0 for i in range(n_obs_ind)] + [0 for i in range(n_obs_agg)]
+            )
+            high = np.array(
                 [10 for i in range(self.n_firms)]
                 + [float("inf") for i in range(self.n_firms)]
+                + [5, float("inf"), 1]
             )
-            high_agg = np.array([5, float("inf")])
-            self.observation_space = {
-                i: Dict(
-                    {
-                        "obs_ind": Box(
-                            low=low_ind,
-                            high=high_ind,
-                            shape=(n_obs_ind,),
-                            dtype=np.float32,
-                        ),
-                        "obs_agg": Box(
-                            low=low_agg,
-                            high=high_agg,
-                            shape=(n_obs_agg,),
-                            dtype=np.float32,
-                        ),
-                        "regime": Discrete(2),
-                    }
-                )
-                for i in range(self.n_agents)
-            }
         elif self.obs_idshock and not self.regime_change:
             n_obs_ind = self.n_firms * 2
             n_obs_agg = 2
-            low_ind = np.array([0 for i in range(n_obs_ind)])
-            low_agg = np.array([0 for i in range(n_obs_agg)])
-            high_ind = np.array(
+            low = np.array(
+                [0 for i in range(n_obs_ind)] + [0 for i in range(n_obs_agg)]
+            )
+            high = np.array(
                 [10 for i in range(self.n_firms)]
                 + [float("inf") for i in range(self.n_firms)]
+                + [5, float("inf")]
             )
-            high_agg = np.array([5, float("inf")])
-            self.observation_space = {
-                i: Dict(
-                    {
-                        "obs_ind": Box(
-                            low=low_ind,
-                            high=high_ind,
-                            shape=(n_obs_ind,),
-                            dtype=np.float32,
-                        ),
-                        "obs_agg": Box(
-                            low=low_agg,
-                            high=high_agg,
-                            shape=(n_obs_agg,),
-                            dtype=np.float32,
-                        ),
-                    }
-                )
-                for i in range(self.n_agents)
-            }
 
         elif not self.obs_idshock and self.regime_change:
-            n_obs_ind = self.n_firms * 1
-            n_obs_agg = 2
-            low_ind = np.array([0 for i in range(n_obs_ind)])
-            low_agg = np.array([0 for i in range(n_obs_agg)])
-            high_ind = np.array([10 for i in range(self.n_firms)])
-            high_agg = np.array([5, float("inf")])
-            self.observation_space = {
-                i: Dict(
-                    {
-                        "obs_ind": Box(
-                            low=low_ind,
-                            high=high_ind,
-                            shape=(n_obs_ind,),
-                            dtype=np.float32,
-                        ),
-                        "obs_agg": Box(
-                            low=low_agg,
-                            high=high_agg,
-                            shape=(n_obs_agg,),
-                            dtype=np.float32,
-                        ),
-                        "regime": Discrete(2),
-                    }
-                )
-                for i in range(self.n_agents)
-            }
+            n_obs_ind = self.n_firms
+            n_obs_agg = 3
+            low = np.array(
+                [0 for i in range(n_obs_ind)] + [0 for i in range(n_obs_agg)]
+            )
+            high = np.array([10 for i in range(self.n_firms)] + [5, float("inf"), 1])
 
         else:
             n_obs_ind = self.n_firms
             n_obs_agg = 2
-            low_ind = np.array([0 for i in range(n_obs_ind)])
-            low_agg = np.array([0 for i in range(n_obs_agg)])
-            high_ind = np.array([10 for i in range(self.n_firms)])
-            high_agg = np.array([5, float("inf")])
-            self.observation_space = {
-                i: Dict(
-                    {
-                        "obs_ind": Box(
-                            low=low_ind,
-                            high=high_ind,
-                            shape=(n_obs_ind,),
-                            dtype=np.float32,
-                        ),
-                        "obs_agg": Box(
-                            low=low_agg,
-                            high=high_agg,
-                            shape=(n_obs_agg,),
-                            dtype=np.float32,
-                        ),
-                    }
-                )
-                for i in range(self.n_agents)
-            }
+            low = np.array(
+                [0 for i in range(n_obs_ind)] + [0 for i in range(n_obs_agg)]
+            )
+            high = np.array([10 for i in range(self.n_firms)] + [5, float("inf")])
+
+        self.observation_space = {
+            i: Box(
+                low=low,
+                high=high,
+                shape=(n_obs_ind + n_obs_agg,),
+                dtype=np.float32,
+            )
+            for i in range(self.n_agents)
+        }
 
         self.timestep = None
 
@@ -324,61 +253,45 @@ class MonPolicy(MultiAgentEnv):
         # create Dictionary wtih agents as keys and with Tuple spaces as values
         if self.obs_idshock and self.regime_change:
             self.obs_next = {
-                i: {
-                    "obs_ind": np.array(
-                        mu_obsperfirm[i] + z_obsperfirm[i],
-                        dtype=np.float32,
-                    ),
-                    "obs_agg": np.array(
-                        [self.mu, self.g],
-                        dtype=np.float32,
-                    ),
-                    "regime":high_regime_index,
-                }
+                i: np.array(
+                    mu_obsperfirm[i]
+                    + z_obsperfirm[i]
+                    + [
+                        self.mu,
+                        self.g,
+                        high_regime_index,
+                    ],
+                    dtype=np.float32,
+                )
                 for i in range(self.n_agents)
             }
-
         elif self.obs_idshock and not self.regime_change:
             self.obs_next = {
-                i: {
-                    "obs_ind": np.array(
-                        mu_obsperfirm[i] + z_obsperfirm[i],
-                        dtype=np.float32,
-                    ),
-                    "obs_agg": np.array(
-                        [self.mu, self.g],
-                        dtype=np.float32,
-                    ),
-                }
+                i: np.array(
+                    mu_obsperfirm[i] + z_obsperfirm[i] + [self.mu, self.g],
+                    dtype=np.float32,
+                )
                 for i in range(self.n_agents)
             }
         elif not self.obs_idshock and self.regime_change:
             self.obs_next = {
-                i: {
-                    "obs_ind": np.array(
-                        mu_obsperfirm[i],
-                        dtype=np.float32,
-                    ),
-                    "obs_agg": np.array(
-                        [self.mu, self.g],
-                        dtype=np.float32,
-                    ),
-                    "regime": high_regime_index,
-                }
+                i: np.array(
+                    mu_obsperfirm[i]
+                    + [
+                        self.mu,
+                        self.g,
+                        high_regime_index,
+                    ],
+                    dtype=np.float32,
+                )
                 for i in range(self.n_agents)
             }
         else:
             self.obs_next = {
-                i: {
-                    "obs_ind": np.array(
-                        mu_obsperfirm[i],
-                        dtype=np.float32,
-                    ),
-                    "obs_agg": np.array(
-                        [self.mu, self.g],
-                        dtype=np.float32,
-                    ),
-                }
+                i: np.array(
+                    mu_obsperfirm[i] + [self.mu, self.g],
+                    dtype=np.float32,
+                )
                 for i in range(self.n_agents)
             }
 
@@ -390,12 +303,10 @@ class MonPolicy(MultiAgentEnv):
         mu_ij_old = self.mu_ij_next
 
         if self.infl_regime == "high":
-            high_regime_index = 1
             log_g_bar = self.params["log_g_bar"] * self.infl_regime_scale[0]
             rho_g = self.params["rho_g"] * self.infl_regime_scale[1]
             sigma_g = self.params["sigma_g"] * self.infl_regime_scale[2]
         else:
-            high_regime_index = 0
             log_g_bar = self.params["log_g_bar"]
             rho_g = self.params["rho_g"]
             sigma_g = self.params["sigma_g"]
@@ -405,15 +316,13 @@ class MonPolicy(MultiAgentEnv):
         self.move_ij = [
             True
             if self.menu_cost[i]
-            <= (action_dict[i]["move_prob"] + 1) / 2 * self.params["menu_cost"]
+            <= (action_dict[i][1] + 1) / 2 * self.params["menu_cost"]
             else False
             for i in range(self.n_agents)
         ]
         self.mu_ij_reset = [
             self.markup_min
-            + (action_dict[i]["reset_markup"][0] + 1)
-            / 2
-            * (self.markup_max - self.markup_min)
+            + (action_dict[i][0] + 1) / 2 * (self.markup_max - self.markup_min)
             for i in range(self.n_agents)
         ]
         self.mu_ij = [
@@ -491,6 +400,7 @@ class MonPolicy(MultiAgentEnv):
             (1 - rho_g) * log_g_bar + rho_g * self.log_g + sigma_g * self.epsilon_g
         )
         self.g = math.e ** self.log_g
+        high_regime_index = 1 if self.infl_regime == "high" else 0
         self.infl_regime = random.choices(
             ["low", "high"], self.infl_transprob[high_regime_index]
         )[0]
@@ -530,61 +440,45 @@ class MonPolicy(MultiAgentEnv):
         # new observation
         if self.obs_idshock and self.regime_change:
             self.obs_next = {
-                i: {
-                    "obs_ind": np.array(
-                        mu_obsperfirm[i] + z_obsperfirm[i],
-                        dtype=np.float32,
-                    ),
-                    "obs_agg": np.array(
-                        [self.mu, self.g],
-                        dtype=np.float32,
-                    ),
-                    "regime":high_regime_index,
-                }
+                i: np.array(
+                    mu_obsperfirm[i]
+                    + z_obsperfirm[i]
+                    + [
+                        self.mu,
+                        self.g,
+                        high_regime_index,
+                    ],
+                    dtype=np.float32,
+                )
                 for i in range(self.n_agents)
             }
-
         elif self.obs_idshock and not self.regime_change:
             self.obs_next = {
-                i: {
-                    "obs_ind": np.array(
-                        mu_obsperfirm[i] + z_obsperfirm[i],
-                        dtype=np.float32,
-                    ),
-                    "obs_agg": np.array(
-                        [self.mu, self.g],
-                        dtype=np.float32,
-                    ),
-                }
+                i: np.array(
+                    mu_obsperfirm[i] + z_obsperfirm[i] + [self.mu, self.g],
+                    dtype=np.float32,
+                )
                 for i in range(self.n_agents)
             }
         elif not self.obs_idshock and self.regime_change:
             self.obs_next = {
-                i: {
-                    "obs_ind": np.array(
-                        mu_obsperfirm[i],
-                        dtype=np.float32,
-                    ),
-                    "obs_agg": np.array(
-                        [self.mu, self.g],
-                        dtype=np.float32,
-                    ),
-                    "regime":high_regime_index,
-                }
+                i: np.array(
+                    mu_obsperfirm[i]
+                    + [
+                        self.mu,
+                        self.g,
+                        high_regime_index,
+                    ],
+                    dtype=np.float32,
+                )
                 for i in range(self.n_agents)
             }
         else:
             self.obs_next = {
-                i: {
-                    "obs_ind": np.array(
-                        mu_obsperfirm[i],
-                        dtype=np.float32,
-                    ),
-                    "obs_agg": np.array(
-                        [self.mu, self.g],
-                        dtype=np.float32,
-                    ),
-                }
+                i: np.array(
+                    mu_obsperfirm[i] + [self.mu, self.g],
+                    dtype=np.float32,
+                )
                 for i in range(self.n_agents)
             }
 
@@ -715,10 +609,11 @@ def main():
         "eval_mode": False,
         "analysis_mode": False,
         "noagg": False,
-        "obs_idshock": True,
+        "obs_idshock": False,
         "regime_change": True,
         "infl_regime": "high",
         "infl_regime_scale": [3, 1.3, 2],
+        # "infl_transprob": [[0.5, 0.5], [0.5, 0.5]],
         "infl_transprob": [[23 / 24, 1 / 24], [1 / 24, 23 / 24]],
         "seed_eval": 10000,
         "seed_analisys": 3000,

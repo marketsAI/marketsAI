@@ -35,6 +35,7 @@ register_env(env_label, MonPolicyFinite)
 
 # Input Directories (of json file with experiment data)
 INPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/expINFO_native_mon_policy_finite_2_firms_Oct18_v1_PPO_run.json"
+INPUT_PATH_CHECKPOINT = "/Users/matiascovarrubias/ray_results/native_mon_policy_finite_2_firms_Oct18_v1_PPO_run/PPO_mon_policy_finite_6310c_00000_0_2021-10-18_22-08-01/checkpoint_004000/checkpoint-4000"
 
 # Output Directories
 if FOR_PUBLIC:
