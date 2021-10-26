@@ -58,8 +58,8 @@ else:
         )
         OUTPUT_PATH_RESULTS = "~/ray_results"
     else:
-        OUTPUT_PATH_EXPERS = "/scratch/mc5851/ray_results/"
-        OUTPUT_PATH_FIGURES = "/scratch/mc5851/ray_results/"
+        OUTPUT_PATH_EXPERS = "/scratch/mc5851/Experiments/"
+        OUTPUT_PATH_FIGURES = "/scratch/mc5851/Figures/"
         OUTPUT_PATH_RESULTS = "/scratch/mc5851/ray_results/"
 
 ALGO = "PPO"  # either PPO" or "SAC"
@@ -230,14 +230,14 @@ env_config = {
     "noagg": False,
     "obs_flex_index": True,
     "regime_change": False,
-    "infl_regime": "high",
+    "infl_regime": "low",
     "infl_regime_scale": [3, 1.3, 2],
     "infl_transprob": [[23 / 24, 1 / 24], [1 / 24, 23 / 24]],
     "seed_eval": 10000,
     "seed_analisys": 3000,
     "markup_min": 1,
     "markup_max": 2,
-    "markup_start": 1.3,
+    "markup_star": 1.3,
     "final_stage": 1,
     "rew_mean": 0,
     "rew_std": 1,

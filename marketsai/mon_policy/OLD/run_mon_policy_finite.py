@@ -237,7 +237,7 @@ env_config = {
     "seed_analisys": 3000,
     "markup_min": 1,
     "markup_max": 2,
-    "markup_start": 1.3,
+    "markup_star": 1.3,
     "final_stage": 12,
     "rew_mean": 0,
     "rew_std": 1,

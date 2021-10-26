@@ -31,9 +31,9 @@ import json
 """ STEP 0: Experiment configs """
 
 
-DATE = "Oct25_trial_"
-ENV_LABEL = "mon_fin_strat"
-TEST = False
+DATE = "Oct25_"
+ENV_LABEL = "mon_fin_10f"
+TEST = True
 NATIVE = True
 SAVE_EXP_INFO = True
 SAVE_PROGRESS = True
@@ -68,10 +68,10 @@ if NATIVE:
 else:
     device = "server_"
 
-n_firms_LIST = [2]  # list with number of agents for each run
+n_firms_LIST = [10]  # list with number of agents for each run
 n_inds_LIST = [200]
 ITERS_TEST = 10  # number of iteration for test
-ITERS_RUN = 500  # number of iteration for fullrun
+ITERS_RUN = 1000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -85,7 +85,7 @@ NUM_CPUS = 4
 NUM_CPUS_DRIVER = 1
 NUM_TRIALS = 4
 NUM_PAR_TRIALS = 4
-NUM_ROLLOUT = ENV_HORIZON * 2
+NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
@@ -280,7 +280,6 @@ common_config = {
     "horizon": ENV_HORIZON,
     # MODEL
     "framework": "torch",
-    "model": {"use_attention": True},
     # "model": tune.grid_search([{"use_lstm": True}, {"use_lstm": False}]),
     # TRAINING CONFIG
     "num_workers": N_WORKERS,

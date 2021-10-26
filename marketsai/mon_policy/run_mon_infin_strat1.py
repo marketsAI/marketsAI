@@ -57,8 +57,8 @@ else:
         )
         OUTPUT_PATH_RESULTS = "~/ray_results"
     else:
-        OUTPUT_PATH_EXPERS = "/scratch/mc5851/ray_results/"
-        OUTPUT_PATH_FIGURES = "/scratch/mc5851/ray_results/"
+        OUTPUT_PATH_EXPERS = "/scratch/mc5851/Experiments/"
+        OUTPUT_PATH_FIGURES = "/scratch/mc5851/Figures/"
         OUTPUT_PATH_RESULTS = "/scratch/mc5851/ray_results/"
 
 ALGO = "PPO"  # either PPO" or "SAC"
@@ -220,8 +220,8 @@ env_config = {
     "analysis_mode": False,
     "noagg": False,
     "obs_idshock": True,
-    "regime_change": True,
-    "infl_regime": "high",
+    "regime_change": False,
+    "infl_regime": "low",
     "infl_regime_scale": [3, 1.3, 2],
     # "infl_transprob": [[0.5, 0.5], [0.5, 0.5]],
     "infl_transprob": [[23 / 24, 1 / 24], [1 / 24, 23 / 24]],
@@ -229,8 +229,7 @@ env_config = {
     "seed_analisys": 3000,
     "markup_min": 1,
     "markup_max": 2,
-    "markup_min": 1.2,
-    "markup_start": 1.3,
+    "markup_star": 1.3,
     "rew_mean": 0,
     "rew_std": 1,
     "parameters": {
@@ -530,7 +529,6 @@ for ind, n_firms in enumerate(n_firms_LIST):
                         # "episodes_total",
                         "custom_metrics/discounted_rewards_mean",
                         "custom_metrics/mean_markup_ij_mean",
-                        "custom_metrics/mean_markup_ij_final_mean",
                         "custom_metrics/freq_p_adj_mean",
                         "custom_metrics/size_adj_mean",
                         "custom_metrics/std_log_c_mean",
@@ -545,7 +543,6 @@ for ind, n_firms in enumerate(n_firms_LIST):
                 # "episodes_total",
                 f"discounted_rewards_trial_{i}",
                 f"mu_ij_trial_{i}",
-                f"mu_ij_final_trial_{i}",
                 f"freq_p_adj_trial_{i}",
                 f"size_adj_trial_{i}",
                 f"std_log_c_trial_{i}",
