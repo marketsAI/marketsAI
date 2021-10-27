@@ -32,7 +32,7 @@ import json
 
 
 DATE = "Oct25_"
-ENV_LABEL = "mon_fin"
+ENV_LABEL = "mon_fin_10f"
 TEST = True
 NATIVE = True
 SAVE_EXP_INFO = True
@@ -68,7 +68,7 @@ if NATIVE:
 else:
     device = "server_"
 
-n_firms_LIST = [2]  # list with number of agents for each run
+n_firms_LIST = [6]  # list with number of agents for each run
 n_inds_LIST = [200]
 ITERS_TEST = 10  # number of iteration for test
 ITERS_RUN = 1000  # number of iteration for fullrun
@@ -238,7 +238,7 @@ env_config = {
     "markup_min": 1,
     "markup_max": 2,
     "markup_star": 1.3,
-    "final_stage": 1,
+    "final_stage": 12,
     "rew_mean": 0,
     "rew_std": 1,
     "parameters": {

@@ -238,7 +238,7 @@ env_config = {
     "markup_min": 1,
     "markup_max": 2,
     "markup_star": 1.3,
-    "final_stage": 1,
+    "final_stage": 12,
     "rew_mean": 0,
     "rew_std": 1,
     "parameters": {

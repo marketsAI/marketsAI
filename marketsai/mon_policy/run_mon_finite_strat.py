@@ -32,7 +32,7 @@ import json
 
 
 DATE = "Oct25_trial_"
-ENV_LABEL = "mon_fin_strat"
+ENV_LABEL = "mon_fin_highlr"
 TEST = False
 NATIVE = True
 SAVE_EXP_INFO = True
@@ -46,9 +46,9 @@ if TEST:
         OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
         OUTPUT_PATH_RESULTS = "~/ray_results/"
     else:
-        OUTPUT_PATH_EXPERS = "/scratch/mc5851/ray_results/"
-        OUTPUT_PATH_FIGURES = "/scratch/mc5851/ray_results/"
-        OUTPUT_PATH_RESULTS = "/scratch/mc5851/ray_results/"
+        OUTPUT_PATH_EXPERS = "/scratch/mc5851/Experiments/ALL/"
+        OUTPUT_PATH_FIGURES = "/scratch/mc5851/Figures/ALL/"
+        OUTPUT_PATH_RESULTS = "/scratch/mc5851/ray_results/ALL/"
 
 else:
     if NATIVE:
@@ -71,7 +71,7 @@ else:
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [200]
 ITERS_TEST = 10  # number of iteration for test
-ITERS_RUN = 500  # number of iteration for fullrun
+ITERS_RUN = 1000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -83,7 +83,7 @@ BETA = 0.95 ** (1 / 12)  # discount parameter
 # Parallelization options
 NUM_CPUS = 4
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 4
+NUM_TRIALS = 8
 NUM_PAR_TRIALS = 4
 NUM_ROLLOUT = ENV_HORIZON * 2
 NUM_ENV_PW = 1  # num_env_per_worker
@@ -238,7 +238,7 @@ env_config = {
     "markup_min": 1,
     "markup_max": 2,
     "markup_star": 1.3,
-    "final_stage": 1,
+    "final_stage": 12,
     "rew_mean": 0,
     "rew_std": 1,
     "parameters": {
@@ -280,7 +280,7 @@ common_config = {
     "horizon": ENV_HORIZON,
     # MODEL
     "framework": "torch",
-    "model": {"use_attention": True},
+    # "model": {"use_attention": True},
     # "model": tune.grid_search([{"use_lstm": True}, {"use_lstm": False}]),
     # TRAINING CONFIG
     "num_workers": N_WORKERS,
@@ -324,7 +324,7 @@ common_config = {
 # Configs specific to the chosel algorithms, INCLUDING THE LEARNING RATE
 ppo_config = {
     # "lr": 0.0001,
-    "lr_schedule": [[0, 0.00005], [100000, 0.00001]],
+    "lr_schedule": [[0, 0.00005], [100000, 0.00002]],
     "sgd_minibatch_size": BATCH_SIZE // NUM_MINI_BATCH,
     "num_sgd_iter": 1,
     "batch_mode": "complete_episodes",
