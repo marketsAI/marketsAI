@@ -1,5 +1,5 @@
 # import environment
-from marketsai.mon_policy.env_mon_policy_finite_dict import MonPolicyFinite
+from marketsai.mon_policy.env_mon_finite_flat import MonPolicyFinite
 
 # from marketsai.mon_policy.env_mon_policy_colab import MonPolicyColab
 
