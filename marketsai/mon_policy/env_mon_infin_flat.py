@@ -31,6 +31,7 @@ class MonPolicy(MultiAgentEnv):
         self.n_inds = self.env_config.get("n_inds", 2)
         self.n_agents = self.n_firms * self.n_inds
         self.eval_mode = self.env_config.get("eval_mode", False)
+        self.random_eval = self.env_config.get("random_eval", True)
         self.analysis_mode = self.env_config.get("analysis_mode", False)
         self.no_agg = self.env_config.get("no_agg", False)
         self.infl_regime = self.env_config.get("infl_regime", "low")
@@ -40,8 +41,10 @@ class MonPolicy(MultiAgentEnv):
             "infl_transprob", [[23 / 24, 1 / 24], [1 / 24, 23 / 24]]
         )
         self.obs_idshock = self.env_config.get("obs_idshock", False)
-        self.seed_eval = self.env_config.get("seed_eval", 10000)
-        self.seed_analysis = self.env_config.get("seed_analysis", 3000)
+        self.seed_eval = self.env_config.get("seed_eval", [1000 * i for i in range(10)])
+        self.seed_analysis = self.env_config.get(
+            "seed_analysis", [1000 * i for i in range(10)]
+        )
         self.markup_min = self.env_config.get("markup_min", 1.2)
         self.markup_max = self.env_config.get("markup_max", 3)
         self.markup_star = self.env_config.get("markup_star", 1.2)
@@ -70,37 +73,6 @@ class MonPolicy(MultiAgentEnv):
 
         # SPECIFIC SHOCK VALUES THAT ARE USEFUL FOR EVALUATION, ANALYSIS AND SIMULATION
         # We first create seeds with a default random generator
-
-        if self.eval_mode:
-            rng = np.random.default_rng(self.seed_eval)
-        if self.analysis_mode:
-            rng = np.random.default_rng(self.seed_analysis)
-
-        if self.eval_mode or self.analysis_mode:
-            self.epsilon_g_seeded = [
-                rng.standard_normal() for t in range(self.horizon + 1)
-            ]
-
-            self.epsilon_z_seeded = [
-                np.array([rng.standard_normal() for i in range(self.n_agents)])
-                for t in range(self.horizon + 1)
-            ]
-            self.menu_cost_seeded = [
-                np.array(
-                    [
-                        rng.uniform(0, self.params["menu_cost"])
-                        for i in range(self.n_agents)
-                    ]
-                )
-                for t in range(self.horizon + 1)
-            ]
-
-            self.initial_markup_seeded = np.array(
-                [rng.normal(1.3, 0.1) for i in range(self.n_agents)]
-            )
-            if self.analysis_mode:
-                self.epsilon_g_seeded = [0 for t in range(self.horizon + 1)]
-                self.epsilon_g_seeded[0] = self.params["sigma_g"]
 
         # CREATE SPACES
 
@@ -169,6 +141,40 @@ class MonPolicy(MultiAgentEnv):
         # last check that everything is right (stochastic supports and initial poitns for evaluation and analysis)
         self.timestep = 0
 
+        # create seeded elements
+        if not self.random_eval and self.eval_mode:
+            # rng = np.random.default_rng(random.choice(self.seed_eval))
+            rng = np.random.default_rng(self.seed_eval)
+        if self.analysis_mode:
+            rng = np.random.default_rng(self.seed_analysis)
+
+        if self.eval_mode or self.analysis_mode:
+            self.epsilon_g_seeded = [
+                rng.standard_normal() for t in range(self.horizon + 1)
+            ]
+
+            self.epsilon_z_seeded = [
+                np.array([rng.standard_normal() for i in range(self.n_agents)])
+                for t in range(self.horizon + 1)
+            ]
+            self.menu_cost_seeded = [
+                np.array(
+                    [
+                        rng.uniform(0, self.params["menu_cost"])
+                        for i in range(self.n_agents)
+                    ]
+                )
+                for t in range(self.horizon + 1)
+            ]
+
+            self.initial_markup_seeded = np.array(
+                [rng.normal(1.3, 0.1) for i in range(self.n_agents)]
+            )
+            if self.analysis_mode:
+                self.epsilon_g_seeded = [0 for t in range(self.horizon + 1)]
+                self.epsilon_g_seeded[0] = self.params["sigma_g"]
+
+        # create state
         if self.infl_regime == "high":
             high_regime_index = 1
             log_g_bar = self.params["log_g_bar"] * self.infl_regime_scale[0]
@@ -179,7 +185,7 @@ class MonPolicy(MultiAgentEnv):
             sigma_g = self.params["sigma_g"]
 
         # to evaluate policies, we fix the initial observation
-        if self.eval_mode or self.analysis_mode:
+        if (not self.random_eval and self.eval_mode) or self.analysis_mode:
             self.mu_ij_next = self.initial_markup_seeded
             self.epsilon_z = self.epsilon_z_seeded[0]
             self.epsilon_g = self.epsilon_g_seeded[0]
@@ -347,13 +353,6 @@ class MonPolicy(MultiAgentEnv):
             for elem in mu_perind
         ]
 
-        # identify high and low markup firms:
-        mu_j_max = [np.max(elem) for elem in mu_perind]
-        high_mu_ind = [
-            1 if self.mu_ij[i] == mu_j_max[self.ind_per_firm[i]] else 0
-            for i in range(self.n_agents)
-        ]
-
         # Aggregate markup
         self.mu = (
             (1 / self.n_inds)
@@ -370,8 +369,44 @@ class MonPolicy(MultiAgentEnv):
             for i in range(self.n_agents)
         ]
 
-        # update shocks and states
+        # identify high and low markup firms:
         if self.analysis_mode or self.eval_mode:
+            mu_j_max = [np.max(elem) for elem in mu_perind]
+            freq_adj_low_mu = [
+                self.move_ij[i]
+                if self.mu_ij[i] < mu_j_max[self.ind_per_firm[i]]
+                else -1
+                for i in range(self.n_agents)
+            ]
+            freq_adj_high_mu = [
+                -1
+                if self.mu_ij[i] < mu_j_max[self.ind_per_firm[i]]
+                else self.move_ij[i]
+                for i in range(self.n_agents)
+            ]
+
+            freq_adj_high_mu = list(filter(lambda x: x != -1, freq_adj_high_mu))
+            freq_adj_low_mu = list(filter(lambda x: x != -1, freq_adj_low_mu))
+
+            size_adj_low_mu = [
+                price_change_ij[i]
+                if self.mu_ij[i] < mu_j_max[self.ind_per_firm[i]]
+                else 0
+                for i in range(self.n_agents)
+            ]
+
+            size_adj_high_mu = [
+                0
+                if self.mu_ij[i] < mu_j_max[self.ind_per_firm[i]]
+                else price_change_ij[i]
+                for i in range(self.n_agents)
+            ]
+
+            size_adj_high_mu = list(filter(lambda x: x != 0, size_adj_high_mu))
+            size_adj_low_mu = list(filter(lambda x: x != 0, size_adj_low_mu))
+
+        # update shocks and states
+        if (not self.random_eval and self.eval_mode) or self.analysis_mode:
             self.epsilon_z = self.epsilon_z_seeded[self.timestep]
             self.epsilon_g = self.epsilon_g_seeded[self.timestep]
             self.menu_cost = self.menu_cost_seeded[self.timestep]
@@ -506,6 +541,14 @@ class MonPolicy(MultiAgentEnv):
                     "log_c": np.log(1 / self.mu),
                     "mu": self.mu,
                     "mean_profits": np.mean(self.profits),
+                    "move_freq_lowmu": np.mean(freq_adj_low_mu),
+                    "move_freq_highmu": np.mean(freq_adj_high_mu),
+                    "size_adj_lowmu": np.mean(
+                        [abs(np.log(elem)) for elem in size_adj_low_mu]
+                    ),
+                    "size_adj_highmu": np.mean(
+                        [abs(np.log(elem)) for elem in size_adj_high_mu]
+                    ),
                     "mu_ij": self.mu_ij[0],
                     "profits_ij": self.profits[0],
                     "move_ij": self.move_ij[0],

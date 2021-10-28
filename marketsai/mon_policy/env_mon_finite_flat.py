@@ -31,6 +31,7 @@ class MonPolicyFinite(MultiAgentEnv):
         self.n_inds = self.env_config.get("n_inds", 2)
         self.n_agents = self.n_firms * self.n_inds
         self.eval_mode = self.env_config.get("eval_mode", False)
+        self.random_eval = self.env_config.get("random_eval", True)
         self.analysis_mode = self.env_config.get("analysis_mode", False)
         self.no_agg = self.env_config.get("no_agg", False)
         # either high,low or variable
@@ -72,38 +73,6 @@ class MonPolicyFinite(MultiAgentEnv):
 
         # SPECIFIC SHOCK VALUES THAT ARE USEFUL FOR EVALUATION, ANALYSIS AND SIMULATION
         # We first create seeds with a default random generator
-
-        if self.eval_mode:
-            rng = np.random.default_rng(self.seed_eval)
-        if self.analysis_mode:
-            rng = np.random.default_rng(self.seed_analysis)
-
-        if self.eval_mode or self.analysis_mode:
-            self.epsilon_g_seeded = [
-                rng.standard_normal() for t in range(self.horizon + 1)
-            ]
-
-            self.epsilon_z_seeded = [
-                np.array([rng.standard_normal() for i in range(self.n_agents)])
-                for t in range(self.horizon + 1)
-            ]
-            self.menu_cost_seeded = [
-                np.array(
-                    [
-                        rng.uniform(0, self.params["menu_cost"])
-                        for i in range(self.n_agents)
-                    ]
-                )
-                for t in range(self.horizon + 1)
-            ]
-
-            self.initial_markup_seeded = np.array(
-                [rng.normal(1.3, 0.1) for i in range(self.n_agents)]
-            )
-
-            if self.analysis_mode:
-                self.epsilon_g_seeded = [0 for t in range(self.horizon + 1)]
-                self.epsilon_g_seeded[0] = self.params["sigma_g"]
 
         # CREATE SPACES
 
@@ -168,6 +137,41 @@ class MonPolicyFinite(MultiAgentEnv):
         it specifies three types of initial obs. Random (default),
         for evaluation, and for posterior analysis"""
 
+        # create seede shocks
+
+        if not self.random_eval and self.eval_mode:
+            # rng = np.random.default_rng(random.choice(self.seed_eval))
+            rng = np.random.default_rng(self.seed_eval)
+        if self.analysis_mode:
+            rng = np.random.default_rng(self.seed_analysis)
+
+        if self.eval_mode or self.analysis_mode:
+            self.epsilon_g_seeded = [
+                rng.standard_normal() for t in range(self.horizon + 1)
+            ]
+
+            self.epsilon_z_seeded = [
+                np.array([rng.standard_normal() for i in range(self.n_agents)])
+                for t in range(self.horizon + 1)
+            ]
+            self.menu_cost_seeded = [
+                np.array(
+                    [
+                        rng.uniform(0, self.params["menu_cost"])
+                        for i in range(self.n_agents)
+                    ]
+                )
+                for t in range(self.horizon + 1)
+            ]
+
+            self.initial_markup_seeded = np.array(
+                [rng.normal(1.3, 0.1) for i in range(self.n_agents)]
+            )
+
+            if self.analysis_mode:
+                self.epsilon_g_seeded = [0 for t in range(self.horizon + 1)]
+                self.epsilon_g_seeded[0] = self.params["sigma_g"]
+
         # to do:
         # last check that everything is right (stochastic supports and initial poitns for evaluation and analysis)
         self.timestep = 0
@@ -183,7 +187,7 @@ class MonPolicyFinite(MultiAgentEnv):
             sigma_g = self.params["sigma_g"]
 
         # to evaluate policies, we fix the initial observation
-        if self.eval_mode or self.analysis_mode:
+        if (not self.random_eval and self.eval_mode) or self.analysis_mode:
             self.mu_ij_next = self.initial_markup_seeded
             self.epsilon_z = self.epsilon_z_seeded[0]
             self.epsilon_g = self.epsilon_g_seeded[0]
@@ -342,12 +346,14 @@ class MonPolicyFinite(MultiAgentEnv):
         mu_perind = []
         for counter in range(0, self.n_agents, self.n_firms):
             mu_perind.append(self.mu_ij[counter : counter + self.n_firms])
+
         # collapse to markup index:
         self.mu_j = [
             np.sum([i ** (1 - self.params["eta"]) for i in elem])
             ** (1 / (1 - self.params["eta"]))
             for elem in mu_perind
         ]
+
         # Aggregate markup
         self.mu = np.sum(
             [
@@ -355,6 +361,42 @@ class MonPolicyFinite(MultiAgentEnv):
                 for elem in self.mu_j
             ]
         ) ** (1 / (1 - self.params["theta"]))
+
+        # identify high and low markup firms:
+        if self.analysis_mode or self.eval_mode:
+            mu_j_max = [np.max(elem) for elem in mu_perind]
+            freq_adj_low_mu = [
+                self.move_ij[i]
+                if self.mu_ij[i] < mu_j_max[self.ind_per_firm[i]]
+                else -1
+                for i in range(self.n_agents)
+            ]
+            freq_adj_high_mu = [
+                -1
+                if self.mu_ij[i] < mu_j_max[self.ind_per_firm[i]]
+                else self.move_ij[i]
+                for i in range(self.n_agents)
+            ]
+
+            freq_adj_high_mu = list(filter(lambda x: x != -1, freq_adj_high_mu))
+            freq_adj_low_mu = list(filter(lambda x: x != -1, freq_adj_low_mu))
+
+            size_adj_low_mu = [
+                price_change_ij[i]
+                if self.mu_ij[i] < mu_j_max[self.ind_per_firm[i]]
+                else 0
+                for i in range(self.n_agents)
+            ]
+
+            size_adj_high_mu = [
+                0
+                if self.mu_ij[i] < mu_j_max[self.ind_per_firm[i]]
+                else price_change_ij[i]
+                for i in range(self.n_agents)
+            ]
+
+            size_adj_high_mu = list(filter(lambda x: x != 0, size_adj_high_mu))
+            size_adj_low_mu = list(filter(lambda x: x != 0, size_adj_low_mu))
 
         # profits
         self.profits = [
@@ -367,7 +409,7 @@ class MonPolicyFinite(MultiAgentEnv):
         ]
 
         # update shocks and states
-        if self.analysis_mode or self.eval_mode:
+        if (not self.random_eval and self.eval_mode) or self.analysis_mode:
             self.epsilon_z = self.epsilon_z_seeded[self.timestep]
             self.epsilon_g = self.epsilon_g_seeded[self.timestep]
             if self.timestep < self.horizon - self.final_stage:
@@ -498,6 +540,14 @@ class MonPolicyFinite(MultiAgentEnv):
                     "log_c": np.log(1 / self.mu),
                     "mu": self.mu,
                     "mean_profits": np.mean(self.profits),
+                    "move_freq_lowmu": np.mean(freq_adj_low_mu),
+                    "move_freq_highmu": np.mean(freq_adj_high_mu),
+                    "size_adj_lowmu": np.mean(
+                        [abs(np.log(elem)) for elem in size_adj_low_mu]
+                    ),
+                    "size_adj_highmu": np.mean(
+                        [abs(np.log(elem)) for elem in size_adj_high_mu]
+                    ),
                     "mu_ij": self.mu_ij[0],
                     "profits_ij": self.profits[0],
                     "move_ij": self.move_ij[0],
@@ -592,20 +642,20 @@ class MonPolicyFinite(MultiAgentEnv):
 def main():
     # init environment
     n_firms = 2
-    n_inds = 2
+    n_inds = 10
     env_config = {
         "horizon": 70,
         "n_inds": n_inds,
         "n_firms": n_firms,
-        "eval_mode": False,
+        "eval_mode": True,
         "analysis_mode": False,
         "noagg": False,
         "obs_flex_index": True,
-        "regime_change": True,
+        "regime_change": False,
         "infl_regime": "high",
         "infl_regime_scale": [3, 1.3, 2],
         "infl_transprob": [[23 / 24, 1 / 24], [1 / 24, 23 / 24]],
-        "seed_eval": 10000,
+        # "seed_eval": 10000,
         "seed_analisys": 3000,
         "markup_min": 1,
         "markup_max": 2,
@@ -628,14 +678,8 @@ def main():
     env = MonPolicyFinite(env_config)
     obs = env.reset()
     print("INIT_OBS:", obs)
-    for i in range(72):
-        actions = {
-            i: {
-                "move_prob": env.action_space[i]["move_prob"].sample(),
-                "reset_markup": env.action_space[i]["reset_markup"].sample(),
-            }
-            for i in range(env.n_agents)
-        }
+    for i in range(10):
+        actions = {i: env.action_space[i].sample() for i in range(env.n_agents)}
         obs, rew, done, info = env.step(actions)
         print(
             "ACTION:",

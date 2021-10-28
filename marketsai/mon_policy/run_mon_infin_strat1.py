@@ -29,8 +29,8 @@ import json
 """ STEP 0: Experiment configs """
 
 # global configss
-DATE = "Oct25_"
-ENV_LABEL = "mon_infin"
+DATE = "Oct27_"
+ENV_LABEL = "mon_infin_strat"
 NATIVE = True
 TEST = True
 SAVE_EXP_INFO = True
@@ -45,9 +45,9 @@ if TEST:
         OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
         OUTPUT_PATH_RESULTS = "~/ray_results/"
     else:
-        OUTPUT_PATH_EXPERS = "/scratch/mc5851/ray_results/"
-        OUTPUT_PATH_FIGURES = "/scratch/mc5851/ray_results/"
-        OUTPUT_PATH_RESULTS = "/scratch/mc5851/ray_results/"
+        OUTPUT_PATH_EXPERS = "/scratch/mc5851/Experiments/ALL/"
+        OUTPUT_PATH_FIGURES = "/scratch/mc5851/Figures/ALL/"
+        OUTPUT_PATH_RESULTS = "/scratch/mc5851/ray_results/ALL/"
 
 else:
     if NATIVE:
@@ -104,8 +104,11 @@ else:
 CHKPT_FREQ = 1000
 if TEST:
     EVAL_INTERVAL = 5
+    EVAL_EPISODES = 1
 else:
-    EVAL_INTERVAL = 100
+    EVAL_INTERVAL = 500
+    EVAL_EPISODES = 50
+
 STOP = {"timesteps_total": MAX_STEPS}
 
 # Initialize ray
@@ -216,32 +219,33 @@ env_config = {
     "horizon": ENV_HORIZON,
     "n_inds": n_inds_LIST[0],
     "n_firms": n_firms_LIST[0],
-    "eval_mode": False,
-    "analysis_mode": False,
+    # "eval_mode": False,
+    # "random_eval": True,
+    # "analysis_mode": False,
     "noagg": False,
     "obs_idshock": True,
     "regime_change": False,
     "infl_regime": "low",
-    "infl_regime_scale": [3, 1.3, 2],
-    # "infl_transprob": [[0.5, 0.5], [0.5, 0.5]],
-    "infl_transprob": [[23 / 24, 1 / 24], [1 / 24, 23 / 24]],
-    "seed_eval": 10000,
-    "seed_analisys": 3000,
-    "markup_min": 1,
-    "markup_max": 2,
-    "markup_star": 1.3,
-    "rew_mean": 0,
-    "rew_std": 1,
-    "parameters": {
-        "beta": 0.95 ** (1 / 12),
-        "log_g_bar": 0.0021,
-        "rho_g": 0.61,
-        "sigma_g": 0.0019,
-        "theta": 1.5,
-        "eta": 10.5,
-        "menu_cost": 0.17,
-        "sigma_z": 0.038,
-    },
+    # "infl_regime_scale": [3, 1.3, 2],
+    # # "infl_transprob": [[0.5, 0.5], [0.5, 0.5]],
+    # "infl_transprob": [[23 / 24, 1 / 24], [1 / 24, 23 / 24]],
+    # "seed_eval": 10000,
+    # "seed_analisys": 3000,
+    # "markup_min": 1,
+    # "markup_max": 2,
+    # "markup_star": 1.3,
+    # "rew_mean": 0,
+    # "rew_std": 1,
+    # "parameters": {
+    #     "beta": 0.95 ** (1 / 12),
+    #     "log_g_bar": 0.0021,
+    #     "rho_g": 0.61,
+    #     "sigma_g": 0.0019,
+    #     "theta": 1.5,
+    #     "eta": 10.5,
+    #     "menu_cost": 0.17,
+    #     "sigma_z": 0.038,
+    # },
 }
 
 
