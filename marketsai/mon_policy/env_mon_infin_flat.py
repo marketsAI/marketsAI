@@ -148,7 +148,7 @@ class MonPolicy(MultiAgentEnv):
         if self.analysis_mode:
             rng = np.random.default_rng(self.seed_analysis)
 
-        if self.eval_mode or self.analysis_mode:
+        if (not self.random_eval and self.eval_mode) or self.analysis_mode:
             self.epsilon_g_seeded = [
                 rng.standard_normal() for t in range(self.horizon + 1)
             ]
