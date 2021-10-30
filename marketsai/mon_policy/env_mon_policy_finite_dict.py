@@ -33,6 +33,7 @@ class MonPolicyFinite(MultiAgentEnv):
         self.eval_mode = self.env_config.get("eval_mode", False)
         self.random_eval = self.env_config.get("random_eval", True)
         self.analysis_mode = self.env_config.get("analysis_mode", False)
+        self.deviation_mode = self.env_config.get("deviation_mode", False)
         self.no_agg = self.env_config.get("no_agg", False)
         # either high,low or variable
         self.regime_change = self.env_config.get("regime_change", False)
@@ -217,12 +218,19 @@ class MonPolicyFinite(MultiAgentEnv):
             ]
 
             self.initial_markup_seeded = np.array(
-                [rng.normal(1.3, 0.1) for i in range(self.n_agents)]
+                [rng.uniform(1.2, 1.4) for i in range(self.n_agents)]
             )
 
             if self.analysis_mode:
                 self.epsilon_g_seeded = [0 for t in range(self.horizon + 1)]
-                self.epsilon_g_seeded[0] = self.params["sigma_g"]
+                self.epsilon_g_seeded[0] = 0.1
+
+            if self.deviation_mode:
+                for t in range(self.horizon + 1):
+                    self.epsilon_z_seeded[t][0] = 0
+                    self.epsilon_z_seeded[t][1] = 0
+                self.initial_markup_seeded[0] = 1.33
+                self.initial_markup_seeded[1] = 1.11
 
         if self.obs_flex_index:
             flex_index = 0
