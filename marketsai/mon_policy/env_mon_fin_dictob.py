@@ -78,12 +78,7 @@ class MonPolicyFinite(MultiAgentEnv):
         # CREATE SPACES
 
         self.action_space = {
-            i: Dict(
-                {
-                    "move_prob": Box(low=-1, high=1, shape=(1,), dtype=np.float32),
-                    "reset_markup": Box(low=-1, high=1, shape=(1,), dtype=np.float32),
-                }
-            )
+            i: Box(low=-1, high=1, shape=(2,), dtype=np.float32)
             for i in range(self.n_agents)
         }
         n_obs_ind = self.n_firms * 1
@@ -252,7 +247,7 @@ class MonPolicyFinite(MultiAgentEnv):
 
         # DEFAULT: when learning, we randomize the initial observations
         else:
-            self.mu_ij_next = [random.uniform(1.2, 1.55) for i in range(self.n_agents)]
+            self.mu_ij_next = [random.uniform(1.15, 1.45) for i in range(self.n_agents)]
             self.epsilon_z = np.random.standard_normal(size=self.n_agents)
             self.epsilon_g = np.random.standard_normal()
             self.menu_cost = [
@@ -386,15 +381,13 @@ class MonPolicyFinite(MultiAgentEnv):
         self.move_ij = [
             True
             if self.menu_cost[i]
-            <= (action_dict[i]["move_prob"][0] + 1) / 2 * self.params["menu_cost"]
+            <= (action_dict[i][0] + 1) / 2 * self.params["menu_cost"]
             else False
             for i in range(self.n_agents)
         ]
         self.mu_ij_reset = [
             self.markup_min
-            + (action_dict[i]["reset_markup"][0] + 1)
-            / 2
-            * (self.markup_max - self.markup_min)
+            + (action_dict[i][1] + 1) / 2 * (self.markup_max - self.markup_min)
             for i in range(self.n_agents)
         ]
         # if self.timestep < self.horizon - self.final_stage:
@@ -689,13 +682,7 @@ class MonPolicyFinite(MultiAgentEnv):
             if t % self.horizon == 0:
                 obs = self.reset()
             obs, rew, done, info = self.step(
-                {
-                    i: {
-                        "move_prob": self.action_space[0]["move_prob"].sample(),
-                        "reset_markup": self.action_space[0]["reset_markup"].sample(),
-                    }
-                    for i in range(self.n_agents)
-                }
+                {i: self.action_space[0].sample() for i in range(self.n_agents)}
             )
             # print("g", self.g, "mu", self.mu_ij[0], "mu_reset", self.mu_ij_reset)
             epsilon_g_list.append(self.epsilon_g)
@@ -774,13 +761,7 @@ def main():
     obs = env.reset()
     print("INIT_OBS:", obs)
     for i in range(72):
-        actions = {
-            i: {
-                "move_prob": env.action_space[i]["move_prob"].sample(),
-                "reset_markup": env.action_space[i]["reset_markup"].sample(),
-            }
-            for i in range(env.n_agents)
-        }
+        actions = {i: env.action_space[i].sample() for i in range(env.n_agents)}
         obs, rew, done, info = env.step(actions)
         print(
             "ACTION:",

@@ -36,7 +36,7 @@ import random
 
 
 DATE = "Oct30_"
-ENV_LABEL = "mon_fin_dict"
+ENV_LABEL = "mon_fin_flat"
 TEST = True
 NATIVE = True
 SAVE_EXP_INFO = True
@@ -74,7 +74,7 @@ else:
 
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [200]
-ITERS_TEST = 2  # number of iteration for test
+ITERS_TEST = 10  # number of iteration for test
 ITERS_RUN = 2000  # number of iteration for fullrun
 
 
@@ -87,7 +87,7 @@ BETA = 0.95 ** (1 / 12)  # discount parameter
 RUN_ANALYSIS = True
 PLOT_HIST = True
 EVAL_RESULTS = True
-SIMUL_EPISODES = 1
+SIMUL_EPISODES = 30
 NO_FLEX_HORIZON = 48
 CHKPT_SELECT_REF = True
 RESULTS_REF = np.array([1.3, 1.2, 0.12, 0.1, 0.0005])
@@ -121,7 +121,7 @@ else:
 # checkpointing, evaluation during trainging and stopage
 CHKPT_FREQ = 1000
 if TEST:
-    EVAL_INTERVAL = 1
+    EVAL_INTERVAL = 5
     EVAL_EPISODES = 1
 else:
     EVAL_INTERVAL = 500
@@ -683,7 +683,7 @@ if PLOT_PROGRESS:
         learning_plot.savefig(
             OUTPUT_PATH_FIGURES + "progress_rewards" + exp_names[ind] + ".png"
         )
-        # plt.show()
+        # #plt.show()
         plt.close()
 
         for i in range(NUM_TRIALS):
@@ -699,7 +699,7 @@ if PLOT_PROGRESS:
         learning_plot.savefig(
             OUTPUT_PATH_FIGURES + "progress_mu_ij" + exp_names[ind] + ".png"
         )
-        # plt.show()
+        # #plt.show()
         plt.close()
 
         for i in range(NUM_TRIALS):
@@ -715,7 +715,7 @@ if PLOT_PROGRESS:
         learning_plot.savefig(
             OUTPUT_PATH_FIGURES + "progress_mu_ij_final" + exp_names[ind] + ".png"
         )
-        # plt.show()
+        # #plt.show()
         plt.close()
 
         for i in range(NUM_TRIALS):
@@ -731,7 +731,7 @@ if PLOT_PROGRESS:
         learning_plot.savefig(
             OUTPUT_PATH_FIGURES + "progress_freq_p_adj" + exp_names[ind] + ".png"
         )
-        # plt.show()
+        # #plt.show()
         plt.close()
 
         for i in range(NUM_TRIALS):
@@ -747,7 +747,7 @@ if PLOT_PROGRESS:
         learning_plot.savefig(
             OUTPUT_PATH_FIGURES + "progress_size_adj" + exp_names[ind] + ".png"
         )
-        # plt.show()
+        # #plt.show()
         plt.close()
 
 if RUN_ANALYSIS:
@@ -755,8 +755,7 @@ if RUN_ANALYSIS:
         results_data = exp_dict["results_eval"]
     else:
         results_data = exp_dict["results"]
-    exp_names = exp_dict["exp_names"][0]
-    checkpoints = exp_dict["checkpoints"][0]
+
     results = {
         "Markups": np.array(results_data[1][0]),
         "Flexible Markups": np.array(results_data[2][0]),
@@ -844,7 +843,7 @@ if RUN_ANALYSIS:
             plt.savefig(
                 OUTPUT_PATH_FIGURES + "hist_" + f"{i}" + "_" + exp_names[0] + ".jpg"
             )
-            plt.show()
+            # plt.show()
             plt.close()
 
 """ Policy Functions """
@@ -940,7 +939,7 @@ plt.xlabel("Money Growth")
 plt.ylabel("Prob. of Adjustment")
 plt.title("Effec of money growth on Prob. of Adj.")
 plt.savefig(OUTPUT_PATH_FIGURES + "React_mon" + exp_names[0] + ".png")
-plt.show()
+# plt.show()
 plt.close()
 
 plt.plot(x, reset_lowmu)
@@ -951,7 +950,7 @@ plt.xlabel("Money Growth")
 plt.ylabel("Reset Markup")
 plt.title("Effec of money growth on Size of Adj.")
 plt.savefig(OUTPUT_PATH_FIGURES + "React_deviation" + exp_names[0] + ".png")
-plt.show()
+# plt.show()
 plt.close()
 
 print(move_prob_lowmu)
@@ -1034,7 +1033,7 @@ plt.legend(["Low Markup Firm", "Med Markup Firms", "High Markup Firm"])
 plt.xlabel("Markup of Competition")
 plt.ylabel("Prob. of Adjustment")
 plt.title("Reaction Function - Probability of Adjustment")
-plt.show()
+# plt.show()
 plt.close()
 
 plt.plot(x, reset_lowmu)
@@ -1044,7 +1043,7 @@ plt.legend(["Low Markup Firm", "Med Markup Firms", "High Markup Firm"])
 plt.xlabel("Markup of Competition")
 plt.ylabel("Reset Markup")
 plt.title("Reaction Function - Reset Markup")
-plt.show()
+# plt.show()
 plt.close()
 
 reg_react_prob_low = linregress(markup, move_prob_lowmu)
@@ -1397,7 +1396,7 @@ plt.ylabel("Delta log C_t * 100")
 plt.xlabel("Month t")
 plt.title("A. IRF - Consumption")
 plt.savefig(OUTPUT_PATH_FIGURES + "IRs_" + exp_names[0] + "finite_first" + ".png")
-plt.show()
+# plt.show()
 plt.close()
 
 cum_IRs = simul_results_dict["cum_IRs"][-1]
@@ -1407,7 +1406,7 @@ plt.ylabel("Delta log C_t * 100")
 plt.xlabel("Month t")
 plt.title("B. Cumulative IRF - Consumption")
 plt.savefig(OUTPUT_PATH_FIGURES + "cum_IRs" + exp_names[0] + "finite_first" + ".png")
-plt.show()
+# plt.show()
 plt.close()
 
 
@@ -1419,7 +1418,7 @@ plt.ylabel("IRF - Levels (percentage points)")
 plt.xlabel("Month t")
 plt.title("IRF - Frquency of Price Adjust for High vs Low Markup")
 plt.savefig(OUTPUT_PATH_FIGURES + "IRs_freq" + exp_names[0] + "finite_first" + ".png")
-plt.show()
+# plt.show()
 plt.close()
 
 plt.plot(x, IRs_sizelow)
@@ -1430,5 +1429,5 @@ plt.ylabel("IRF - Levels (*10000)")
 plt.xlabel("Month t")
 plt.title("IRF - Size of Adjustment for High vs Low Markup")
 plt.savefig(OUTPUT_PATH_FIGURES + "IRs_size" + exp_names[0] + "finite_first" + ".png")
-plt.show()
+# plt.show()
 plt.close()

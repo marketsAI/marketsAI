@@ -31,13 +31,25 @@ import json
 """ STEP 0: Experiment configs """
 
 
-DATE = "Oct27_"
+DATE = "Oct30_"
 ENV_LABEL = "mon_fin"
 TEST = True
 NATIVE = True
 SAVE_EXP_INFO = True
 SAVE_PROGRESS = True
 PLOT_PROGRESS = True
+PLOT_HIST = True
+EVAL_RESULTS = True
+SIMUL_EPISODES = 30
+NO_FLEX_HORIZON = 48
+
+CHKPT_SELECT_REF = True
+RESULTS_REF = np.array([1.3, 1.2, 0.12, 0.1, 0.0005])
+CHKPT_SELECT_MANUAL = False
+CHKPT_id = 0
+CHKPT_SELECT_MIN = False
+CHKPT_SELECT_MAX = False
+
 sn.color_palette("Set2")
 
 if TEST:
@@ -71,7 +83,7 @@ else:
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [200]
 ITERS_TEST = 10  # number of iteration for test
-ITERS_RUN = 1000  # number of iteration for fullrun
+ITERS_RUN = 50  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -108,8 +120,8 @@ if TEST:
     EVAL_INTERVAL = 5
     EVAL_EPISODES = 1
 else:
-    EVAL_INTERVAL = 500
-    EVAL_EPISODES = 50
+    EVAL_INTERVAL = 25
+    EVAL_EPISODES = 5
 
 STOP = {"timesteps_total": MAX_STEPS}
 
@@ -326,7 +338,7 @@ common_config = {
 # Configs specific to the chosel algorithms, INCLUDING THE LEARNING RATE
 ppo_config = {
     # "lr": 0.0001,
-    "lr_schedule": [[0, 0.00005], [100000, 0.00001]],
+    "lr_schedule": [[0, 0.00005], [5000, 0.00001]],
     "sgd_minibatch_size": BATCH_SIZE // NUM_MINI_BATCH,
     "num_sgd_iter": 1,
     "batch_mode": "complete_episodes",

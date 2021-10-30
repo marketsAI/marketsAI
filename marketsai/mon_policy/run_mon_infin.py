@@ -29,7 +29,7 @@ import json
 """ STEP 0: Experiment configs """
 
 # global configss
-DATE = "Oct27_"
+DATE = "Oct30_"
 ENV_LABEL = "mon_infin"
 NATIVE = True
 TEST = True
