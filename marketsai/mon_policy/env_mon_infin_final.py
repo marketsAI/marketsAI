@@ -35,19 +35,19 @@ class MonPolicy(MultiAgentEnv):
         self.analysis_mode = self.env_config.get("analysis_mode", False)
         self.no_agg = self.env_config.get("no_agg", False)
         self.infl_regime = self.env_config.get("infl_regime", "low")
-        self.infl_regime_scale = self.env_config.get("infl_regime_scale", [3, 1.3, 2])
+        self.infl_regime_scale = self.env_config.get(
+            "infl_regime_scale", [3.05, 1.31, 5]
+        )
         self.regime_change = self.env_config.get("regime_change", False)
         self.infl_transprob = self.env_config.get(
             "infl_transprob", [[23 / 24, 1 / 24], [1 / 24, 23 / 24]]
         )
         self.obs_idshock = self.env_config.get("obs_idshock", False)
-        self.seed_eval = self.env_config.get("seed_eval", [1000 * i for i in range(10)])
-        self.seed_analysis = self.env_config.get(
-            "seed_analysis", [1000 * i for i in range(10)]
-        )
-        self.markup_min = self.env_config.get("markup_min", 1.2)
-        self.markup_max = self.env_config.get("markup_max", 3)
-        self.markup_star = self.env_config.get("markup_star", 1.2)
+        self.seed_eval = self.env_config.get("seed_eval", 10000)
+        self.seed_analysis = self.env_config.get("seed_analysis", 1000)
+        self.markup_min = self.env_config.get("markup_min", 1)
+        self.markup_max = self.env_config.get("markup_max", 2)
+        self.markup_star = self.env_config.get("markup_star", 1.3)
         self.rew_mean = self.env_config.get("rew_mean", 0)
         self.rew_std = self.env_config.get("rew_std", 1)
 
@@ -88,21 +88,15 @@ class MonPolicy(MultiAgentEnv):
                 [0 for i in range(n_obs_ind)] + [0 for i in range(n_obs_agg)]
             )
             high = np.array(
-                [10 for i in range(self.n_firms)]
-                + [float("inf") for i in range(self.n_firms)]
-                + [5, float("inf"), 1]
+                [3 for i in range(self.n_firms)]
+                + [3 for i in range(self.n_firms)]
+                + [3, 3, 1]
             )
         elif self.obs_idshock and not self.regime_change:
             n_obs_ind = self.n_firms * 2
             n_obs_agg = 2
-            low = np.array(
-                [0 for i in range(n_obs_ind)] + [0 for i in range(n_obs_agg)]
-            )
-            high = np.array(
-                [10 for i in range(self.n_firms)]
-                + [float("inf") for i in range(self.n_firms)]
-                + [5, float("inf")]
-            )
+            low = np.array([0 for i in range(2 * self.n_firms + 2)])
+            high = np.array([3 for i in range(2 * self.n_firms + 2)])
 
         elif not self.obs_idshock and self.regime_change:
             n_obs_ind = self.n_firms
@@ -110,7 +104,7 @@ class MonPolicy(MultiAgentEnv):
             low = np.array(
                 [0 for i in range(n_obs_ind)] + [0 for i in range(n_obs_agg)]
             )
-            high = np.array([10 for i in range(self.n_firms)] + [5, float("inf"), 1])
+            high = np.array([3 for i in range(self.n_firms)] + [3, 3, 1])
 
         else:
             n_obs_ind = self.n_firms
@@ -118,7 +112,7 @@ class MonPolicy(MultiAgentEnv):
             low = np.array(
                 [0 for i in range(n_obs_ind)] + [0 for i in range(n_obs_agg)]
             )
-            high = np.array([10 for i in range(self.n_firms)] + [5, float("inf")])
+            high = np.array([3 for i in range(self.n_firms)] + [3, 3])
 
         self.observation_space = {
             i: Box(
@@ -212,8 +206,11 @@ class MonPolicy(MultiAgentEnv):
 
         # shocks
         self.M = 1
-        self.log_z = self.params["sigma_z"] * self.epsilon_z
-        self.log_g = log_g_bar + sigma_g * self.epsilon_g
+        self.log_z = [
+            min(self.params["sigma_z"] * self.epsilon_z[i], 1.0986)
+            for i in range(self.n_agents)
+        ]
+        self.log_g = min(log_g_bar + sigma_g * self.epsilon_g, 1.0986)
         self.g = math.e ** self.log_g
 
         # mu vector per industry:
@@ -243,10 +240,14 @@ class MonPolicy(MultiAgentEnv):
             for elem in mu_perind
         ]
 
-        self.mu = (
-            (1 / self.n_inds)
-            * np.sum([(elem) ** (1 - self.params["theta"]) for elem in mu_j])
-        ) ** (1 / (1 - self.params["theta"]))
+        self.mu = min(
+            (
+                (1 / self.n_inds)
+                * np.sum([(elem) ** (1 - self.params["theta"]) for elem in mu_j])
+            )
+            ** (1 / (1 - self.params["theta"])),
+            3,
+        )
 
         mu_obsperfirm = [[] for i in range(self.n_agents)]
         for i in range(self.n_agents):
@@ -322,13 +323,13 @@ class MonPolicy(MultiAgentEnv):
         self.move_ij = [
             True
             if self.menu_cost[i]
-            <= (action_dict[i][1] + 1) / 2 * self.params["menu_cost"]
+            <= (action_dict[i][0] + 1) / 2 * self.params["menu_cost"]
             else False
             for i in range(self.n_agents)
         ]
         self.mu_ij_reset = [
             self.markup_min
-            + (action_dict[i][0] + 1) / 2 * (self.markup_max - self.markup_min)
+            + (action_dict[i][1] + 1) / 2 * (self.markup_max - self.markup_min)
             for i in range(self.n_agents)
         ]
         self.mu_ij = [
@@ -354,10 +355,14 @@ class MonPolicy(MultiAgentEnv):
         ]
 
         # Aggregate markup
-        self.mu = (
-            (1 / self.n_inds)
-            * np.sum([(elem) ** (1 - self.params["theta"]) for elem in mu_j])
-        ) ** (1 / (1 - self.params["theta"]))
+        self.mu = min(
+            (
+                (1 / self.n_inds)
+                * np.sum([(elem) ** (1 - self.params["theta"]) for elem in mu_j])
+            )
+            ** (1 / (1 - self.params["theta"])),
+            3,
+        )
 
         # profits
         self.profits = [
@@ -427,12 +432,13 @@ class MonPolicy(MultiAgentEnv):
             self.epsilon_g = 0
 
         self.log_z = [
-            self.log_z[i] + self.params["sigma_z"] * self.epsilon_z[i]
+            min(self.log_z[i] + self.params["sigma_z"] * self.epsilon_z[i], 1.0986)
             for i in range(self.n_agents)
         ]
 
-        self.log_g = (
-            (1 - rho_g) * log_g_bar + rho_g * self.log_g + sigma_g * self.epsilon_g
+        self.log_g = min(
+            ((1 - rho_g) * log_g_bar + rho_g * self.log_g + sigma_g * self.epsilon_g),
+            1.0986,
         )
         self.g = math.e ** self.log_g
         high_regime_index = 1 if self.infl_regime == "high" else 0
@@ -440,8 +446,11 @@ class MonPolicy(MultiAgentEnv):
             ["low", "high"], self.infl_transprob[high_regime_index]
         )[0]
         self.mu_ij_next = [
-            self.mu_ij[i]
-            / (self.g * math.e ** (self.params["sigma_z"] * self.epsilon_z[i]))
+            min(
+                self.mu_ij[i]
+                / (self.g * math.e ** (self.params["sigma_z"] * self.epsilon_z[i])),
+                3,
+            )
             for i in range(self.n_agents)
         ]
 
@@ -646,7 +655,7 @@ def main():
     n_firms = 2
     n_inds = 2
     env_config = {
-        "horizon": 100,
+        "horizon": 60,
         "n_inds": n_inds,
         "n_firms": n_firms,
         "eval_mode": False,

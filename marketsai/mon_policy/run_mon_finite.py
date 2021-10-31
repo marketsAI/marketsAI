@@ -40,7 +40,7 @@ SAVE_PROGRESS = True
 PLOT_PROGRESS = True
 PLOT_HIST = True
 EVAL_RESULTS = True
-SIMUL_EPISODES = 30
+
 NO_FLEX_HORIZON = 48
 
 CHKPT_SELECT_REF = True
@@ -82,7 +82,7 @@ else:
 
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [200]
-ITERS_TEST = 10  # number of iteration for test
+ITERS_TEST = 2  # number of iteration for test
 ITERS_RUN = 50  # number of iteration for fullrun
 
 
@@ -117,11 +117,13 @@ else:
 # checkpointing, evaluation during trainging and stopage
 CHKPT_FREQ = 1000
 if TEST:
-    EVAL_INTERVAL = 5
+    EVAL_INTERVAL = 1
     EVAL_EPISODES = 1
+    SIMUL_EPISODES = 1
 else:
-    EVAL_INTERVAL = 25
-    EVAL_EPISODES = 5
+    EVAL_INTERVAL = 500
+    EVAL_EPISODES = 50
+    SIMUL_EPISODES = 50
 
 STOP = {"timesteps_total": MAX_STEPS}
 
@@ -244,6 +246,7 @@ env_config = {
     # "analysis_mode": False,
     "noagg": False,
     "obs_flex_index": True,
+    "obs_idshock": False,
     "regime_change": False,
     "infl_regime": "low",
     # "infl_regime_scale": [3, 1.3, 2],

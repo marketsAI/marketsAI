@@ -1,5 +1,5 @@
 # import environment
-from marketsai.mon_policy.env_mon_fin_dictob import MonPolicyFinite
+from marketsai.mon_policy.env_mon_fin_final import MonPolicyFinite
 
 # from marketsai.mon_policy.env_mon_policy_colab import MonPolicyColab
 
@@ -10,6 +10,7 @@ from ray.tune.registry import register_env
 # from ray.tune.integration.mlflow import MLflowLoggerCallback
 
 # For custom metrics (Callbacks)
+from scipy.stats import linregress
 from ray.rllib.agents.callbacks import DefaultCallbacks
 from scipy.stats import linregress
 from ray.rllib.env import BaseEnv
@@ -75,7 +76,7 @@ else:
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [200]
 ITERS_TEST = 2  # number of iteration for test
-ITERS_RUN = 2000  # number of iteration for fullrun
+ITERS_RUN = 1000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -87,7 +88,6 @@ BETA = 0.95 ** (1 / 12)  # discount parameter
 RUN_ANALYSIS = True
 PLOT_HIST = True
 EVAL_RESULTS = True
-SIMUL_EPISODES = 1
 NO_FLEX_HORIZON = 48
 CHKPT_SELECT_REF = True
 RESULTS_REF = np.array([1.3, 1.2, 0.12, 0.1, 0.0005])
@@ -101,7 +101,7 @@ NUM_CPUS = 4
 NUM_CPUS_DRIVER = 1
 NUM_TRIALS = 4
 NUM_PAR_TRIALS = 4
-NUM_ROLLOUT = ENV_HORIZON * 3
+NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
@@ -123,9 +123,11 @@ CHKPT_FREQ = 1000
 if TEST:
     EVAL_INTERVAL = 1
     EVAL_EPISODES = 1
+    SIMUL_EPISODES = 1
 else:
     EVAL_INTERVAL = 500
     EVAL_EPISODES = 50
+    SIMUL_EPISODES = 50
 
 STOP = {"timesteps_total": MAX_STEPS}
 
@@ -309,8 +311,8 @@ common_config = {
     "rollout_fragment_length": NUM_ROLLOUT,
     "train_batch_size": BATCH_SIZE,
     # EVALUATION
-    "evaluation_interval": EVAL_EPISODES,
-    "evaluation_num_episodes": 1,
+    "evaluation_interval": EVAL_INTERVAL,
+    "evaluation_num_episodes": EVAL_EPISODES,
     "evaluation_config": {
         "explore": False,
         "env_config": env_config_eval,
@@ -342,7 +344,7 @@ common_config = {
 # Configs specific to the chosel algorithms, INCLUDING THE LEARNING RATE
 ppo_config = {
     # "lr": 0.0001,
-    "lr_schedule": [[0, 0.0001], [200000, 0.00001]],
+    "lr_schedule": [[0, 0.00005], [100000, 0.00005]],
     "sgd_minibatch_size": BATCH_SIZE // NUM_MINI_BATCH,
     "num_sgd_iter": 1,
     "batch_mode": "complete_episodes",
@@ -825,7 +827,7 @@ if RUN_ANALYSIS:
     if CHKPT_SELECT_MIN:
         selected_id = results["Markups"].argmin()
 
-    if CHKPT_SELECT_MIN:
+    if CHKPT_SELECT_MAX:
         selected_id = results["Markups"].argmax()
 
     if CHKPT_SELECT_MANUAL:
@@ -873,9 +875,9 @@ mon_policy = [
 # print(mon_policy)
 obs_monpol_lowmu = [
     {
-        "obs_ind": np.array([1.05, 1.4], dtype=np.float32),
+        "obs_ind": np.array([1.1, 1.3], dtype=np.float32),
         "obs_agg": np.array(
-            [1.2, mon_policy[i]],
+            [1.23, mon_policy[i]],
             dtype=np.float32,
         ),
         "time": 24,
@@ -886,9 +888,9 @@ obs_monpol_lowmu = [
 
 obs_monpol_medmu = [
     {
-        "obs_ind": np.array([1.32, 1.32], dtype=np.float32),
+        "obs_ind": np.array([1.3, 1.3], dtype=np.float32),
         "obs_agg": np.array(
-            [1.2, mon_policy[i]],
+            [1.23, mon_policy[i]],
             dtype=np.float32,
         ),
         "time": 24,
@@ -899,9 +901,9 @@ obs_monpol_medmu = [
 
 obs_monpol_highmu = [
     {
-        "obs_ind": np.array([1.4, 1.05], dtype=np.float32),
+        "obs_ind": np.array([1.5, 1.3], dtype=np.float32),
         "obs_agg": np.array(
-            [1.2, mon_policy[i]],
+            [1.23, mon_policy[i]],
             dtype=np.float32,
         ),
         "time": 24,
@@ -970,33 +972,36 @@ print("Slope to mon, high", [slope_mon_prob_high, slope_mon_reset_high])
 
 # Reaction Function
 markup = [1 + (i / 19) for i in range(20)]
-obs_reaction_highmu = [
-    {
-        "obs_ind": np.array([1.5, markup[i]], dtype=np.float32),
-        "obs_agg": np.array(
-            [1.2, math.e ** env.params["log_g_bar"]],
-            dtype=np.float32,
-        ),
-        "time": 24,
-        "flex_index": 0,
-    }
-    for i in range(20)
-]
-obs_reaction_medmu = [
-    {
-        "obs_ind": np.array([1.32, markup[i]], dtype=np.float32),
-        "obs_agg": np.array(
-            [1.2, math.e ** env.params["log_g_bar"]],
-            dtype=np.float32,
-        ),
-        "time": 24,
-        "flex_index": 0,
-    }
-    for i in range(20)
-]
 obs_reaction_lowmu = [
     {
         "obs_ind": np.array([1.1, markup[i]], dtype=np.float32),
+        "obs_agg": np.array(
+            [1.2, math.e ** env.params["log_g_bar"]],
+            dtype=np.float32,
+        ),
+        "time": 24,
+        "flex_index": 0,
+    }
+    for i in range(20)
+]
+
+
+obs_reaction_medmu = [
+    {
+        "obs_ind": np.array([1.3, markup[i]], dtype=np.float32),
+        "obs_agg": np.array(
+            [1.2, math.e ** env.params["log_g_bar"]],
+            dtype=np.float32,
+        ),
+        "time": 24,
+        "flex_index": 0,
+    }
+    for i in range(20)
+]
+
+obs_reaction_highmu = [
+    {
+        "obs_ind": np.array([1.5, markup[i]], dtype=np.float32),
         "obs_agg": np.array(
             [1.2, math.e ** env.params["log_g_bar"]],
             dtype=np.float32,
