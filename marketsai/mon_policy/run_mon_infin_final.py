@@ -22,6 +22,7 @@ import seaborn as sn
 import sys
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 import json
 import math
 import random
@@ -32,12 +33,16 @@ import random
 """ STEP 0: Experiment configs """
 
 # global configss
-DATE = "Oct30_"
+DATE = "Nov1_"
 ENV_LABEL = "mon_infin"
 OBS_IDSHOCK = False
 INFL_REGIME = "low"
-NATIVE = False
+NATIVE = True
 TEST = True
+RUN_TRAINING = False
+RUN_ANALYSIS = True
+# in case there is no training
+INFO_ANALYSIS = "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/ALL/expINFO_native_mon_infin_exp_0_Nov1_PPO_test.json"
 SAVE_EXP_INFO = True
 SAVE_PROGRESS = True
 PLOT_PROGRESS = True
@@ -46,9 +51,13 @@ sn.color_palette("Set2")
 
 if TEST:
     if NATIVE:
-        OUTPUT_PATH_EXPERS = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
-        OUTPUT_PATH_FIGURES = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/"
-        OUTPUT_PATH_RESULTS = "~/ray_results/"
+        OUTPUT_PATH_EXPERS = (
+            "/Users/matiascovarrubias/Dropbox/RL_macro/Experiments/ALL/"
+        )
+        OUTPUT_PATH_FIGURES = (
+            "/Users/matiascovarrubias/Dropbox/RL_macro/Documents/Figures/ALL/"
+        )
+        OUTPUT_PATH_RESULTS = "~/ray_results/ALL/"
     else:
         OUTPUT_PATH_EXPERS = "/scratch/mc5851/Experiments/ALL/"
         OUTPUT_PATH_FIGURES = "/scratch/mc5851/Figures/ALL/"
@@ -94,10 +103,10 @@ CHKPT_SELECT_MIN = False
 CHKPT_SELECT_MAX = True
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 47
+NUM_CPUS = 4
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 47
-NUM_PAR_TRIALS = 47
+NUM_TRIALS = 4
+NUM_PAR_TRIALS = 4
 NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
@@ -358,345 +367,361 @@ elif ALGO == "SAC":
 else:
     training_config = common_config
 
-""" STEP 4: run multi firm experiment """
+""" STEP 4: Run training """
 
-exp_names = []
-trial_logdirs = []
-exp_dirs = []
-checkpoints = []
-learning_dta = []
-configs = []
+if RUN_TRAINING:
+    exp_names = []
+    trial_logdirs = []
+    exp_dirs = []
+    checkpoints = []
+    learning_dta = []
+    configs = []
 
-rewards_eval = []
-mu_ij_eval = []
-freq_p_adj_eval = []
-size_adj_eval = []
-std_log_c_eval = []
-profits_eval = []
+    rewards_eval = []
+    mu_ij_eval = []
+    freq_p_adj_eval = []
+    size_adj_eval = []
+    std_log_c_eval = []
+    profits_eval = []
 
-rewards = []
-mu_ij = []
-freq_p_adj = []
-size_adj = []
-std_log_c = []
-profits = []
+    rewards = []
+    mu_ij = []
+    freq_p_adj = []
+    size_adj = []
+    std_log_c = []
+    profits = []
 
-# RUN TRAINER
-env_configs = []
+    # RUN TRAINER
+    env_configs = []
 
-for ind, n_firms in enumerate(n_firms_LIST):
-    EXP_LABEL = device + ENV_LABEL + f"_exp_{ind}_"
-    if TEST == True:
-        EXP_NAME = EXP_LABEL + DATE + ALGO + "_test"
-    else:
-        EXP_NAME = EXP_LABEL + DATE + ALGO + "_run"
+    for ind, n_firms in enumerate(n_firms_LIST):
+        EXP_LABEL = device + ENV_LABEL + f"_exp_{ind}_"
+        if TEST == True:
+            EXP_NAME = EXP_LABEL + DATE + ALGO + "_test"
+        else:
+            EXP_NAME = EXP_LABEL + DATE + ALGO + "_run"
 
-    env_config["n_firms"] = n_firms
-    env_config_eval["n_firms"] = n_firms
+        env_config["n_firms"] = n_firms
+        env_config_eval["n_firms"] = n_firms
 
-    """ CHANGE HERE """
-    env = MonPolicy(env_config)
-    training_config["env_config"] = env_config
-    training_config["evaluation_config"]["env_config"] = env_config_eval
-    training_config["multiagent"] = {
-        "policies": {
-            "firm_even": (
-                None,
-                env.observation_space[0],
-                env.action_space[0],
-                {},
+        """ CHANGE HERE """
+        env = MonPolicy(env_config)
+        training_config["env_config"] = env_config
+        training_config["evaluation_config"]["env_config"] = env_config_eval
+        training_config["multiagent"] = {
+            "policies": {
+                "firm_even": (
+                    None,
+                    env.observation_space[0],
+                    env.action_space[0],
+                    {},
+                ),
+                "firm_odd": (
+                    None,
+                    env.observation_space[0],
+                    env.action_space[0],
+                    {},
+                ),
+            },
+            "policy_mapping_fn": (
+                lambda agent_id: "firm_even" if agent_id % 2 == 0 else "firm_odd"
             ),
-            "firm_odd": (
-                None,
-                env.observation_space[0],
-                env.action_space[0],
-                {},
-            ),
-        },
-        "policy_mapping_fn": (
-            lambda agent_id: "firm_even" if agent_id % 2 == 0 else "firm_odd"
-        ),
-    }
+        }
 
-    analysis = tune.run(
-        ALGO,
-        name=EXP_NAME,
-        config=training_config,
-        stop=STOP,
-        # checkpoint_freq=CHKPT_FREQ,
-        checkpoint_at_end=True,
-        # metric="evaluation/custom_metrics/discounted_rewards_mean",
-        # metric="custom_metrics/discounted_rewards_mean",
-        # mode="max",
-        num_samples=NUM_TRIALS,
-        # resources_per_trial={"gpu": 0.5},
-        local_dir=OUTPUT_PATH_RESULTS,
-    )
+        analysis = tune.run(
+            ALGO,
+            name=EXP_NAME,
+            config=training_config,
+            stop=STOP,
+            # checkpoint_freq=CHKPT_FREQ,
+            checkpoint_at_end=True,
+            # metric="evaluation/custom_metrics/discounted_rewards_mean",
+            # metric="custom_metrics/discounted_rewards_mean",
+            # mode="max",
+            num_samples=NUM_TRIALS,
+            # resources_per_trial={"gpu": 0.5},
+            local_dir=OUTPUT_PATH_RESULTS,
+        )
 
-    rewards_eval.append(
-        [
-            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
-                "discounted_rewards_mean"
-            ]
-            for i in range(NUM_TRIALS)
-        ]
-    )
-    mu_ij_eval.append(
-        [
-            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
-                "mean_markup_ij_mean"
-            ]
-            for i in range(NUM_TRIALS)
-        ]
-    )
-    freq_p_adj_eval.append(
-        [
-            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
-                "freq_p_adj_mean"
-            ]
-            for i in range(NUM_TRIALS)
-        ]
-    )
-    size_adj_eval.append(
-        [
-            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
-                "size_adj_mean"
-            ]
-            for i in range(NUM_TRIALS)
-        ]
-    )
-
-    std_log_c_eval.append(
-        [
-            list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
-                "std_log_c_mean"
-            ]
-            for i in range(NUM_TRIALS)
-        ]
-    )
-
-    profits_eval.append(
-        [
-            list(analysis.results.values())[i]["custom_metrics"]["profits_mean"]
-            for i in range(NUM_TRIALS)
-        ]
-    )
-    rewards.append(
-        [
-            list(analysis.results.values())[i]["custom_metrics"][
-                "discounted_rewards_mean"
-            ]
-            for i in range(NUM_TRIALS)
-        ]
-    )
-    mu_ij.append(
-        [
-            list(analysis.results.values())[i]["custom_metrics"]["mean_markup_ij_mean"]
-            for i in range(NUM_TRIALS)
-        ]
-    )
-    freq_p_adj.append(
-        [
-            list(analysis.results.values())[i]["custom_metrics"]["freq_p_adj_mean"]
-            for i in range(NUM_TRIALS)
-        ]
-    )
-    size_adj.append(
-        [
-            list(analysis.results.values())[i]["custom_metrics"]["size_adj_mean"]
-            for i in range(NUM_TRIALS)
-        ]
-    )
-
-    std_log_c.append(
-        [
-            list(analysis.results.values())[i]["custom_metrics"]["std_log_c_mean"]
-            for i in range(NUM_TRIALS)
-        ]
-    )
-
-    profits.append(
-        [
-            list(analysis.results.values())[i]["custom_metrics"]["profits_mean"]
-            for i in range(NUM_TRIALS)
-        ]
-    )
-    exp_names.append(EXP_NAME)
-    exp_dirs.append(analysis._experiment_dir)
-    trial_logdirs.append([analysis.trials[i].logdir for i in range(NUM_TRIALS)])
-    configs.append(
-        [
-            {
-                "env_config": analysis.trials[i].config["env_config"],
-                # "lr": analysis.trials[i].config["lr"],
-                "lr_schedule": analysis.trials[i].config["lr_schedule"],
-            }
-            for i in range(NUM_TRIALS)
-        ]
-    )
-    checkpoints.append([analysis.trials[i].checkpoint.value for i in range(NUM_TRIALS)])
-
-    # learning_dta.append(
-    #     analysis.best_dataframe[
-    #         ["episodes_total", "evaluation/custom_metrics/discounted_rewards_mean"]
-    #     ]
-    # )
-    if SAVE_PROGRESS:
-        learning_dta.append(
+        rewards_eval.append(
             [
-                list(analysis.trial_dataframes.values())[i][
-                    [
-                        # "episodes_total",
-                        "custom_metrics/discounted_rewards_mean",
-                        "custom_metrics/mean_markup_ij_mean",
-                        "custom_metrics/freq_p_adj_mean",
-                        "custom_metrics/size_adj_mean",
-                        "custom_metrics/std_log_c_mean",
-                        "custom_metrics/profits_mean",
-                    ]
+                list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
+                    "discounted_rewards_mean"
                 ]
                 for i in range(NUM_TRIALS)
             ]
         )
-        for i in range(NUM_TRIALS):
-            learning_dta[ind][i].columns = [
-                # "episodes_total",
-                f"discounted_rewards_trial_{i}",
-                f"mu_ij_trial_{i}",
-                f"freq_p_adj_trial_{i}",
-                f"size_adj_trial_{i}",
-                f"std_log_c_trial_{i}",
-                f"profits_trial_{i}",
+        mu_ij_eval.append(
+            [
+                list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
+                    "mean_markup_ij_mean"
+                ]
+                for i in range(NUM_TRIALS)
             ]
-            # learning_dta[ind][i].set_index("episodes_total")
-        pd.concat(learning_dta[ind], axis=1).to_csv(
-            OUTPUT_PATH_EXPERS + "progress_" + exp_names[ind] + ".csv"
+        )
+        freq_p_adj_eval.append(
+            [
+                list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
+                    "freq_p_adj_mean"
+                ]
+                for i in range(NUM_TRIALS)
+            ]
+        )
+        size_adj_eval.append(
+            [
+                list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
+                    "size_adj_mean"
+                ]
+                for i in range(NUM_TRIALS)
+            ]
         )
 
-""" STEP 5 (optional): Organize and Plot multi firm expers """
+        std_log_c_eval.append(
+            [
+                list(analysis.results.values())[i]["evaluation"]["custom_metrics"][
+                    "std_log_c_mean"
+                ]
+                for i in range(NUM_TRIALS)
+            ]
+        )
 
-# global experiment name
-if len(exp_names) > 1:
-    EXP_LABEL = device + f"_multiexp_"
-    if TEST == True:
-        EXP_NAME = EXP_LABEL + ENV_LABEL + "_test_" + DATE + ALGO
-    else:
-        EXP_NAME = EXP_LABEL + ENV_LABEL + "_run_" + DATE + ALGO
+        profits_eval.append(
+            [
+                list(analysis.results.values())[i]["custom_metrics"]["profits_mean"]
+                for i in range(NUM_TRIALS)
+            ]
+        )
+        rewards.append(
+            [
+                list(analysis.results.values())[i]["custom_metrics"][
+                    "discounted_rewards_mean"
+                ]
+                for i in range(NUM_TRIALS)
+            ]
+        )
+        mu_ij.append(
+            [
+                list(analysis.results.values())[i]["custom_metrics"][
+                    "mean_markup_ij_mean"
+                ]
+                for i in range(NUM_TRIALS)
+            ]
+        )
+        freq_p_adj.append(
+            [
+                list(analysis.results.values())[i]["custom_metrics"]["freq_p_adj_mean"]
+                for i in range(NUM_TRIALS)
+            ]
+        )
+        size_adj.append(
+            [
+                list(analysis.results.values())[i]["custom_metrics"]["size_adj_mean"]
+                for i in range(NUM_TRIALS)
+            ]
+        )
 
+        std_log_c.append(
+            [
+                list(analysis.results.values())[i]["custom_metrics"]["std_log_c_mean"]
+                for i in range(NUM_TRIALS)
+            ]
+        )
 
-# create CSV with information on each experiment
-if SAVE_EXP_INFO:
+        profits.append(
+            [
+                list(analysis.results.values())[i]["custom_metrics"]["profits_mean"]
+                for i in range(NUM_TRIALS)
+            ]
+        )
+        exp_names.append(EXP_NAME)
+        exp_dirs.append(analysis._experiment_dir)
+        trial_logdirs.append([analysis.trials[i].logdir for i in range(NUM_TRIALS)])
+        configs.append(
+            [
+                {
+                    "env_config": analysis.trials[i].config["env_config"],
+                    # "lr": analysis.trials[i].config["lr"],
+                    "lr_schedule": analysis.trials[i].config["lr_schedule"],
+                }
+                for i in range(NUM_TRIALS)
+            ]
+        )
+        checkpoints.append(
+            [analysis.trials[i].checkpoint.value for i in range(NUM_TRIALS)]
+        )
 
-    exp_dict = {
-        "n_agents": n_firms_LIST,
-        "exp_names": exp_names,
-        "exp_dirs": exp_dirs,
-        "trial_dirs": trial_logdirs,
-        "checkpoints": checkpoints,
-        "configs": configs,
-        "results_eval": [
-            rewards_eval,
+        # learning_dta.append(
+        #     analysis.best_dataframe[
+        #         ["episodes_total", "evaluation/custom_metrics/discounted_rewards_mean"]
+        #     ]
+        # )
+        if SAVE_PROGRESS:
+            learning_dta.append(
+                [
+                    list(analysis.trial_dataframes.values())[i][
+                        [
+                            # "episodes_total",
+                            "custom_metrics/discounted_rewards_mean",
+                            "custom_metrics/mean_markup_ij_mean",
+                            "custom_metrics/freq_p_adj_mean",
+                            "custom_metrics/size_adj_mean",
+                            "custom_metrics/std_log_c_mean",
+                            "custom_metrics/profits_mean",
+                        ]
+                    ]
+                    for i in range(NUM_TRIALS)
+                ]
+            )
+            for i in range(NUM_TRIALS):
+                learning_dta[ind][i].columns = [
+                    # "episodes_total",
+                    f"discounted_rewards_trial_{i}",
+                    f"mu_ij_trial_{i}",
+                    f"freq_p_adj_trial_{i}",
+                    f"size_adj_trial_{i}",
+                    f"std_log_c_trial_{i}",
+                    f"profits_trial_{i}",
+                ]
+                # learning_dta[ind][i].set_index("episodes_total")
+            pd.concat(learning_dta[ind], axis=1).to_csv(
+                OUTPUT_PATH_EXPERS + "progress_" + exp_names[ind] + ".csv"
+            )
+
+    """ Organize and Plot multi firm expers """
+
+    # global experiment name
+    if len(exp_names) > 1:
+        EXP_LABEL = device + f"_multiexp_"
+        if TEST == True:
+            EXP_NAME = EXP_LABEL + ENV_LABEL + "_test_" + DATE + ALGO
+        else:
+            EXP_NAME = EXP_LABEL + ENV_LABEL + "_run_" + DATE + ALGO
+
+    # create CSV with information on each experiment
+    if SAVE_EXP_INFO:
+
+        exp_dict = {
+            "n_agents": n_firms_LIST,
+            "exp_names": exp_names,
+            "exp_dirs": exp_dirs,
+            "trial_dirs": trial_logdirs,
+            "checkpoints": checkpoints,
+            "configs": configs,
+            "results_eval": [
+                rewards_eval,
+                mu_ij_eval,
+                freq_p_adj_eval,
+                size_adj_eval,
+                std_log_c_eval,
+                profits_eval,
+            ],
+            "results": [
+                rewards,
+                mu_ij,
+                freq_p_adj,
+                size_adj,
+                std_log_c,
+                profits,
+            ],
+        }
+
+        print(
+            "mu_ij",
             mu_ij_eval,
+            "freq_p_adj:",
             freq_p_adj_eval,
+            "size_adj",
             size_adj_eval,
-            std_log_c_eval,
-            profits_eval,
-        ],
-        "results": [
-            rewards,
-            mu_ij,
-            freq_p_adj,
-            size_adj,
-            std_log_c,
-            profits,
-        ],
-    }
-
-    print(
-        "mu_ij", mu_ij_eval, "freq_p_adj:", freq_p_adj_eval, "size_adj", size_adj_eval
-    )
-
-    with open(OUTPUT_PATH_EXPERS + "expINFO_" + EXP_NAME + ".json", "w+") as f:
-        json.dump(exp_dict, f)
-
-    # exp_df = pd.DataFrame(exp_dict)
-    # exp_df.to_csv(OUTPUT_PATH_EXPERS + "exp_info" + EXP_NAME + ".csv")
-    print(OUTPUT_PATH_EXPERS + "expINFO_" + EXP_NAME + ".json")
-
-# Plot and save progress
-if PLOT_PROGRESS:
-    for ind, n_firms in enumerate(n_firms_LIST):
-        for i in range(NUM_TRIALS):
-            learning_plot = sn.lineplot(
-                data=learning_dta[ind][i],
-                y=f"discounted_rewards_trial_{i}",
-                x=learning_dta[ind][i].index,
-            )
-        learning_plot = learning_plot.get_figure()
-        plt.ylabel("Discounted utility")
-        plt.xlabel("Episodes (10 years)")
-        # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
-        learning_plot.savefig(
-            OUTPUT_PATH_FIGURES + "progress_rewards" + exp_names[ind] + ".png"
         )
-        # plt.show()
-        plt.close()
 
-        for i in range(NUM_TRIALS):
-            learning_plot = sn.lineplot(
-                data=learning_dta[ind][i],
-                y=f"mu_ij_trial_{i}",
-                x=learning_dta[ind][i].index,
+        with open(OUTPUT_PATH_EXPERS + "expINFO_" + EXP_NAME + ".json", "w+") as f:
+            json.dump(exp_dict, f)
+
+        # exp_df = pd.DataFrame(exp_dict)
+        # exp_df.to_csv(OUTPUT_PATH_EXPERS + "exp_info" + EXP_NAME + ".csv")
+        print(OUTPUT_PATH_EXPERS + "expINFO_" + EXP_NAME + ".json")
+
+    # Plot and save progress
+    if PLOT_PROGRESS:
+        for ind, n_firms in enumerate(n_firms_LIST):
+            for i in range(NUM_TRIALS):
+                learning_plot = sn.lineplot(
+                    data=learning_dta[ind][i],
+                    y=f"discounted_rewards_trial_{i}",
+                    x=learning_dta[ind][i].index,
+                )
+            learning_plot = learning_plot.get_figure()
+            plt.ylabel("Discounted utility")
+            plt.xlabel("Episodes (10 years)")
+            # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
+            learning_plot.savefig(
+                OUTPUT_PATH_FIGURES + "progress_rewards" + exp_names[ind] + ".png"
             )
-        learning_plot = learning_plot.get_figure()
-        plt.ylabel("Average Markup")
-        plt.xlabel("Episodes (10 years)")
-        # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
-        learning_plot.savefig(
-            OUTPUT_PATH_FIGURES + "progress_mu_ij" + exp_names[ind] + ".png"
-        )
-        # plt.show()
-        plt.close()
+            # plt.show()
+            plt.close()
 
-        for i in range(NUM_TRIALS):
-            learning_plot = sn.lineplot(
-                data=learning_dta[ind][i],
-                y=f"freq_p_adj_trial_{i}",
-                x=learning_dta[ind][i].index,
+            for i in range(NUM_TRIALS):
+                learning_plot = sn.lineplot(
+                    data=learning_dta[ind][i],
+                    y=f"mu_ij_trial_{i}",
+                    x=learning_dta[ind][i].index,
+                )
+            learning_plot = learning_plot.get_figure()
+            plt.ylabel("Average Markup")
+            plt.xlabel("Episodes (10 years)")
+            # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
+            learning_plot.savefig(
+                OUTPUT_PATH_FIGURES + "progress_mu_ij" + exp_names[ind] + ".png"
             )
-        learning_plot = learning_plot.get_figure()
-        plt.ylabel("Frequency of price adjustment")
-        plt.xlabel("Episodes (10 years)")
-        # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
-        learning_plot.savefig(
-            OUTPUT_PATH_FIGURES + "progress_freq_p_adj" + exp_names[ind] + ".png"
-        )
-        # plt.show()
-        plt.close()
+            # plt.show()
+            plt.close()
 
-        for i in range(NUM_TRIALS):
-            learning_plot = sn.lineplot(
-                data=learning_dta[ind][i],
-                y=f"size_adj_trial_{i}",
-                x=learning_dta[ind][i].index,
+            for i in range(NUM_TRIALS):
+                learning_plot = sn.lineplot(
+                    data=learning_dta[ind][i],
+                    y=f"freq_p_adj_trial_{i}",
+                    x=learning_dta[ind][i].index,
+                )
+            learning_plot = learning_plot.get_figure()
+            plt.ylabel("Frequency of price adjustment")
+            plt.xlabel("Episodes (10 years)")
+            # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
+            learning_plot.savefig(
+                OUTPUT_PATH_FIGURES + "progress_freq_p_adj" + exp_names[ind] + ".png"
             )
-        learning_plot = learning_plot.get_figure()
-        plt.ylabel("Size of Adjustment")
-        plt.xlabel("Episodes (10 years)")
-        # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
-        learning_plot.savefig(
-            OUTPUT_PATH_FIGURES + "progress_size_adj" + exp_names[ind] + ".png"
-        )
-        # plt.show()
-        plt.close()
+            # plt.show()
+            plt.close()
 
+            for i in range(NUM_TRIALS):
+                learning_plot = sn.lineplot(
+                    data=learning_dta[ind][i],
+                    y=f"size_adj_trial_{i}",
+                    x=learning_dta[ind][i].index,
+                )
+            learning_plot = learning_plot.get_figure()
+            plt.ylabel("Size of Adjustment")
+            plt.xlabel("Episodes (10 years)")
+            # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
+            learning_plot.savefig(
+                OUTPUT_PATH_FIGURES + "progress_size_adj" + exp_names[ind] + ".png"
+            )
+            # plt.show()
+            plt.close()
+
+""" Step 5 Run Analysis """
 
 if RUN_ANALYSIS:
+    # If there is no training, import exp info
+    if not RUN_TRAINING:
+        with open(INFO_ANALYSIS) as f:
+            exp_dict = json.load(f)
+
+    # Choose weather you want leval results or live results
     if EVAL_RESULTS:
         results_data = exp_dict["results_eval"]
     else:
         results_data = exp_dict["results"]
-    exp_names = exp_dict["exp_names"][0]
+    exp_names = exp_dict["exp_names"]
     checkpoints = exp_dict["checkpoints"][0]
     results = {
         "Markups": np.array(results_data[1][0]),
@@ -719,7 +744,6 @@ if RUN_ANALYSIS:
         "S.D. Profits": np.std(results["Profits"]),
     }
 
-    # task, I one to calculate the index of the result that is closer in eucledian distance to a point that I give.
     results_list = [
         [
             results["Markups"][i],
@@ -729,6 +753,9 @@ if RUN_ANALYSIS:
         ]
         for i in range(NUM_TRIALS)
     ]
+
+    """ Select checkpoint for analysis """
+
     if CHKPT_SELECT_REF:
 
         distance_agg = np.array(
@@ -779,785 +806,815 @@ if RUN_ANALYSIS:
             plt.hist(x)
             plt.title(i)
             plt.savefig(
-                OUTPUT_PATH_FIGURES + "hist_" + f"{i}" + "_" + exp_names[0] + ".jpg"
+                OUTPUT_PATH_FIGURES + "hist_" + f"{i}" + "_" + exp_names[0] + ".png"
             )
             plt.show()
             plt.close()
 
-""" Policy Functions """
+    """ Inspect Policy Functions """
 
-shutdown()
-init(
-    num_cpus=12,
-    log_to_driver=False,
-)
+    shutdown()
+    init(
+        num_cpus=12,
+        log_to_driver=False,
+    )
 
-# register environment
-env_label = "mon_policy_finite"
-register_env(env_label, MonPolicy)
-config_algo = training_config.copy()
-config_algo["explore"] = False
-trained_trainer = PPOTrainer(env=env_label, config=config_algo)
-trained_trainer.restore(INPUT_PATH_CHECKPOINT)
+    # register environment
+    env_label = "mon_policy_finite"
+    register_env(env_label, MonPolicy)
+    config_algo = training_config.copy()
+    config_algo["explore"] = False
+    trained_trainer = PPOTrainer(env=env_label, config=config_algo)
+    trained_trainer.restore(INPUT_PATH_CHECKPOINT)
 
+    """ Policy function with respect to own markup"""
 
-""" Policy function with respect to own markup"""
-markup = [1 + (i / 19) for i in range(20)]
-if not OBS_IDSHOCK:
-    obs_reaction_lowmu = [
-        np.array(
-            [markup[i], 1.1] + [1.23, math.e ** env.params["log_g_bar"]],
-            dtype=np.float32,
-        )
-        for i in range(20)
-    ]
-    obs_reaction_medmu = [
-        np.array(
-            [markup[i], 1.3] + [1.23, math.e ** env.params["log_g_bar"]],
-            dtype=np.float32,
-        )
-        for i in range(20)
-    ]
-    obs_reaction_highmu = [
-        np.array(
-            [markup[i], 1.5] + [1.23, math.e ** env.params["log_g_bar"]],
-            dtype=np.float32,
-        )
-        for i in range(20)
-    ]
-else:
-    obs_reaction_lowmu = [
-        np.array(
-            [markup[i], 1.1, 1, 1] + [1.23, math.e ** env.params["log_g_bar"]],
-            dtype=np.float32,
-        )
-        for i in range(20)
-    ]
-    obs_reaction_medmu = [
-        np.array(
-            [markup[i], 1.3, 1, 1] + [1.23, math.e ** env.params["log_g_bar"]],
-            dtype=np.float32,
-        )
-        for i in range(20)
-    ]
-    obs_reaction_highmu = [
-        np.array(
-            [markup[i], 1.5, 1, 1] + [1.23, math.e ** env.params["log_g_bar"]],
-            dtype=np.float32,
-        )
-        for i in range(20)
-    ]
-
-
-actions_reaction_lowmu = [
-    trained_trainer.compute_action(obs_reaction_lowmu[i], policy_id="firm_even")
-    for i in range(20)
-]
-actions_reaction_medmu = [
-    trained_trainer.compute_action(obs_reaction_medmu[i], policy_id="firm_even")
-    for i in range(20)
-]
-actions_reaction_highmu = [
-    trained_trainer.compute_action(obs_reaction_highmu[i], policy_id="firm_even")
-    for i in range(20)
-]
-move_prob_lowmu = [(actions_reaction_lowmu[i][0] + 1) / 2 for i in range(20)]
-reset_lowmu = [1 + (actions_reaction_lowmu[i][1] + 1) / 2 for i in range(20)]
-move_prob_medmu = [(actions_reaction_medmu[i][0] + 1) / 2 for i in range(20)]
-reset_medmu = [1 + (actions_reaction_medmu[i][1] + 1) / 2 for i in range(20)]
-move_prob_highmu = [(actions_reaction_highmu[i][0] + 1) / 2 for i in range(20)]
-reset_highmu = [1 + (actions_reaction_highmu[i][1] + 1) / 2 for i in range(20)]
-
-x = markup
-plt.plot(x, move_prob_lowmu)
-plt.plot(x, move_prob_medmu)
-plt.plot(x, move_prob_highmu)
-plt.legend(
-    ["Low Competition Markup", "Med Competition Markup", "High Competition Markup"]
-)
-plt.xlabel("Own Markup")
-plt.ylabel("Prob. of Adjustment")
-plt.title("Probability of Adjustment")
-plt.show()
-plt.close()
-
-plt.plot(x, reset_lowmu)
-plt.plot(x, reset_medmu)
-plt.plot(x, reset_highmu)
-plt.legend(
-    ["Low Competition Markup", "Med Competition Markup", "High Competition Markup"]
-)
-plt.xlabel("Markup of Competition")
-plt.ylabel("Own Markup")
-plt.title("Reset Markup")
-plt.show()
-plt.close()
-
-reg_react_prob_low = linregress(markup, move_prob_lowmu)
-reg_react_prob_med = linregress(markup, move_prob_medmu)
-reg_react_prob_high = linregress(markup, move_prob_highmu)
-reg_react_reset_low = linregress(markup, reset_lowmu)
-reg_react_reset_med = linregress(markup, reset_medmu)
-reg_react_reset_high = linregress(markup, reset_highmu)
-slope_react_prob_low = reg_react_prob_low[0]
-slope_react_prob_med = reg_react_prob_med[0]
-slope_react_prob_high = reg_react_prob_high[0]
-slope_react_reset_low = reg_react_reset_low[0]
-slope_react_reset_med = reg_react_reset_med[0]
-slope_react_reset_high = reg_react_reset_high[0]
-
-print("Slope of own react, low", [slope_react_prob_low, slope_react_reset_low])
-print("Slope of own react, med", [slope_react_prob_med, slope_react_reset_med])
-print("Slope of own react, high", [slope_react_prob_high, slope_react_reset_high])
-
-""" Policy Function with respect to monetary policy. """
-
-mon_policy = [
-    (math.e ** env.params["log_g_bar"]) * 0.1
-    + (i / 19) * (math.e ** env.params["log_g_bar"] * 2)
-    for i in range(20)
-]
-# print(mon_policy)
-if not OBS_IDSHOCK:
-    obs_monpol_lowmu = [
-        np.array([1.1, 1.3] + [1.23, mon_policy[i]], dtype=np.float32)
-        for i in range(20)
-    ]
-    obs_monpol_medmu = [
-        np.array([1.3, 1.3] + [1.23, mon_policy[i]], dtype=np.float32)
-        for i in range(20)
-    ]
-    obs_monpol_highmu = [
-        np.array([1.5, 1.3] + [1.23, mon_policy[i]], dtype=np.float32)
-        for i in range(20)
-    ]
-else:
-    obs_monpol_lowmu = [
-        np.array([1.1, 1.3, 1, 1] + [1.23, mon_policy[i]], dtype=np.float32)
-        for i in range(20)
-    ]
-    obs_monpol_medmu = [
-        np.array([1.3, 1.3, 1, 1] + [1.23, mon_policy[i]], dtype=np.float32)
-        for i in range(20)
-    ]
-    obs_monpol_highmu = [
-        np.array([1.5, 1.3, 1, 1] + [1.23, mon_policy[i]], dtype=np.float32)
-        for i in range(20)
-    ]
-
-
-actions_monpol_lowmu = [
-    trained_trainer.compute_action(obs_monpol_lowmu[i], policy_id="firm_even")
-    for i in range(20)
-]
-actions_monpol_medmu = [
-    trained_trainer.compute_action(obs_monpol_medmu[i], policy_id="firm_even")
-    for i in range(20)
-]
-actions_monpol_highmu = [
-    trained_trainer.compute_action(obs_monpol_highmu[i], policy_id="firm_even")
-    for i in range(20)
-]
-move_prob_lowmu = [(actions_monpol_lowmu[i][0] + 1) / 2 for i in range(20)]
-reset_lowmu = [1 + (actions_monpol_lowmu[i][1] + 1) / 2 for i in range(20)]
-move_prob_medmu = [(actions_monpol_medmu[i][0] + 1) / 2 for i in range(20)]
-reset_medmu = [1 + (actions_monpol_medmu[i][1] + 1) / 2 for i in range(20)]
-move_prob_highmu = [(actions_monpol_highmu[i][0] + 1) / 2 for i in range(20)]
-reset_highmu = [1 + (actions_monpol_highmu[i][1] + 1) / 2 for i in range(20)]
-# print(actions_monpol_lowmu, "\n",
-#     actions_monpol_highmu)
-x = mon_policy
-plt.plot(x, move_prob_lowmu)
-# plt.plot(x,move_prob_medmu)
-plt.plot(x, move_prob_highmu)
-plt.legend(["Low Markup Firms", "High Markup Firms"])
-plt.xlabel("Money Growth")
-plt.ylabel("Prob. of Adjustment")
-plt.title("Effec of money growth on Prob. of Adj.")
-plt.savefig(OUTPUT_PATH_FIGURES + "React_mon" + exp_names[0] + ".png")
-plt.show()
-plt.close()
-
-plt.plot(x, reset_lowmu)
-# plt.plot(x,reset_medmu)
-plt.plot(x, reset_highmu)
-plt.legend(["Low Markup Firms", "High Markup Firms"])
-plt.xlabel("Money Growth")
-plt.ylabel("Reset Markup")
-plt.title("Effec of money growth on Size of Adj.")
-plt.savefig(OUTPUT_PATH_FIGURES + "React_deviation" + exp_names[0] + ".png")
-plt.show()
-plt.close()
-
-print(move_prob_lowmu)
-reg_mon_prob_low = linregress(mon_policy, move_prob_lowmu)
-slope_mon_prob_low = reg_mon_prob_low[0]
-reg_mon_prob_high = linregress(mon_policy, move_prob_highmu)
-slope_mon_prob_high = reg_mon_prob_high[0]
-
-reg_mon_reset_low = linregress(mon_policy, reset_lowmu)
-slope_mon_reset_low = reg_mon_prob_low[0]
-reg_mon_reset_high = linregress(mon_policy, reset_highmu)
-slope_mon_reset_high = reg_mon_reset_high[0]
-
-print("Slope to mon, low", [slope_mon_prob_low, slope_mon_reset_low])
-print("Slope to mon, high", [slope_mon_prob_high, slope_mon_reset_high])
-
-""" Reaction Function to comepition markup with constant z """
-markup = [1 + (i / 19) for i in range(20)]
-if not OBS_IDSHOCK:
-    obs_reaction_lowmu = [
-        np.array(
-            [1.1, markup[i]] + [1.23, math.e ** env.params["log_g_bar"]],
-            dtype=np.float32,
-        )
-        for i in range(20)
-    ]
-    obs_reaction_medmu = [
-        np.array(
-            [1.3, markup[i]] + [1.23, math.e ** env.params["log_g_bar"]],
-            dtype=np.float32,
-        )
-        for i in range(20)
-    ]
-    obs_reaction_highmu = [
-        np.array(
-            [1.5, markup[i]] + [1.23, math.e ** env.params["log_g_bar"]],
-            dtype=np.float32,
-        )
-        for i in range(20)
-    ]
-else:
-    obs_reaction_lowmu = [
-        np.array(
-            [1.1, markup[i], 1, 1] + [1.23, math.e ** env.params["log_g_bar"]],
-            dtype=np.float32,
-        )
-        for i in range(20)
-    ]
-    obs_reaction_medmu = [
-        np.array(
-            [1.3, markup[i], 1, 1] + [1.23, math.e ** env.params["log_g_bar"]],
-            dtype=np.float32,
-        )
-        for i in range(20)
-    ]
-    obs_reaction_highmu = [
-        np.array(
-            [1.5, markup[i], 1, 1] + [1.23, math.e ** env.params["log_g_bar"]],
-            dtype=np.float32,
-        )
-        for i in range(20)
-    ]
-
-
-actions_reaction_lowmu = [
-    trained_trainer.compute_action(obs_reaction_lowmu[i], policy_id="firm_even")
-    for i in range(20)
-]
-actions_reaction_medmu = [
-    trained_trainer.compute_action(obs_reaction_medmu[i], policy_id="firm_even")
-    for i in range(20)
-]
-actions_reaction_highmu = [
-    trained_trainer.compute_action(obs_reaction_highmu[i], policy_id="firm_even")
-    for i in range(20)
-]
-move_prob_lowmu = [(actions_reaction_lowmu[i][0] + 1) / 2 for i in range(20)]
-reset_lowmu = [1 + (actions_reaction_lowmu[i][1] + 1) / 2 for i in range(20)]
-move_prob_medmu = [(actions_reaction_medmu[i][0] + 1) / 2 for i in range(20)]
-reset_medmu = [1 + (actions_reaction_medmu[i][1] + 1) / 2 for i in range(20)]
-move_prob_highmu = [(actions_reaction_highmu[i][0] + 1) / 2 for i in range(20)]
-reset_highmu = [1 + (actions_reaction_highmu[i][1] + 1) / 2 for i in range(20)]
-
-x = markup
-plt.plot(x, move_prob_lowmu)
-plt.plot(x, move_prob_medmu)
-plt.plot(x, move_prob_highmu)
-plt.legend(["Low Markup Firms", "Med Markup Firms", "High Markup Firms"])
-plt.xlabel("Markup of Competition")
-plt.ylabel("Prob. of Adjustment")
-plt.title("Reaction Function - Probability of Adjustment")
-plt.show()
-plt.close()
-
-plt.plot(x, reset_lowmu)
-plt.plot(x, reset_medmu)
-plt.plot(x, reset_highmu)
-plt.legend(["Low Markup Firms", "Med Markup Firms", "High Markup Firms"])
-plt.xlabel("Markup of Competition")
-plt.ylabel("Reset Markup")
-plt.title("Reaction Function - Reset Markup")
-plt.show()
-plt.close()
-
-reg_react_prob_low = linregress(markup, move_prob_lowmu)
-reg_react_prob_med = linregress(markup, move_prob_medmu)
-reg_react_prob_high = linregress(markup, move_prob_highmu)
-reg_react_reset_low = linregress(markup, reset_lowmu)
-reg_react_reset_med = linregress(markup, reset_medmu)
-reg_react_reset_high = linregress(markup, reset_highmu)
-slope_react_prob_low = reg_react_prob_low[0]
-slope_react_prob_med = reg_react_prob_med[0]
-slope_react_prob_high = reg_react_prob_high[0]
-slope_react_reset_low = reg_react_reset_low[0]
-slope_react_reset_med = reg_react_reset_med[0]
-slope_react_reset_high = reg_react_reset_high[0]
-
-print("Slope of react, low", [slope_react_prob_low, slope_react_reset_low])
-print("Slope of react, med", [slope_react_prob_med, slope_react_reset_med])
-print("Slope of react, high", [slope_react_prob_high, slope_react_reset_high])
-
-""" Reaction Function to comepition markup with changing z """
-# markup = [1 + (i / 19) for i in range(20)]
-if OBS_IDSHOCK:
-    markup_z = [
-        1.4
-        / (math.e ** env.params["log_g_bar"] * math.e ** (4 * env.params["sigma_z"]))
-        + (i / 19)
-        * (
-            1.4
-            / (
-                math.e ** env.params["log_g_bar"]
-                * math.e ** (-4 * env.params["sigma_z"])
+    markup = [1 + (i / 19) for i in range(20)]
+    if not OBS_IDSHOCK:
+        obs_reaction_lowmu = [
+            np.array(
+                [markup[i], 1.1] + [1.23, math.e ** env.params["log_g_bar"]],
+                dtype=np.float32,
             )
-            - 1.4
+            for i in range(20)
+        ]
+        obs_reaction_medmu = [
+            np.array(
+                [markup[i], 1.3] + [1.23, math.e ** env.params["log_g_bar"]],
+                dtype=np.float32,
+            )
+            for i in range(20)
+        ]
+        obs_reaction_highmu = [
+            np.array(
+                [markup[i], 1.5] + [1.23, math.e ** env.params["log_g_bar"]],
+                dtype=np.float32,
+            )
+            for i in range(20)
+        ]
+    else:
+        obs_reaction_lowmu = [
+            np.array(
+                [markup[i], 1.1, 1, 1] + [1.23, math.e ** env.params["log_g_bar"]],
+                dtype=np.float32,
+            )
+            for i in range(20)
+        ]
+        obs_reaction_medmu = [
+            np.array(
+                [markup[i], 1.3, 1, 1] + [1.23, math.e ** env.params["log_g_bar"]],
+                dtype=np.float32,
+            )
+            for i in range(20)
+        ]
+        obs_reaction_highmu = [
+            np.array(
+                [markup[i], 1.5, 1, 1] + [1.23, math.e ** env.params["log_g_bar"]],
+                dtype=np.float32,
+            )
+            for i in range(20)
+        ]
+
+    actions_reaction_lowmu = [
+        trained_trainer.compute_action(obs_reaction_lowmu[i], policy_id="firm_even")
+        for i in range(20)
+    ]
+    actions_reaction_medmu = [
+        trained_trainer.compute_action(obs_reaction_medmu[i], policy_id="firm_even")
+        for i in range(20)
+    ]
+    actions_reaction_highmu = [
+        trained_trainer.compute_action(obs_reaction_highmu[i], policy_id="firm_even")
+        for i in range(20)
+    ]
+    move_prob_lowmu = [(actions_reaction_lowmu[i][0] + 1) / 2 for i in range(20)]
+    reset_lowmu = [1 + (actions_reaction_lowmu[i][1] + 1) / 2 for i in range(20)]
+    move_prob_medmu = [(actions_reaction_medmu[i][0] + 1) / 2 for i in range(20)]
+    reset_medmu = [1 + (actions_reaction_medmu[i][1] + 1) / 2 for i in range(20)]
+    move_prob_highmu = [(actions_reaction_highmu[i][0] + 1) / 2 for i in range(20)]
+    reset_highmu = [1 + (actions_reaction_highmu[i][1] + 1) / 2 for i in range(20)]
+
+    x = markup
+    plt.plot(x, move_prob_lowmu)
+    plt.plot(x, move_prob_medmu)
+    plt.plot(x, move_prob_highmu)
+    plt.legend(
+        ["Low Competition Markup", "Med Competition Markup", "High Competition Markup"]
+    )
+    plt.xlabel("Own Markup")
+    plt.ylabel("Prob. of Adjustment")
+    plt.title("Probability of Adjustment")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polown_prob_" + "_" + exp_names[0] + ".png")
+    plt.show()
+    plt.close()
+
+    plt.plot(x, reset_lowmu)
+    plt.plot(x, reset_medmu)
+    plt.plot(x, reset_highmu)
+    plt.legend(
+        ["Low Competition Markup", "Med Competition Markup", "High Competition Markup"]
+    )
+    plt.xlabel("Markup of Competition")
+    plt.ylabel("Own Markup")
+    plt.title("Reset Markup")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polown_reset_" + "_" + exp_names[0] + ".png")
+    plt.show()
+    plt.close()
+
+    reg_react_prob_low = linregress(markup, move_prob_lowmu)
+    reg_react_prob_med = linregress(markup, move_prob_medmu)
+    reg_react_prob_high = linregress(markup, move_prob_highmu)
+    reg_react_reset_low = linregress(markup, reset_lowmu)
+    reg_react_reset_med = linregress(markup, reset_medmu)
+    reg_react_reset_high = linregress(markup, reset_highmu)
+    slope_react_prob_low = reg_react_prob_low[0]
+    slope_react_prob_med = reg_react_prob_med[0]
+    slope_react_prob_high = reg_react_prob_high[0]
+    slope_react_reset_low = reg_react_reset_low[0]
+    slope_react_reset_med = reg_react_reset_med[0]
+    slope_react_reset_high = reg_react_reset_high[0]
+
+    print("Slope of own react, low", [slope_react_prob_low, slope_react_reset_low])
+    print("Slope of own react, med", [slope_react_prob_med, slope_react_reset_med])
+    print("Slope of own react, high", [slope_react_prob_high, slope_react_reset_high])
+
+    """ Policy Function with respect to monetary policy. """
+
+    mon_policy = [
+        (math.e ** env.params["log_g_bar"]) * 0.1
+        + (i / 19) * (math.e ** env.params["log_g_bar"] * 2)
+        for i in range(20)
+    ]
+    # print(mon_policy)
+    if not OBS_IDSHOCK:
+        obs_monpol_lowmu = [
+            np.array([1.1, 1.3] + [1.23, mon_policy[i]], dtype=np.float32)
+            for i in range(20)
+        ]
+        obs_monpol_medmu = [
+            np.array([1.3, 1.3] + [1.23, mon_policy[i]], dtype=np.float32)
+            for i in range(20)
+        ]
+        obs_monpol_highmu = [
+            np.array([1.5, 1.3] + [1.23, mon_policy[i]], dtype=np.float32)
+            for i in range(20)
+        ]
+    else:
+        obs_monpol_lowmu = [
+            np.array([1.1, 1.3, 1, 1] + [1.23, mon_policy[i]], dtype=np.float32)
+            for i in range(20)
+        ]
+        obs_monpol_medmu = [
+            np.array([1.3, 1.3, 1, 1] + [1.23, mon_policy[i]], dtype=np.float32)
+            for i in range(20)
+        ]
+        obs_monpol_highmu = [
+            np.array([1.5, 1.3, 1, 1] + [1.23, mon_policy[i]], dtype=np.float32)
+            for i in range(20)
+        ]
+
+    actions_monpol_lowmu = [
+        trained_trainer.compute_action(obs_monpol_lowmu[i], policy_id="firm_even")
+        for i in range(20)
+    ]
+    actions_monpol_medmu = [
+        trained_trainer.compute_action(obs_monpol_medmu[i], policy_id="firm_even")
+        for i in range(20)
+    ]
+    actions_monpol_highmu = [
+        trained_trainer.compute_action(obs_monpol_highmu[i], policy_id="firm_even")
+        for i in range(20)
+    ]
+    move_prob_lowmu = [(actions_monpol_lowmu[i][0] + 1) / 2 for i in range(20)]
+    reset_lowmu = [1 + (actions_monpol_lowmu[i][1] + 1) / 2 for i in range(20)]
+    move_prob_medmu = [(actions_monpol_medmu[i][0] + 1) / 2 for i in range(20)]
+    reset_medmu = [1 + (actions_monpol_medmu[i][1] + 1) / 2 for i in range(20)]
+    move_prob_highmu = [(actions_monpol_highmu[i][0] + 1) / 2 for i in range(20)]
+    reset_highmu = [1 + (actions_monpol_highmu[i][1] + 1) / 2 for i in range(20)]
+    # print(actions_monpol_lowmu, "\n",
+    #     actions_monpol_highmu)
+    x = mon_policy
+    plt.plot(x, move_prob_lowmu)
+    # plt.plot(x,move_prob_medmu)
+    plt.plot(x, move_prob_highmu)
+    plt.legend(["Low Markup Firms", "High Markup Firms"])
+    plt.xlabel("Money Growth")
+    plt.ylabel("Prob. of Adjustment")
+    plt.title("Effec of money growth on Prob. of Adj.")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polmon_prob_" + exp_names[0] + ".png")
+    plt.show()
+    plt.close()
+
+    plt.plot(x, reset_lowmu)
+    # plt.plot(x,reset_medmu)
+    plt.plot(x, reset_highmu)
+    plt.legend(["Low Markup Firms", "High Markup Firms"])
+    plt.xlabel("Money Growth")
+    plt.ylabel("Reset Markup")
+
+    plt.title("Effec of money growth on Size of Adj.")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polmon_reset_" + exp_names[0] + ".png")
+    plt.show()
+    plt.close()
+
+    reg_mon_prob_low = linregress(mon_policy, move_prob_lowmu)
+    slope_mon_prob_low = reg_mon_prob_low[0]
+    reg_mon_prob_high = linregress(mon_policy, move_prob_highmu)
+    slope_mon_prob_high = reg_mon_prob_high[0]
+
+    reg_mon_reset_low = linregress(mon_policy, reset_lowmu)
+    slope_mon_reset_low = reg_mon_prob_low[0]
+    reg_mon_reset_high = linregress(mon_policy, reset_highmu)
+    slope_mon_reset_high = reg_mon_reset_high[0]
+
+    print("Slope to mon, low", [slope_mon_prob_low, slope_mon_reset_low])
+    print("Slope to mon, high", [slope_mon_prob_high, slope_mon_reset_high])
+
+    """ Reaction Function to comepition markup with constant z """
+
+    markup = [1 + (i / 19) for i in range(20)]
+    if not OBS_IDSHOCK:
+        obs_reaction_lowmu = [
+            np.array(
+                [1.1, markup[i]] + [1.23, math.e ** env.params["log_g_bar"]],
+                dtype=np.float32,
+            )
+            for i in range(20)
+        ]
+        obs_reaction_medmu = [
+            np.array(
+                [1.3, markup[i]] + [1.23, math.e ** env.params["log_g_bar"]],
+                dtype=np.float32,
+            )
+            for i in range(20)
+        ]
+        obs_reaction_highmu = [
+            np.array(
+                [1.5, markup[i]] + [1.23, math.e ** env.params["log_g_bar"]],
+                dtype=np.float32,
+            )
+            for i in range(20)
+        ]
+    else:
+        obs_reaction_lowmu = [
+            np.array(
+                [1.1, markup[i], 1, 1] + [1.23, math.e ** env.params["log_g_bar"]],
+                dtype=np.float32,
+            )
+            for i in range(20)
+        ]
+        obs_reaction_medmu = [
+            np.array(
+                [1.3, markup[i], 1, 1] + [1.23, math.e ** env.params["log_g_bar"]],
+                dtype=np.float32,
+            )
+            for i in range(20)
+        ]
+        obs_reaction_highmu = [
+            np.array(
+                [1.5, markup[i], 1, 1] + [1.23, math.e ** env.params["log_g_bar"]],
+                dtype=np.float32,
+            )
+            for i in range(20)
+        ]
+
+    actions_reaction_lowmu = [
+        trained_trainer.compute_action(obs_reaction_lowmu[i], policy_id="firm_even")
+        for i in range(20)
+    ]
+    actions_reaction_medmu = [
+        trained_trainer.compute_action(obs_reaction_medmu[i], policy_id="firm_even")
+        for i in range(20)
+    ]
+    actions_reaction_highmu = [
+        trained_trainer.compute_action(obs_reaction_highmu[i], policy_id="firm_even")
+        for i in range(20)
+    ]
+    move_prob_lowmu = [(actions_reaction_lowmu[i][0] + 1) / 2 for i in range(20)]
+    reset_lowmu = [1 + (actions_reaction_lowmu[i][1] + 1) / 2 for i in range(20)]
+    move_prob_medmu = [(actions_reaction_medmu[i][0] + 1) / 2 for i in range(20)]
+    reset_medmu = [1 + (actions_reaction_medmu[i][1] + 1) / 2 for i in range(20)]
+    move_prob_highmu = [(actions_reaction_highmu[i][0] + 1) / 2 for i in range(20)]
+    reset_highmu = [1 + (actions_reaction_highmu[i][1] + 1) / 2 for i in range(20)]
+
+    x = markup
+    plt.plot(x, move_prob_lowmu)
+    plt.plot(x, move_prob_medmu)
+    plt.plot(x, move_prob_highmu)
+    plt.legend(["Low Markup Firms", "Med Markup Firms", "High Markup Firms"])
+    plt.xlabel("Markup of Competition")
+    plt.ylabel("Prob. of Adjustment")
+    plt.title("Reaction Function - Probability of Adjustment")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polreact_prob_" + exp_names[0] + ".png")
+    plt.show()
+    plt.close()
+
+    plt.plot(x, reset_lowmu)
+    plt.plot(x, reset_medmu)
+    plt.plot(x, reset_highmu)
+    plt.legend(["Low Markup Firms", "Med Markup Firms", "High Markup Firms"])
+    plt.xlabel("Markup of Competition")
+    plt.ylabel("Reset Markup")
+    plt.title("Reaction Function - Reset Markup")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polreact_reset_" + exp_names[0] + ".png")
+    plt.show()
+    plt.close()
+
+    reg_react_prob_low = linregress(markup, move_prob_lowmu)
+    reg_react_prob_med = linregress(markup, move_prob_medmu)
+    reg_react_prob_high = linregress(markup, move_prob_highmu)
+    reg_react_reset_low = linregress(markup, reset_lowmu)
+    reg_react_reset_med = linregress(markup, reset_medmu)
+    reg_react_reset_high = linregress(markup, reset_highmu)
+    slope_react_prob_low = reg_react_prob_low[0]
+    slope_react_prob_med = reg_react_prob_med[0]
+    slope_react_prob_high = reg_react_prob_high[0]
+    slope_react_reset_low = reg_react_reset_low[0]
+    slope_react_reset_med = reg_react_reset_med[0]
+    slope_react_reset_high = reg_react_reset_high[0]
+
+    print("Slope of react, low", [slope_react_prob_low, slope_react_reset_low])
+    print("Slope of react, med", [slope_react_prob_med, slope_react_reset_med])
+    print("Slope of react, high", [slope_react_prob_high, slope_react_reset_high])
+
+    """ Reaction Function to comepition markup with changing z """
+    # markup = [1 + (i / 19) for i in range(20)]
+    if OBS_IDSHOCK:
+        markup_z = [
+            1.4
             / (
                 math.e ** env.params["log_g_bar"]
                 * math.e ** (4 * env.params["sigma_z"])
             )
+            + (i / 19)
+            * (
+                1.4
+                / (
+                    math.e ** env.params["log_g_bar"]
+                    * math.e ** (-4 * env.params["sigma_z"])
+                )
+                - 1.4
+                / (
+                    math.e ** env.params["log_g_bar"]
+                    * math.e ** (4 * env.params["sigma_z"])
+                )
+            )
+            for i in range(20)
+        ]
+        z = [
+            math.e ** (4 * env.params["sigma_z"])
+            + i
+            / 19
+            * (
+                math.e ** (-4 * env.params["sigma_z"])
+                - math.e ** (4 * env.params["sigma_z"])
+            )
+            for i in range(20)
+        ]
+
+        obs_reaction_zshock = [
+            np.array(
+                [1.4, markup_z[i], 1, z[i]] + [1.23, math.e ** env.params["log_g_bar"]],
+                dtype=np.float32,
+            )
+            for i in range(20)
+        ]
+        obs_reaction_stratdev = [
+            np.array(
+                [1.4, markup_z[i], 1, 1] + [1.23, math.e ** env.params["log_g_bar"]],
+                dtype=np.float32,
+            )
+            for i in range(20)
+        ]
+
+        actions_reaction_zshock = [
+            trained_trainer.compute_action(
+                obs_reaction_zshock[i], policy_id="firm_even"
+            )
+            for i in range(20)
+        ]
+        actions_reaction_stratdev = [
+            trained_trainer.compute_action(
+                obs_reaction_stratdev[i], policy_id="firm_even"
+            )
+            for i in range(20)
+        ]
+
+        move_prob_zshock = [(actions_reaction_zshock[i][0] + 1) / 2 for i in range(20)]
+        reset_zshock = [1 + (actions_reaction_zshock[i][1] + 1) / 2 for i in range(20)]
+        move_prob_stratdev = [
+            (actions_reaction_stratdev[i][0] + 1) / 2 for i in range(20)
+        ]
+        reset_stratdev = [
+            1 + (actions_reaction_stratdev[i][1] + 1) / 2 for i in range(20)
+        ]
+
+        x = markup_z
+        plt.plot(x, move_prob_zshock)
+        plt.plot(x, move_prob_stratdev)
+        plt.legend(["Z shock to com.", "Strat. deviation of com."])
+        plt.xlabel("Markup of Competition")
+        plt.ylabel("Prob. of Adjustment")
+        plt.title(
+            "Reaction to cost shock vs strat. deviation - Probability of Adjustment"
         )
-        for i in range(20)
+        plt.savefig(OUTPUT_PATH_FIGURES + "poldev_prob_" + exp_names[0] + ".png")
+        plt.show()
+        plt.close()
+
+        plt.plot(x, reset_zshock)
+        plt.plot(x, reset_stratdev)
+        plt.legend(["Z shock to com.", "Strat. deviation of com."])
+        plt.xlabel("Markup of Competition")
+        plt.ylabel("Reset Markup")
+        plt.title("Reaction to cost shock vs strat. deviation - Reset Markup")
+        plt.savefig(OUTPUT_PATH_FIGURES + "poldev_reset_" + exp_names[0] + ".png")
+        plt.show()
+        plt.close()
+
+        reg_react_prob_zshock = linregress(markup_z, move_prob_zshock)
+        reg_react_reset_zshock = linregress(markup_z, reset_zshock)
+        slope_react_prob_zshock = reg_react_prob_zshock[0]
+        slope_react_reset_zshock = reg_react_reset_zshock[0]
+
+        reg_react_prob_stratdev = linregress(markup_z, move_prob_stratdev)
+        reg_react_reset_stratdev = linregress(markup_z, reset_stratdev)
+        slope_react_prob_stratdev = reg_react_prob_stratdev[0]
+        slope_react_reset_stratdev = reg_react_reset_stratdev[0]
+
+        print(
+            "Slope of react to z shock",
+            [slope_react_prob_zshock, slope_react_reset_zshock],
+        )
+        print(
+            "Slope of react to strat. deviation",
+            [slope_react_prob_stratdev, slope_react_reset_stratdev],
+        )
+
+    """ SIMULATE EPSIODES AND CALCULATE REGRESSIONS"""
+
+    shutdown()
+    init(
+        # num_cpus=12,
+        log_to_driver=False,
+    )
+    # register environment
+    env_label = "mon_policy_finite"
+    register_env(env_label, MonPolicy)
+    # We instantiate the environment to extract information.
+    """ CHANGE HERE """
+    env_config_simul = env_config_eval.copy()
+    env_config_simul["random_eval"] = False
+    env_config_noagg = env_config_simul.copy()
+    env_config_noagg["no_agg"] = True
+    env = MonPolicy(env_config_simul)
+    env_noagg = MonPolicy(env_config_noagg)
+
+    """ Restore trainer """
+
+    # restore the trainer
+
+    trained_trainer = PPOTrainer(env=env_label, config=config_algo)
+    trained_trainer.restore(INPUT_PATH_CHECKPOINT)
+
+    """ Simulate an episode (SIMUL_PERIODS timesteps) """
+    profits_list = []
+    mu_ij_list = []
+    freq_p_adj_list = []
+    size_adj_list = []
+    freq_adj_lowmu_list = []
+    freq_adj_highmu_list = []
+    size_adj_list = []
+    size_adj_lowmu_list = []
+    size_adj_highmu_list = []
+
+    log_c_list = []
+    epsilon_g_list = []
+
+    profits_list_noagg = []
+    mu_ij_list_noagg = []
+    freq_p_adj_list_noagg = []
+    freq_adj_lowmu_list_noagg = []
+    freq_adj_highmu_list_noagg = []
+    size_adj_list_noagg = []
+    size_adj_lowmu_list_noagg = []
+    size_adj_highmu_list_noagg = []
+    log_c_list_noagg = []
+
+    log_c_filt_list = []
+    freq_adj_lowmu_filt_list = []
+    freq_adj_highmu_filt_list = []
+    size_adj_lowmu_filt_list = []
+    size_adj_highmu_filt_list = []
+
+    # loop with agg
+    obs = env.reset()
+    obs_noagg = env_noagg.reset()
+    for t in range(SIMUL_EPISODES * ENV_HORIZON):
+        if t % env.horizon == 0:
+            seed = random.randrange(100000)
+            env.seed_eval = seed
+            env_noagg.seed_eval = seed
+            print("time:", t)
+            obs = env.reset()
+            obs_noagg = env_noagg.reset()
+        action = {
+            i: trained_trainer.compute_action(obs[i], policy_id="firm_even")
+            if i % 2 == 0
+            else trained_trainer.compute_action(obs[i], policy_id="firm_odd")
+            for i in range(env.n_agents)
+        }
+        action_noagg = {
+            i: trained_trainer.compute_action(obs_noagg[i], policy_id="firm_even")
+            if i % 2 == 0
+            else trained_trainer.compute_action(obs_noagg[i], policy_id="firm_odd")
+            for i in range(env.n_agents)
+        }
+
+        obs, rew, done, info = env.step(action)
+        obs_noagg, rew_noagg, done_noagg, info_noagg = env_noagg.step(action_noagg)
+
+        profits_list.append(info[0]["mean_profits"])
+        mu_ij_list.append(info[0]["mean_mu_ij"])
+        freq_p_adj_list.append(info[0]["move_freq"])
+        freq_adj_lowmu_list.append(info[0]["move_freq_lowmu"])
+        freq_adj_highmu_list.append(info[0]["move_freq_highmu"])
+        size_adj_list.append(info[0]["mean_p_change"])
+        size_adj_lowmu_list.append(info[0]["size_adj_lowmu"])
+        size_adj_highmu_list.append(info[0]["size_adj_highmu"])
+        log_c_list.append(info[0]["log_c"])
+        epsilon_g_list.append(env.epsilon_g)
+        profits_list_noagg.append(info_noagg[0]["mean_profits"])
+        mu_ij_list_noagg.append(info_noagg[0]["mean_mu_ij"])
+        freq_p_adj_list_noagg.append(info_noagg[0]["move_freq"])
+        freq_adj_lowmu_list_noagg.append(info_noagg[0]["move_freq_lowmu"])
+        freq_adj_highmu_list_noagg.append(info_noagg[0]["move_freq_highmu"])
+        size_adj_list_noagg.append(info_noagg[0]["mean_p_change"])
+        size_adj_lowmu_list_noagg.append(info_noagg[0]["size_adj_lowmu"])
+        size_adj_highmu_list_noagg.append(info_noagg[0]["size_adj_highmu"])
+        log_c_list_noagg.append(info_noagg[0]["log_c"])
+        log_c_filt_list.append(log_c_list[-1] - log_c_list_noagg[-1])
+        freq_adj_lowmu_filt_list.append(
+            freq_adj_lowmu_list[-1] - freq_adj_lowmu_list_noagg[-1]
+        )
+        freq_adj_highmu_filt_list.append(
+            freq_adj_highmu_list[-1] - freq_adj_highmu_list_noagg[-1]
+        )
+        size_adj_lowmu_filt_list.append(
+            size_adj_lowmu_list[-1] - size_adj_lowmu_list_noagg[-1]
+        )
+        size_adj_highmu_filt_list.append(
+            size_adj_highmu_list[-1] - size_adj_highmu_list_noagg[-1]
+        )
+
+    """ PLOT IRS and PROCESS RESULTS"""
+
+    simul_results_dict = {
+        "Mean Profits": [],
+        "S.D. Profits": [],
+        "Max Profits": [],
+        "Min Profits": [],
+        "Mean Markups": [],
+        "S.D. Markups": [],
+        "Max Markups": [],
+        "Min Markups": [],
+        "Mean Freq. of Adj.": [],
+        "S.D. Freq. of Adj.": [],
+        "Max Freq. of Adj.": [],
+        "Min Freq. of Adj.": [],
+        "Mean Size of Adj.": [],
+        "S.D. Size of Adj.": [],
+        "Max Size of Adj.": [],
+        "Min Size of Adj.": [],
+        "S.D. log C": [],
+        "IRs": [],
+        "cum_IRs": [],
+    }
+    epsilon_g_pereps = [
+        epsilon_g_list[i * ENV_HORIZON : i * ENV_HORIZON + ENV_HORIZON]
+        for i in range(SIMUL_EPISODES)
     ]
-    z = [
-        math.e ** (4 * env.params["sigma_z"])
-        + i
-        / 19
-        * (
-            math.e ** (-4 * env.params["sigma_z"])
-            - math.e ** (4 * env.params["sigma_z"])
-        )
-        for i in range(20)
+    log_c_filt_pereps = [
+        log_c_filt_list[i * ENV_HORIZON : i * ENV_HORIZON + ENV_HORIZON]
+        for i in range(SIMUL_EPISODES)
+    ]
+    freq_adj_lowmu_pereps = [
+        freq_adj_lowmu_filt_list[i * ENV_HORIZON : i * ENV_HORIZON + ENV_HORIZON]
+        for i in range(SIMUL_EPISODES)
+    ]
+    freq_adj_highmu_pereps = [
+        freq_adj_highmu_filt_list[i * ENV_HORIZON : i * ENV_HORIZON + ENV_HORIZON]
+        for i in range(SIMUL_EPISODES)
+    ]
+    size_adj_lowmu_pereps = [
+        size_adj_lowmu_filt_list[i * ENV_HORIZON : i * ENV_HORIZON + ENV_HORIZON]
+        for i in range(SIMUL_EPISODES)
+    ]
+    size_adj_highmu_pereps = [
+        size_adj_highmu_filt_list[i * ENV_HORIZON : i * ENV_HORIZON + ENV_HORIZON]
+        for i in range(SIMUL_EPISODES)
+    ]
+    delta_log_c_pereps = [
+        [j - i for i, j in zip(log_c_filt_pereps[k][:-1], log_c_filt_pereps[k][1:])]
+        for k in range(SIMUL_EPISODES)
     ]
 
-    obs_reaction_zshock = [
-        np.array(
-            [1.4, markup_z[i], 1, z[i]] + [1.23, math.e ** env.params["log_g_bar"]],
-            dtype=np.float32,
-        )
-        for i in range(20)
-    ]
-    obs_reaction_stratdev = [
-        np.array(
-            [1.4, markup_z[i], 1, 1] + [1.23, math.e ** env.params["log_g_bar"]],
-            dtype=np.float32,
-        )
-        for i in range(20)
-    ]
+    # print("log_c_filt:", log_c_filt_list, "\n",
+    #     #"delta_log_c:", delta_log_c,
+    #     "\n"
+    print(
+        "corr betweeen cons:",
+        np.corrcoef(log_c_list, log_c_list_noagg),
+    )
+    plt.plot(log_c_filt_list)
+    plt.title("A. Log C filtered")
+    # plt.show()
+    plt.close()
 
-    actions_reaction_zshock = [
-        trained_trainer.compute_action(obs_reaction_zshock[i], policy_id="firm_even")
-        for i in range(20)
-    ]
-    actions_reaction_stratdev = [
-        trained_trainer.compute_action(obs_reaction_stratdev[i], policy_id="firm_even")
-        for i in range(20)
-    ]
+    IRs = [0 for t in range(13)]
+    IRs_freqlow = [0 for t in range(13)]
+    IRs_freqhigh = [0 for t in range(13)]
+    IRs_sizelow = [0 for t in range(13)]
+    IRs_sizehigh = [0 for t in range(13)]
+    for t in range(0, 13):
+        epsilon_g_pereps_reg = [
+            epsilon_g_pereps[i][: -(t + 1)] for i in range(SIMUL_EPISODES)
+        ]
+        delta_log_c_pereps_reg = [
+            delta_log_c_pereps[i][t:] for i in range(SIMUL_EPISODES)
+        ]
+        freq_adj_lowmu_pereps_reg = [
+            freq_adj_lowmu_pereps[i][t:] for i in range(SIMUL_EPISODES)
+        ]
+        freq_adj_highmu_pereps_reg = [
+            freq_adj_highmu_pereps[i][t:] for i in range(SIMUL_EPISODES)
+        ]
+        size_adj_lowmu_pereps_reg = [
+            size_adj_lowmu_pereps[i][t:] for i in range(SIMUL_EPISODES)
+        ]
+        size_adj_highmu_pereps_reg = [
+            size_adj_highmu_pereps[i][t:] for i in range(SIMUL_EPISODES)
+        ]
+        epsilon_g_reg = [item for sublist in epsilon_g_pereps_reg for item in sublist]
+        delta_log_c_reg = [
+            item for sublist in delta_log_c_pereps_reg for item in sublist
+        ]
+        freq_adj_lowmu_reg = [
+            item for sublist in freq_adj_lowmu_pereps_reg for item in sublist
+        ]
+        freq_adj_highmu_reg = [
+            item for sublist in freq_adj_highmu_pereps_reg for item in sublist
+        ]
+        size_adj_lowmu_reg = [
+            item for sublist in size_adj_lowmu_pereps_reg for item in sublist
+        ]
+        size_adj_highmu_reg = [
+            item for sublist in size_adj_highmu_pereps_reg for item in sublist
+        ]
 
-    move_prob_zshock = [(actions_reaction_zshock[i][0] + 1) / 2 for i in range(20)]
-    reset_zshock = [1 + (actions_reaction_zshock[i][1] + 1) / 2 for i in range(20)]
-    move_prob_stratdev = [(actions_reaction_stratdev[i][0] + 1) / 2 for i in range(20)]
-    reset_stratdev = [1 + (actions_reaction_stratdev[i][1] + 1) / 2 for i in range(20)]
+        epsilon_g_reg_filt = [i for i in epsilon_g_reg if i > 0]
+        delta_log_c_reg_filt = [
+            delta_log_c_reg[i]
+            for i in range(len(epsilon_g_reg))
+            if epsilon_g_reg[i] > 0
+        ]
+        freq_adj_lowmu_reg_filt = [
+            freq_adj_lowmu_reg[i]
+            for i in range(len(epsilon_g_reg))
+            if epsilon_g_reg[i] > 0
+        ]
+        freq_adj_highmu_reg_filt = [
+            freq_adj_highmu_reg[i]
+            for i in range(len(epsilon_g_reg))
+            if epsilon_g_reg[i] > 0
+        ]
+        size_adj_lowmu_reg_filt = [
+            size_adj_lowmu_reg[i]
+            for i in range(len(epsilon_g_reg))
+            if epsilon_g_reg[i] > 0
+        ]
+        size_adj_highmu_reg_filt = [
+            size_adj_highmu_reg[i]
+            for i in range(len(epsilon_g_reg))
+            if epsilon_g_reg[i] > 0
+        ]
+        # epsilon_g_reg_filt = [i for i in epsilon_g_reg if i>0.007]
+        # delta_log_c_reg_filt = [delta_log_c_reg[i] for i in range(len(epsilon_g_reg)) if epsilon_g_reg[i]>0.007]
+        # freq_adj_lowmu_reg_filt = [freq_adj_lowmu_reg[i] for i in range(len(epsilon_g_reg)) if epsilon_g_reg[i]>0.007]
+        # freq_adj_highmu_reg_filt = [freq_adj_highmu_reg[i] for i in range(len(epsilon_g_reg)) if epsilon_g_reg[i]>0.007]
+        # size_adj_lowmu_reg_filt = [size_adj_lowmu_reg[i] for i in range(len(epsilon_g_reg)) if epsilon_g_reg[i]>0.007]
+        # size_adj_highmu_reg_filt = [size_adj_highmu_reg[i] for i in range(len(epsilon_g_reg)) if epsilon_g_reg[i]>0.007]
 
-    x = markup_z
-    plt.plot(x, move_prob_zshock)
-    plt.plot(x, move_prob_stratdev)
-    plt.legend(["Z shock to com.", "Strat. deviation of com."])
-    plt.xlabel("Markup of Competition")
-    plt.ylabel("Prob. of Adjustment")
-    plt.title("Reaction to z shock vs strat deviation - Probability of Adjustment")
+        # regressions
+        reg_c = linregress(delta_log_c_reg, epsilon_g_reg)
+        IRs[t] = reg_c[0] * env.params["sigma_g"] * 100
+        reg_freqlow = linregress(freq_adj_lowmu_reg_filt, epsilon_g_reg_filt)
+        IRs_freqlow[t] = reg_freqlow[0] * env.params["sigma_g"] * 100
+        reg_freqhigh = linregress(freq_adj_highmu_reg_filt, epsilon_g_reg_filt)
+        IRs_freqhigh[t] = reg_freqhigh[0] * env.params["sigma_g"] * 100
+        reg_sizelow = linregress(size_adj_lowmu_reg_filt, epsilon_g_reg_filt)
+        IRs_sizelow[t] = reg_sizelow[0] * env.params["sigma_g"] * 100
+        reg_sizehigh = linregress(size_adj_highmu_reg_filt, epsilon_g_reg_filt)
+        IRs_sizehigh[t] = reg_sizehigh[0] * env.params["sigma_g"] * 100
+    cum_IRs = [np.sum(IRs[:t]) for t in range(13)]
+    cum_IRs_freqlow = [np.sum(IRs_freqlow[:t]) for t in range(13)]
+    cum_IRs_freqhigh = [np.sum(IRs_freqhigh[:t]) for t in range(13)]
+    cum_IRs_sizelow = [np.sum(IRs_sizelow[:t]) for t in range(13)]
+    cum_IRs_sizehigh = [np.sum(IRs_sizehigh[:t]) for t in range(13)]
+
+    print(
+        "cum_IRs_freqlow:",
+        cum_IRs_freqlow[3],
+        "\n",
+        "cum_IRs_freqhigh:",
+        cum_IRs_freqhigh[3],
+        "\n",
+        "cum_IRs_sizelow:",
+        cum_IRs_sizelow[3],
+        "\n",
+        "cum_IRs_sizehigh:",
+        cum_IRs_sizehigh[3],
+        "\n",
+    )
+
+    simul_results_dict["Mean Profits"].append(np.mean(profits_list))
+    simul_results_dict["S.D. Profits"].append(np.std(profits_list))
+    simul_results_dict["Max Profits"].append(np.max(profits_list))
+    simul_results_dict["Min Profits"].append(np.min(profits_list))
+    simul_results_dict["Mean Markups"].append(np.mean(mu_ij_list))
+    simul_results_dict["S.D. Markups"].append(np.std(mu_ij_list))
+    simul_results_dict["Max Markups"].append(np.max(mu_ij_list))
+    simul_results_dict["Min Markups"].append(np.min(mu_ij_list))
+    simul_results_dict["Mean Freq. of Adj."].append(np.mean(freq_p_adj_list))
+    simul_results_dict["S.D. Freq. of Adj."].append(np.std(freq_p_adj_list))
+    simul_results_dict["Max Freq. of Adj."].append(np.max(freq_p_adj_list))
+    simul_results_dict["Min Freq. of Adj."].append(np.min(freq_p_adj_list))
+    simul_results_dict["Mean Size of Adj."].append(np.mean(size_adj_list))
+    simul_results_dict["S.D. Size of Adj."].append(np.std(size_adj_list))
+    simul_results_dict["Max Size of Adj."].append(np.max(size_adj_list))
+    simul_results_dict["Min Size of Adj."].append(np.min(size_adj_list))
+    simul_results_dict["S.D. log C"].append(np.std(log_c_filt_list))
+    simul_results_dict["IRs"].append(IRs)
+    simul_results_dict["cum_IRs"].append(cum_IRs)
+    # simul_results_dict["IRs_freqlow"].append(IRs_freqlow)
+    # simul_results_dict["IRs_freqhigh"].append(IRs_freqhigh)
+    # simul_results_dict["IRs_sizelow"].append(IRs_sizelow)
+    # simul_results_dict["IRs_sizehigh"].append(IRs_sizehigh)
+
+    print("Simul_results_dict:", simul_results_dict)
+    # print(
+    #     "std_log_c:",
+    #     simul_results_dict["S.D. log C"],
+    #     "\n" + "mu_ij:",
+    #     simul_results_dict["Mean Markups"],
+    #     "\n" + "freq_p_adj:",
+    #     simul_results_dict["Mean Freq. of Adj."],
+    #     "\n" + "size_adj:",
+    #     simul_results_dict["Mean Size of Adj."],
+    # )
+
+    """ Plot IRs """
+    x = [i for i in range(13)]
+    IRs = simul_results_dict["IRs"][-1]
+    plt.plot(x, IRs)
+    # learning_plot = learning_plot.get_figure()
+    plt.ylabel("Delta log C_t * 100")
+    plt.xlabel("Month t")
+    plt.title("A. IRF - Consumption")
+    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_" + exp_names[0] + ".png")
     plt.show()
     plt.close()
 
-    plt.plot(x, reset_zshock)
-    plt.plot(x, reset_stratdev)
-    plt.legend(["Z shock to com.", "Strat. deviation of com."])
-    plt.xlabel("Markup of Competition")
-    plt.ylabel("Reset Markup")
-    plt.title("Reaction to z shock vs strat deviation - Reset Markup")
+    cum_IRs = simul_results_dict["cum_IRs"][-1]
+    plt.plot(x, cum_IRs)
+    # learning_plot = learning_plot.get_figure()
+    plt.ylabel("Delta log C_t * 100")
+    plt.xlabel("Month t")
+    plt.title("B. Cumulative IRF - Consumption")
+
+    plt.savefig(OUTPUT_PATH_FIGURES + "cum_IRs_" + exp_names[0] + ".png")
     plt.show()
     plt.close()
 
-    reg_react_prob_zshock = linregress(markup, move_prob_zshock)
-    reg_react_reset_zshock = linregress(markup, reset_zshock)
-    slope_react_prob_zshock = reg_react_prob_zshock[0]
-    slope_react_reset_zshock = reg_react_reset_zshock[0]
+    plt.plot(x, IRs_freqlow)
+    plt.plot(x, IRs_freqhigh)
+    plt.legend(["Low Markup Firms", "High Markup Firms"])
+    # learning_plot = learning_plot.get_figure()
+    plt.ylabel("IRF - Levels * 100")
+    plt.xlabel("Month t")
+    plt.title("IRF - Frquency of Adjustment for High vs Low Markup Firms")
+    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_freq_" + exp_names[0] + ".png")
+    plt.show()
+    plt.close()
 
-    reg_react_prob_stratdev = linregress(markup, move_prob_zshock)
-    reg_react_reset_stratdev = linregress(markup, reset_zshock)
-    slope_react_prob_stratdev = reg_react_prob_stratdev[0]
-    slope_react_reset_stratdev = reg_react_reset_stratdev[0]
+    plt.plot(x, IRs_sizelow)
+    plt.plot(x, IRs_sizehigh)
+    plt.legend(["Low Markup Firms", "High Markup Firms"])
+    # learning_plot = learning_plot.get_figure()
+    plt.ylabel("IRF - Levels * 100")
+    plt.xlabel("Month t")
 
-    print(
-        "Slope of react to z shock", [slope_react_prob_zshock, slope_react_reset_zshock]
-    )
-    print(
-        "Slope of react to strat. deviation",
-        [slope_react_prob_stratdev, slope_react_reset_stratdev],
-    )
-
-
-""" SIMULATE EPSIODES AND CALCULATE REGRESSIONS"""
-shutdown()
-init(
-    num_cpus=12,
-    log_to_driver=False,
-)
-# register environment
-env_label = "mon_policy_finite"
-register_env(env_label, MonPolicy)
-# We instantiate the environment to extract information.
-""" CHANGE HERE """
-env_config_noagg = env_config_eval.copy()
-env_config_noagg["no_agg"] = True
-env = MonPolicy(env_config_eval)
-env_noagg = MonPolicy(env_config_noagg)
-
-""" Step 3.1: restore trainer """
-
-# restore the trainer
-
-trained_trainer = PPOTrainer(env=env_label, config=config_algo)
-trained_trainer.restore(INPUT_PATH_CHECKPOINT)
-
-""" Simulate an episode (SIMUL_PERIODS timesteps) """
-profits_list = []
-mu_ij_list = []
-freq_p_adj_list = []
-size_adj_list = []
-freq_adj_lowmu_list = []
-freq_adj_highmu_list = []
-size_adj_list = []
-size_adj_lowmu_list = []
-size_adj_highmu_list = []
-
-log_c_list = []
-epsilon_g_list = []
-
-profits_list_noagg = []
-mu_ij_list_noagg = []
-freq_p_adj_list_noagg = []
-freq_adj_lowmu_list_noagg = []
-freq_adj_highmu_list_noagg = []
-size_adj_list_noagg = []
-size_adj_lowmu_list_noagg = []
-size_adj_highmu_list_noagg = []
-log_c_list_noagg = []
-
-log_c_filt_list = []
-freq_adj_lowmu_filt_list = []
-freq_adj_highmu_filt_list = []
-size_adj_lowmu_filt_list = []
-size_adj_highmu_filt_list = []
-
-# loop with agg
-obs = env.reset()
-obs_noagg = env_noagg.reset()
-for t in range(SIMUL_EPISODES * ENV_HORIZON):
-    if t % env.horizon == 0:
-        seed = random.randrange(100000)
-        env.seed_eval = seed
-        env_noagg.seed_eval = seed
-        print("time:", t)
-        obs = env.reset()
-        obs_noagg = env_noagg.reset()
-    action = {
-        i: trained_trainer.compute_action(obs[i], policy_id="firm_even")
-        if i % 2 == 0
-        else trained_trainer.compute_action(obs[i], policy_id="firm_odd")
-        for i in range(env.n_agents)
-    }
-    action_noagg = {
-        i: trained_trainer.compute_action(obs_noagg[i], policy_id="firm_even")
-        if i % 2 == 0
-        else trained_trainer.compute_action(obs_noagg[i], policy_id="firm_odd")
-        for i in range(env.n_agents)
-    }
-
-    obs, rew, done, info = env.step(action)
-    obs_noagg, rew_noagg, done_noagg, info_noagg = env_noagg.step(action_noagg)
-
-    profits_list.append(info[0]["mean_profits"])
-    mu_ij_list.append(info[0]["mean_mu_ij"])
-    freq_p_adj_list.append(info[0]["move_freq"])
-    freq_adj_lowmu_list.append(info[0]["move_freq_lowmu"])
-    freq_adj_highmu_list.append(info[0]["move_freq_highmu"])
-    size_adj_list.append(info[0]["mean_p_change"])
-    size_adj_lowmu_list.append(info[0]["size_adj_lowmu"])
-    size_adj_highmu_list.append(info[0]["size_adj_highmu"])
-    log_c_list.append(info[0]["log_c"])
-    epsilon_g_list.append(env.epsilon_g)
-    profits_list_noagg.append(info_noagg[0]["mean_profits"])
-    mu_ij_list_noagg.append(info_noagg[0]["mean_mu_ij"])
-    freq_p_adj_list_noagg.append(info_noagg[0]["move_freq"])
-    freq_adj_lowmu_list_noagg.append(info_noagg[0]["move_freq_lowmu"])
-    freq_adj_highmu_list_noagg.append(info_noagg[0]["move_freq_highmu"])
-    size_adj_list_noagg.append(info_noagg[0]["mean_p_change"])
-    size_adj_lowmu_list_noagg.append(info_noagg[0]["size_adj_lowmu"])
-    size_adj_highmu_list_noagg.append(info_noagg[0]["size_adj_highmu"])
-    log_c_list_noagg.append(info_noagg[0]["log_c"])
-    log_c_filt_list.append(log_c_list[-1] - log_c_list_noagg[-1])
-    freq_adj_lowmu_filt_list.append(
-        freq_adj_lowmu_list[-1] - freq_adj_lowmu_list_noagg[-1]
-    )
-    freq_adj_highmu_filt_list.append(
-        freq_adj_highmu_list[-1] - freq_adj_highmu_list_noagg[-1]
-    )
-    size_adj_lowmu_filt_list.append(
-        size_adj_lowmu_list[-1] - size_adj_lowmu_list_noagg[-1]
-    )
-    size_adj_highmu_filt_list.append(
-        size_adj_highmu_list[-1] - size_adj_highmu_list_noagg[-1]
-    )
-
-
-""" STEP 4, PLOT IRS and PROCESS RESULTS"""
-
-simul_results_dict = {
-    "Mean Profits": [],
-    "S.D. Profits": [],
-    "Max Profits": [],
-    "Min Profits": [],
-    "Mean Markups": [],
-    "S.D. Markups": [],
-    "Max Markups": [],
-    "Min Markups": [],
-    "Mean Freq. of Adj.": [],
-    "S.D. Freq. of Adj.": [],
-    "Max Freq. of Adj.": [],
-    "Min Freq. of Adj.": [],
-    "Mean Size of Adj.": [],
-    "S.D. Size of Adj.": [],
-    "Max Size of Adj.": [],
-    "Min Size of Adj.": [],
-    "S.D. log C": [],
-    "IRs": [],
-    "cum_IRs": [],
-}
-epsilon_g_pereps = [
-    epsilon_g_list[i * ENV_HORIZON : i * ENV_HORIZON + ENV_HORIZON]
-    for i in range(SIMUL_EPISODES)
-]
-log_c_filt_pereps = [
-    log_c_filt_list[i * ENV_HORIZON : i * ENV_HORIZON + ENV_HORIZON]
-    for i in range(SIMUL_EPISODES)
-]
-freq_adj_lowmu_pereps = [
-    freq_adj_lowmu_filt_list[i * ENV_HORIZON : i * ENV_HORIZON + ENV_HORIZON]
-    for i in range(SIMUL_EPISODES)
-]
-freq_adj_highmu_pereps = [
-    freq_adj_highmu_filt_list[i * ENV_HORIZON : i * ENV_HORIZON + ENV_HORIZON]
-    for i in range(SIMUL_EPISODES)
-]
-size_adj_lowmu_pereps = [
-    size_adj_lowmu_filt_list[i * ENV_HORIZON : i * ENV_HORIZON + ENV_HORIZON]
-    for i in range(SIMUL_EPISODES)
-]
-size_adj_highmu_pereps = [
-    size_adj_highmu_filt_list[i * ENV_HORIZON : i * ENV_HORIZON + ENV_HORIZON]
-    for i in range(SIMUL_EPISODES)
-]
-delta_log_c_pereps = [
-    [j - i for i, j in zip(log_c_filt_pereps[k][:-1], log_c_filt_pereps[k][1:])]
-    for k in range(SIMUL_EPISODES)
-]
-
-# print("log_c_filt:", log_c_filt_list, "\n",
-#     #"delta_log_c:", delta_log_c,
-#     "\n"
-print(
-    "corr betweeen cons:",
-    np.corrcoef(log_c_list, log_c_list_noagg),
-)
-plt.plot(log_c_filt_list)
-plt.title("A. Log C filtered")
-# plt.show()
-plt.close()
-
-IRs = [0 for t in range(13)]
-IRs_freqlow = [0 for t in range(13)]
-IRs_freqhigh = [0 for t in range(13)]
-IRs_sizelow = [0 for t in range(13)]
-IRs_sizehigh = [0 for t in range(13)]
-for t in range(0, 13):
-    epsilon_g_pereps_reg = [
-        epsilon_g_pereps[i][: -(t + 1)] for i in range(SIMUL_EPISODES)
-    ]
-    delta_log_c_pereps_reg = [delta_log_c_pereps[i][t:] for i in range(SIMUL_EPISODES)]
-    freq_adj_lowmu_pereps_reg = [
-        freq_adj_lowmu_pereps[i][t:] for i in range(SIMUL_EPISODES)
-    ]
-    freq_adj_highmu_pereps_reg = [
-        freq_adj_highmu_pereps[i][t:] for i in range(SIMUL_EPISODES)
-    ]
-    size_adj_lowmu_pereps_reg = [
-        size_adj_lowmu_pereps[i][t:] for i in range(SIMUL_EPISODES)
-    ]
-    size_adj_highmu_pereps_reg = [
-        size_adj_highmu_pereps[i][t:] for i in range(SIMUL_EPISODES)
-    ]
-    epsilon_g_reg = [item for sublist in epsilon_g_pereps_reg for item in sublist]
-    delta_log_c_reg = [item for sublist in delta_log_c_pereps_reg for item in sublist]
-    freq_adj_lowmu_reg = [
-        item for sublist in freq_adj_lowmu_pereps_reg for item in sublist
-    ]
-    freq_adj_highmu_reg = [
-        item for sublist in freq_adj_highmu_pereps_reg for item in sublist
-    ]
-    size_adj_lowmu_reg = [
-        item for sublist in size_adj_lowmu_pereps_reg for item in sublist
-    ]
-    size_adj_highmu_reg = [
-        item for sublist in size_adj_highmu_pereps_reg for item in sublist
-    ]
-
-    epsilon_g_reg_filt = [i for i in epsilon_g_reg if i > 0]
-    delta_log_c_reg_filt = [
-        delta_log_c_reg[i] for i in range(len(epsilon_g_reg)) if epsilon_g_reg[i] > 0
-    ]
-    freq_adj_lowmu_reg_filt = [
-        freq_adj_lowmu_reg[i] for i in range(len(epsilon_g_reg)) if epsilon_g_reg[i] > 0
-    ]
-    freq_adj_highmu_reg_filt = [
-        freq_adj_highmu_reg[i]
-        for i in range(len(epsilon_g_reg))
-        if epsilon_g_reg[i] > 0
-    ]
-    size_adj_lowmu_reg_filt = [
-        size_adj_lowmu_reg[i] for i in range(len(epsilon_g_reg)) if epsilon_g_reg[i] > 0
-    ]
-    size_adj_highmu_reg_filt = [
-        size_adj_highmu_reg[i]
-        for i in range(len(epsilon_g_reg))
-        if epsilon_g_reg[i] > 0
-    ]
-    # epsilon_g_reg_filt = [i for i in epsilon_g_reg if i>0.007]
-    # delta_log_c_reg_filt = [delta_log_c_reg[i] for i in range(len(epsilon_g_reg)) if epsilon_g_reg[i]>0.007]
-    # freq_adj_lowmu_reg_filt = [freq_adj_lowmu_reg[i] for i in range(len(epsilon_g_reg)) if epsilon_g_reg[i]>0.007]
-    # freq_adj_highmu_reg_filt = [freq_adj_highmu_reg[i] for i in range(len(epsilon_g_reg)) if epsilon_g_reg[i]>0.007]
-    # size_adj_lowmu_reg_filt = [size_adj_lowmu_reg[i] for i in range(len(epsilon_g_reg)) if epsilon_g_reg[i]>0.007]
-    # size_adj_highmu_reg_filt = [size_adj_highmu_reg[i] for i in range(len(epsilon_g_reg)) if epsilon_g_reg[i]>0.007]
-
-    # regressions
-    reg_c = linregress(delta_log_c_reg, epsilon_g_reg)
-    IRs[t] = reg_c[0] * env.params["sigma_g"] * 100
-    reg_freqlow = linregress(freq_adj_lowmu_reg_filt, epsilon_g_reg_filt)
-    IRs_freqlow[t] = reg_freqlow[0] * env.params["sigma_g"] * 100
-    reg_freqhigh = linregress(freq_adj_highmu_reg_filt, epsilon_g_reg_filt)
-    IRs_freqhigh[t] = reg_freqhigh[0] * env.params["sigma_g"] * 100
-    reg_sizelow = linregress(size_adj_lowmu_reg_filt, epsilon_g_reg_filt)
-    IRs_sizelow[t] = reg_sizelow[0] * env.params["sigma_g"] * 100
-    reg_sizehigh = linregress(size_adj_highmu_reg_filt, epsilon_g_reg_filt)
-    IRs_sizehigh[t] = reg_sizehigh[0] * env.params["sigma_g"] * 100
-cum_IRs = [np.sum(IRs[:t]) for t in range(13)]
-cum_IRs_freqlow = [np.sum(IRs_freqlow[:t]) for t in range(13)]
-cum_IRs_freqhigh = [np.sum(IRs_freqhigh[:t]) for t in range(13)]
-cum_IRs_sizelow = [np.sum(IRs_sizelow[:t]) for t in range(13)]
-cum_IRs_sizehigh = [np.sum(IRs_sizehigh[:t]) for t in range(13)]
-
-print(
-    "cum_IRs_freqlow:",
-    cum_IRs_freqlow[3],
-    "\n",
-    "cum_IRs_freqhigh:",
-    cum_IRs_freqhigh[3],
-    "\n",
-    "cum_IRs_sizelow:",
-    cum_IRs_sizelow[3],
-    "\n",
-    "cum_IRs_sizehigh:",
-    cum_IRs_sizehigh[3],
-    "\n",
-)
-
-simul_results_dict["Mean Profits"].append(np.mean(profits_list))
-simul_results_dict["S.D. Profits"].append(np.std(profits_list))
-simul_results_dict["Max Profits"].append(np.max(profits_list))
-simul_results_dict["Min Profits"].append(np.min(profits_list))
-simul_results_dict["Mean Markups"].append(np.mean(mu_ij_list))
-simul_results_dict["S.D. Markups"].append(np.std(mu_ij_list))
-simul_results_dict["Max Markups"].append(np.max(mu_ij_list))
-simul_results_dict["Min Markups"].append(np.min(mu_ij_list))
-simul_results_dict["Mean Freq. of Adj."].append(np.mean(freq_p_adj_list))
-simul_results_dict["S.D. Freq. of Adj."].append(np.std(freq_p_adj_list))
-simul_results_dict["Max Freq. of Adj."].append(np.max(freq_p_adj_list))
-simul_results_dict["Min Freq. of Adj."].append(np.min(freq_p_adj_list))
-simul_results_dict["Mean Size of Adj."].append(np.mean(size_adj_list))
-simul_results_dict["S.D. Size of Adj."].append(np.std(size_adj_list))
-simul_results_dict["Max Size of Adj."].append(np.max(size_adj_list))
-simul_results_dict["Min Size of Adj."].append(np.min(size_adj_list))
-simul_results_dict["S.D. log C"].append(np.std(log_c_filt_list))
-simul_results_dict["IRs"].append(IRs)
-simul_results_dict["cum_IRs"].append(cum_IRs)
-# simul_results_dict["IRs_freqlow"].append(IRs_freqlow)
-# simul_results_dict["IRs_freqhigh"].append(IRs_freqhigh)
-# simul_results_dict["IRs_sizelow"].append(IRs_sizelow)
-# simul_results_dict["IRs_sizehigh"].append(IRs_sizehigh)
-
-print("Simul_results_dict:", simul_results_dict)
-# print(
-#     "std_log_c:",
-#     simul_results_dict["S.D. log C"],
-#     "\n" + "mu_ij:",
-#     simul_results_dict["Mean Markups"],
-#     "\n" + "freq_p_adj:",
-#     simul_results_dict["Mean Freq. of Adj."],
-#     "\n" + "size_adj:",
-#     simul_results_dict["Mean Size of Adj."],
-# )
-
-""" Plot IRs """
-x = [i for i in range(13)]
-IRs = simul_results_dict["IRs"][-1]
-plt.plot(x, IRs)
-# learning_plot = learning_plot.get_figure()
-plt.ylabel("Delta log C_t * 100")
-plt.xlabel("Month t")
-plt.title("A. IRF - Consumption")
-plt.savefig(OUTPUT_PATH_FIGURES + "IRs_" + exp_names[0] + "finite_first" + ".png")
-plt.show()
-plt.close()
-
-cum_IRs = simul_results_dict["cum_IRs"][-1]
-plt.plot(x, cum_IRs)
-# learning_plot = learning_plot.get_figure()
-plt.ylabel("Delta log C_t * 100")
-plt.xlabel("Month t")
-plt.title("B. Cumulative IRF - Consumption")
-plt.savefig(OUTPUT_PATH_FIGURES + "cum_IRs" + exp_names[0] + "finite_first" + ".png")
-plt.show()
-plt.close()
-
-
-plt.plot(x, IRs_freqlow)
-plt.plot(x, IRs_freqhigh)
-plt.legend(["Low Markup Firms", "High Markup Firms"])
-# learning_plot = learning_plot.get_figure()
-plt.ylabel("IRF - Levels * 100")
-plt.xlabel("Month t")
-plt.title("IRF - Frquency of Adjustment for High vs Low Markup Firms")
-plt.savefig(OUTPUT_PATH_FIGURES + "IRs_freq" + exp_names[0] + "finite_first" + ".png")
-plt.show()
-plt.close()
-
-plt.plot(x, IRs_sizelow)
-plt.plot(x, IRs_sizehigh)
-plt.legend(["Low Markup Firms", "High Markup Firms"])
-# learning_plot = learning_plot.get_figure()
-plt.ylabel("IRF - Levels * 100")
-plt.xlabel("Month t")
-plt.title("IRF - Size of Adjustment for High vs Low Markup Firms")
-plt.savefig(OUTPUT_PATH_FIGURES + "IRs_size" + exp_names[0] + "finite_first" + ".png")
-plt.show()
-plt.close()
+    plt.title("IRF - Size of Adjustment for High vs Low Markup Firms")
+    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_size_" + exp_names[0] + ".png")
+    plt.show()
+    plt.close()

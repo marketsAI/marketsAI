@@ -162,7 +162,7 @@ class MonPolicy(MultiAgentEnv):
             ]
 
             self.initial_markup_seeded = np.array(
-                [rng.normal(1.3, 0.1) for i in range(self.n_agents)]
+                [rng.uniform(1.2, 1.4) for i in range(self.n_agents)]
             )
             if self.analysis_mode:
                 self.epsilon_g_seeded = [0 for t in range(self.horizon + 1)]
@@ -188,7 +188,7 @@ class MonPolicy(MultiAgentEnv):
         # DEFAULT: when learning, we randomize the initial observations
         else:
             self.mu_ij_next = np.array(
-                [random.uniform(1.2, 1.55) for i in range(self.n_agents)]
+                [random.uniform(1.15, 1.45) for i in range(self.n_agents)]
             )
             self.epsilon_z = np.array(
                 [random.gauss(0, 1) for i in range(self.n_agents)]
