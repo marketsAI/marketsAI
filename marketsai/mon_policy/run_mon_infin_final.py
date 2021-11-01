@@ -739,7 +739,7 @@ if RUN_ANALYSIS:
         "Mean Size of Adj.": np.mean(results["Size of Adj."]),
         "S.D. Size of Adj.": np.std(results["Size of Adj."]),
         "Mean S.D. of log C": np.mean(results["S.D. of log C"]),
-        "S.D. Size of Adj.": np.std(results["S.D. of log C"]),
+        "S.D. S.D. of log C.": np.std(results["S.D. of log C"]),
         "Mean Profits": np.mean(results["Profits"]),
         "S.D. Profits": np.std(results["Profits"]),
     }
@@ -762,22 +762,22 @@ if RUN_ANALYSIS:
             [
                 (
                     (results["Markups"][i] - RESULTS_REF[0])
-                    / results_stats["Mean Markups"]
+                    / results_stats["S.D. Markups"]
                 )
                 ** 2
                 + (
                     (results["Freq. of Adj."][i] - RESULTS_REF[1])
-                    / results_stats["Mean Freq. of Adj."]
+                    / results_stats["S.D. Freq. of Adj."]
                 )
                 ** 2
                 + (
                     (results["Size of Adj."][i] - RESULTS_REF[2])
-                    / results_stats["Mean Size of Adj."]
+                    / results_stats["S.D. Size of Adj."]
                 )
                 ** 2
                 + (
                     (results["S.D. of log C"][i] - RESULTS_REF[3])
-                    / results_stats["Mean S.D. of log C"]
+                    / results_stats["S.D. S.D. of log C"]
                 )
                 ** 2
                 for i in range(NUM_TRIALS)
