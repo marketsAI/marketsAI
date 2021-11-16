@@ -33,17 +33,16 @@ import random
 """ STEP 0: Experiment configs """
 
 # global configss
-DATE = "Nov15_"
-ENV_LABEL = "mon_infin"
+DATE = "Nov7_"
+ENV_LABEL = "mon_infin_3f"
 OBS_IDSHOCK = False
 INFL_REGIME = "low"
 NATIVE = False
 TEST = False
-RUN_TRAINING = True
+RUN_TRAINING = False
 RUN_ANALYSIS = True
-RUN_MANUAL_IRS = True
 # in case there is no training
-INFO_ANALYSIS = "/scratch/mc5851/Experiments/expINFO_server_mon_infin_exp_0_Oct30_PPO_run.json"
+INFO_ANALYSIS = "/scratch/mc5851/Experiments/expINFO_server_mon_infin_3f_exp_0_Nov3_PPO_run.json"
 SAVE_EXP_INFO = True
 SAVE_PROGRESS = True
 PLOT_PROGRESS = True
@@ -81,15 +80,15 @@ if NATIVE:
     device = "native_"  # either "native" or "server"
 else:
     device = "server_"
-n_firms_LIST = [2]  # list with number of agents for each run
+n_firms_LIST = [3]  # list with number of agents for each run
 n_inds_LIST = [200]
-ITERS_TEST = 10  # number of iteration for test
-ITERS_RUN = 5000  # number of iteration for fullrun
+ITERS_TEST = 2  # number of iteration for test
+ITERS_RUN = 2000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
 ENV_HORIZON = 12 * 5
-EVAL_HORIZON = 12 * 400
+EVAL_HORIZON = 12 * 5
 BETA = 0.95 ** (1 / 12)  # discount parameter
 
 # Post analysis options
@@ -100,22 +99,21 @@ CHKPT_SELECT_REF = False
 RESULTS_REF = np.array([1.32, 0.12, 0.08, 0.009])
 CHKPT_SELECT_MANUAL = False
 CHKPT_id = 0
-CHKPT_SELECT_MIN = True
-CHKPT_SELECT_MAX = False
+CHKPT_SELECT_MIN = False
+CHKPT_SELECT_MAX = True
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 34
-NUM_CPUS_WORKERS = 34
+NUM_CPUS = 47
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 102
-NUM_PAR_TRIALS = 34
+NUM_TRIALS = 47
+NUM_PAR_TRIALS = 47
 NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
 BATCH_ROLLOUT = 1
 NUM_MINI_BATCH = 1
 
-N_WORKERS = (NUM_CPUS_WORKERS - NUM_PAR_TRIALS * NUM_CPUS_DRIVER) // NUM_PAR_TRIALS
+N_WORKERS = (NUM_CPUS - NUM_PAR_TRIALS * NUM_CPUS_DRIVER) // NUM_PAR_TRIALS
 BATCH_SIZE = NUM_ROLLOUT * (max(N_WORKERS, 1)) * NUM_ENV_PW * BATCH_ROLLOUT
 
 print("number of workers:", N_WORKERS, "batch size:", BATCH_SIZE)
@@ -129,13 +127,13 @@ else:
 # checkpointing, evaluation during trainging and stopage
 CHKPT_FREQ = 1000
 if TEST:
-    EVAL_INTERVAL = 5
+    EVAL_INTERVAL = 1
     EVAL_EPISODES = 1
     SIMUL_EPISODES = 1
 else:
-    EVAL_INTERVAL = 5000
-    EVAL_EPISODES = 1
-    SIMUL_EPISODES = 1
+    EVAL_INTERVAL = 500
+    EVAL_EPISODES = 50
+    SIMUL_EPISODES = 20
 STOP = {"timesteps_total": MAX_STEPS}
 
 # Initialize ray
@@ -322,22 +320,28 @@ common_config = {
     # MULTIAGENT,
     "multiagent": {
         "policies": {
-            "firm_even": (
+            "firm_0": (
                 None,
                 env.observation_space[0],
                 env.action_space[0],
                 {},
             ),
-            "firm_odd": (
+            "firm_1": (
                 None,
                 env.observation_space[0],
                 env.action_space[0],
                 {},
             ),
+            "firm_2": (
+                    None,
+                    env.observation_space[0],
+                    env.action_space[0],
+                    {},
+                ),
         },
         "policy_mapping_fn": (
-            lambda agent_id: "firm_even" if agent_id % 2 == 0 else "firm_odd"
-        ),
+            lambda agent_id: f"firm_{agent_id%3}"
+            ),
         # "replay_mode": "independent",  # you can change to "lockstep".
         # OTHERS
     },
@@ -412,23 +416,30 @@ if RUN_TRAINING:
         training_config["evaluation_config"]["env_config"] = env_config_eval
         training_config["multiagent"] = {
             "policies": {
-                "firm_even": (
+                "firm_0": (
                     None,
                     env.observation_space[0],
                     env.action_space[0],
                     {},
                 ),
-                "firm_odd": (
+                "firm_1": (
                     None,
                     env.observation_space[0],
                     env.action_space[0],
                     {},
                 ),
+                "firm_2": (
+                        None,
+                        env.observation_space[0],
+                        env.action_space[0],
+                        {},
+                    ),
             },
             "policy_mapping_fn": (
-                lambda agent_id: "firm_even" if agent_id % 2 == 0 else "firm_odd"
-            ),
+                lambda agent_id: f"firm_{agent_id%3}"
+                ),
         }
+    
 
         analysis = tune.run(
             ALGO,
@@ -657,7 +668,7 @@ if RUN_TRAINING:
             plt.xlabel("Episodes (10 years)")
             # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
             learning_plot.savefig(
-                OUTPUT_PATH_FIGURES + "progress_rewards" + exp_names[ind] + "_min" + ".png"
+                OUTPUT_PATH_FIGURES + "progress_rewards" + exp_names[ind] + ".png"
             )
             # plt.show()
             plt.close()
@@ -673,7 +684,7 @@ if RUN_TRAINING:
             plt.xlabel("Episodes (10 years)")
             # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
             learning_plot.savefig(
-                OUTPUT_PATH_FIGURES + "progress_mu_ij" + exp_names[ind] + "_min" + ".png"
+                OUTPUT_PATH_FIGURES + "progress_mu_ij" + exp_names[ind] + ".png"
             )
             # plt.show()
             plt.close()
@@ -689,7 +700,7 @@ if RUN_TRAINING:
             plt.xlabel("Episodes (10 years)")
             # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
             learning_plot.savefig(
-                OUTPUT_PATH_FIGURES + "progress_freq_p_adj" + exp_names[ind] + "_min" + ".png"
+                OUTPUT_PATH_FIGURES + "progress_freq_p_adj" + exp_names[ind] + ".png"
             )
             # plt.show()
             plt.close()
@@ -705,7 +716,7 @@ if RUN_TRAINING:
             plt.xlabel("Episodes (10 years)")
             # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
             learning_plot.savefig(
-                OUTPUT_PATH_FIGURES + "progress_size_adj" + exp_names[ind] + "_min" + ".png"
+                OUTPUT_PATH_FIGURES + "progress_size_adj" + exp_names[ind] + ".png"
             )
             # plt.show()
             plt.close()
@@ -817,7 +828,7 @@ if RUN_ANALYSIS:
 
     shutdown()
     init(
-        num_cpus=12,
+        num_cpus=48,
         log_to_driver=False,
     )
 
@@ -835,21 +846,21 @@ if RUN_ANALYSIS:
     if not OBS_IDSHOCK:
         obs_reaction_lowmu = [
             np.array(
-                [markup[i], 1.2] + [1.165, math.e ** env.params["log_g_bar"]],
+                [markup[i], 1.1, 1.1] + [1.16, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_medmu = [
             np.array(
-                [markup[i], 1.3] + [1.165, math.e ** env.params["log_g_bar"]],
+                [markup[i], 1.3, 1.3] + [1.16, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_highmu = [
             np.array(
-                [markup[i], 1.5] + [1.165, math.e ** env.params["log_g_bar"]],
+                [markup[i], 1.5, 1.5] + [1.16, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
@@ -857,36 +868,36 @@ if RUN_ANALYSIS:
     else:
         obs_reaction_lowmu = [
             np.array(
-                [markup[i], 1.2, 1, 1] + [1.165, math.e ** env.params["log_g_bar"]],
+                [markup[i], 1.1, 1.1, 1, 1, 1] + [1.16, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_medmu = [
             np.array(
-                [markup[i], 1.3, 1, 1] + [1.165, math.e ** env.params["log_g_bar"]],
+                [markup[i], 1.3, 1.3, 1, 1, 2] + [1.16, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_highmu = [
             np.array(
-                [markup[i], 1.5, 1, 1] + [1.165, math.e ** env.params["log_g_bar"]],
+                [markup[i], 1.5, 1.5, 1, 1, 1] + [1.16, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
 
     actions_reaction_lowmu = [
-        trained_trainer.compute_action(obs_reaction_lowmu[i], policy_id="firm_even")
+        trained_trainer.compute_action(obs_reaction_lowmu[i], policy_id="firm_0")
         for i in range(20)
     ]
     actions_reaction_medmu = [
-        trained_trainer.compute_action(obs_reaction_medmu[i], policy_id="firm_even")
+        trained_trainer.compute_action(obs_reaction_medmu[i], policy_id="firm_0")
         for i in range(20)
     ]
     actions_reaction_highmu = [
-        trained_trainer.compute_action(obs_reaction_highmu[i], policy_id="firm_even")
+        trained_trainer.compute_action(obs_reaction_highmu[i], policy_id="firm_0")
         for i in range(20)
     ]
     move_prob_lowmu = [(actions_reaction_lowmu[i][0] + 1) / 2 for i in range(20)]
@@ -908,10 +919,8 @@ if RUN_ANALYSIS:
     )
     plt.xlabel("Own Markup")
     plt.ylabel("Prob. of Adjustment")
-    # plt.title("Probability of Adjustment")
-    # plt.title("MIN")
-
-    plt.savefig(OUTPUT_PATH_FIGURES + "polown_prob_" + "_" + exp_names[0] + "_min" + ".png")
+    #plt.title("Probability of Adjustment")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polown_prob_" + "_max_" + exp_names[0] + ".png")
     plt.show()
     plt.close()
 
@@ -926,9 +935,8 @@ if RUN_ANALYSIS:
     )
     plt.xlabel("Markup of Competition")
     plt.ylabel("Own Markup")
-    # plt.title("Reset Markup")
-    # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "polown_reset_" + "_" + exp_names[0] + "_min" + ".png")
+    #plt.title("Reset Markup")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polown_reset_" + "_max_" + exp_names[0] + ".png")
     plt.show()
     plt.close()
 
@@ -951,48 +959,48 @@ if RUN_ANALYSIS:
 
     """ Policy Function with respect to monetary policy. """
 
-    mon_policy = [0.75       
+    mon_policy = [0.75
         + (i / 19) * 0.5
         for i in range(20)
     ]
     # print(mon_policy)
     if not OBS_IDSHOCK:
         obs_monpol_lowmu = [
-            np.array([1.2, 1.3] + [1.165, mon_policy[i]], dtype=np.float32)
+            np.array([1.2, 1.3, 1.3] + [1.16, mon_policy[i]], dtype=np.float32)
             for i in range(20)
         ]
         obs_monpol_medmu = [
-            np.array([1.3, 1.3] + [1.165, mon_policy[i]], dtype=np.float32)
+            np.array([1.3, 1.3, 1.3] + [1.16, mon_policy[i]], dtype=np.float32)
             for i in range(20)
         ]
         obs_monpol_highmu = [
-            np.array([1.5, 1.3] + [1.165, mon_policy[i]], dtype=np.float32)
+            np.array([1.5, 1.3, 1.3] + [1.16, mon_policy[i]], dtype=np.float32)
             for i in range(20)
         ]
     else:
         obs_monpol_lowmu = [
-            np.array([1.2, 1.3, 1, 1] + [1.165, mon_policy[i]], dtype=np.float32)
+            np.array([1.2, 1.3, 1.3, 1, 1, 1] + [1.16, mon_policy[i]], dtype=np.float32)
             for i in range(20)
         ]
         obs_monpol_medmu = [
-            np.array([1.3, 1.3, 1, 1] + [1.165, mon_policy[i]], dtype=np.float32)
+            np.array([1.3, 1.3, 1.3, 1, 1, 1] + [1.16, mon_policy[i]], dtype=np.float32)
             for i in range(20)
         ]
         obs_monpol_highmu = [
-            np.array([1.5, 1.3, 1, 1] + [1.165, mon_policy[i]], dtype=np.float32)
+            np.array([1.5, 1.3, 1.3, 1, 1, 1] + [1.16, mon_policy[i]], dtype=np.float32)
             for i in range(20)
         ]
 
     actions_monpol_lowmu = [
-        trained_trainer.compute_action(obs_monpol_lowmu[i], policy_id="firm_even")
+        trained_trainer.compute_action(obs_monpol_lowmu[i], policy_id="firm_0")
         for i in range(20)
     ]
     actions_monpol_medmu = [
-        trained_trainer.compute_action(obs_monpol_medmu[i], policy_id="firm_even")
+        trained_trainer.compute_action(obs_monpol_medmu[i], policy_id="firm_0")
         for i in range(20)
     ]
     actions_monpol_highmu = [
-        trained_trainer.compute_action(obs_monpol_highmu[i], policy_id="firm_even")
+        trained_trainer.compute_action(obs_monpol_highmu[i], policy_id="firm_0")
         for i in range(20)
     ]
     move_prob_lowmu = [(actions_monpol_lowmu[i][0] + 1) / 2 for i in range(20)]
@@ -1011,9 +1019,8 @@ if RUN_ANALYSIS:
     plt.legend(["Low Markup Firms", "High Markup Firms"])
     plt.xlabel("Money Growth")
     plt.ylabel("Prob. of Adjustment")
-    # plt.title("Effect of money growth on Prob. of Adj.")
-    # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "polmon_prob_" + exp_names[0] + "_min" + ".png")
+    #plt.title("Effec of money growth on Prob. of Adj.")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polmon_prob_" + "_max_" + exp_names[0] + ".png")
     plt.show()
     plt.close()
 
@@ -1025,9 +1032,8 @@ if RUN_ANALYSIS:
     plt.xlabel("Money Growth")
     plt.ylabel("Reset Markup")
 
-    # plt.title("Effec of money growth on Size of Adj.")
-    # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "polmon_reset_" + exp_names[0] + "_min" + ".png")
+    #plt.title("Effec of money growth on Size of Adj.")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polmon_reset_" + "_max_" + exp_names[0] + ".png")
     plt.show()
     plt.close()
 
@@ -1050,21 +1056,21 @@ if RUN_ANALYSIS:
     if not OBS_IDSHOCK:
         obs_reaction_lowmu = [
             np.array(
-                [1.2, markup[i]] + [1.165, math.e ** env.params["log_g_bar"]],
+                [1.2, markup[i], 1.3] + [1.16, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_medmu = [
             np.array(
-                [1.3, markup[i]] + [1.165, math.e ** env.params["log_g_bar"]],
+                [1.3, markup[i], 1.3] + [1.16, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_highmu = [
             np.array(
-                [1.5, markup[i]] + [1.165, math.e ** env.params["log_g_bar"]],
+                [1.5, markup[i], 1.3] + [1.16, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
@@ -1072,36 +1078,36 @@ if RUN_ANALYSIS:
     else:
         obs_reaction_lowmu = [
             np.array(
-                [1.2, markup[i], 1, 1] + [1.165, math.e ** env.params["log_g_bar"]],
+                [1.2, markup[i], 1.3 , 1, 1, 1] + [1.16, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_medmu = [
             np.array(
-                [1.3, markup[i], 1, 1] + [1.165, math.e ** env.params["log_g_bar"]],
+                [1.3, markup[i], 1.3, 1, 1, 1] + [1.16, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_highmu = [
             np.array(
-                [1.5, markup[i], 1, 1] + [1.165, math.e ** env.params["log_g_bar"]],
+                [1.5, markup[i], 1.3, 1, 1, 1] + [1.16, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
 
     actions_reaction_lowmu = [
-        trained_trainer.compute_action(obs_reaction_lowmu[i], policy_id="firm_even")
+        trained_trainer.compute_action(obs_reaction_lowmu[i], policy_id="firm_0")
         for i in range(20)
     ]
     actions_reaction_medmu = [
-        trained_trainer.compute_action(obs_reaction_medmu[i], policy_id="firm_even")
+        trained_trainer.compute_action(obs_reaction_medmu[i], policy_id="firm_0")
         for i in range(20)
     ]
     actions_reaction_highmu = [
-        trained_trainer.compute_action(obs_reaction_highmu[i], policy_id="firm_even")
+        trained_trainer.compute_action(obs_reaction_highmu[i], policy_id="firm_0")
         for i in range(20)
     ]
     move_prob_lowmu = [(actions_reaction_lowmu[i][0] + 1) / 2 for i in range(20)]
@@ -1123,8 +1129,7 @@ if RUN_ANALYSIS:
     plt.xlabel("Markup of Competition")
     plt.ylabel("Prob. of Adjustment")
     # plt.title("Reaction Function - Probability of Adjustment")
-    # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "polreact_prob_" + exp_names[0] + "_min" + ".png")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polreact_prob_" +"_max_"+ exp_names[0] + ".png")
     plt.show()
     plt.close()
 
@@ -1138,8 +1143,7 @@ if RUN_ANALYSIS:
     plt.xlabel("Markup of Competition")
     plt.ylabel("Reset Markup")
     # plt.title("Reaction Function - Reset Markup")
-    # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "polreact_reset_" + exp_names[0] + "_min" + ".png")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polreact_reset_" + "_max_" + exp_names[0] + ".png")
     plt.show()
     plt.close()
 
@@ -1197,14 +1201,14 @@ if RUN_ANALYSIS:
 
         obs_reaction_zshock = [
             np.array(
-                [1.4, markup_z[i], 1, z[i]] + [1.165, math.e ** env.params["log_g_bar"]],
+                [1.4, markup_z[i], 1, z[i]] + [1.16, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_stratdev = [
             np.array(
-                [1.4, markup_z[i], 1, 1] + [1.165, math.e ** env.params["log_g_bar"]],
+                [1.4, markup_z[i], 1, 1] + [1.16, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
@@ -1212,13 +1216,13 @@ if RUN_ANALYSIS:
 
         actions_reaction_zshock = [
             trained_trainer.compute_action(
-                obs_reaction_zshock[i], policy_id="firm_even"
+                obs_reaction_zshock[i], policy_id="firm_0"
             )
             for i in range(20)
         ]
         actions_reaction_stratdev = [
             trained_trainer.compute_action(
-                obs_reaction_stratdev[i], policy_id="firm_even"
+                obs_reaction_stratdev[i], policy_id="firm_0"
             )
             for i in range(20)
         ]
@@ -1235,33 +1239,23 @@ if RUN_ANALYSIS:
         x = markup_z
         plt.plot(x, move_prob_zshock)
         plt.plot(x, move_prob_stratdev)
-        plt.axvline(x=1.2, linestyle='--')
-        plt.axvline(x=1.3,linestyle='--')
-        plt.axvline(x=1.5, linestyle='--')
         plt.legend(["Z shock to com.", "Strat. deviation of com."])
         plt.xlabel("Markup of Competition")
         plt.ylabel("Prob. of Adjustment")
-        # plt.title(
-        #     "Reaction to cost shock vs strat. deviation - Probability of Adjustment"
-        # )
-        # plt.title("MIN")
-
-        plt.savefig(OUTPUT_PATH_FIGURES + "poldev_prob_" + exp_names[0] + "_min" + ".png")
+        plt.title(
+            "Reaction to cost shock vs strat. deviation - Probability of Adjustment"
+        )
+        plt.savefig(OUTPUT_PATH_FIGURES + "poldev_prob_" + +"_max_"+ exp_names[0] + ".png")
         plt.show()
         plt.close()
 
         plt.plot(x, reset_zshock)
         plt.plot(x, reset_stratdev)
-        plt.axvline(x=1.2, linestyle='--')
-        plt.axvline(x=1.3, linestyle='--')
-        plt.axvline(x=1.5, linestyle='--')
         plt.legend(["Z shock to com.", "Strat. deviation of com."])
         plt.xlabel("Markup of Competition")
         plt.ylabel("Reset Markup")
-        # plt.title("Reaction to cost shock vs strat. deviation - Reset Markup")
-        # plt.title("MIN")
-        
-        plt.savefig(OUTPUT_PATH_FIGURES + "poldev_reset_" + exp_names[0] + "_min" + ".png")
+        plt.title("Reaction to cost shock vs strat. deviation - Reset Markup")
+        plt.savefig(OUTPUT_PATH_FIGURES + "poldev_reset_" + exp_names[0] + ".png")
         plt.show()
         plt.close()
 
@@ -1296,10 +1290,10 @@ if RUN_ANALYSIS:
     register_env(env_label, MonPolicy)
     # We instantiate the environment to extract information.
     """ CHANGE HERE """
-    EN_HORIZON = 50
+    ENV_HORIZON = 50
     env_config_simul = env_config_eval.copy()
     env_config_simul["random_eval"] = False
-    #env_config_simul["n_inds"]=5000
+    env_config_simul["n_inds"]=3300
     env_config_simul["horizon"] = SIMUL_EPISODES*ENV_HORIZON
     env_config_noagg = env_config_simul.copy()
     env_config_noagg["no_agg"] = True
@@ -1324,7 +1318,7 @@ if RUN_ANALYSIS:
     size_adj_list = []
     size_adj_lowmu_list = []
     size_adj_highmu_list = []
-    z_list = []
+
     log_c_list = []
     epsilon_g_list = []
 
@@ -1337,7 +1331,6 @@ if RUN_ANALYSIS:
     size_adj_list_noagg = []
     size_adj_lowmu_list_noagg = []
     size_adj_highmu_list_noagg = []
-    z_list_noagg = []
     log_c_list_noagg = []
 
     log_c_filt_list = []
@@ -1355,7 +1348,6 @@ if RUN_ANALYSIS:
     for t in range(SIMUL_EPISODES * ENV_HORIZON):
         if t % 50 == 0:
             print(t)
-        # if t % env.horizon == 0:
         #     seed = random.randrange(100000)
         #     env.seed_eval = seed
         #     env_noagg.seed_eval = seed
@@ -1363,15 +1355,11 @@ if RUN_ANALYSIS:
         #     obs = env.reset()
         #     obs_noagg = env_noagg.reset()
         action = {
-            i: trained_trainer.compute_action(obs[i], policy_id="firm_even")
-            if i % 2 == 0
-            else trained_trainer.compute_action(obs[i], policy_id="firm_odd")
+            i: trained_trainer.compute_action(obs[i], policy_id=f"firm_{i%3}")
             for i in range(env.n_agents)
         }
         action_noagg = {
-            i: trained_trainer.compute_action(obs_noagg[i], policy_id="firm_even")
-            if i % 2 == 0
-            else trained_trainer.compute_action(obs_noagg[i], policy_id="firm_odd")
+            i: trained_trainer.compute_action(obs_noagg[i], policy_id=f"firm_{i%3}")
             for i in range(env.n_agents)
         }
 
@@ -1389,7 +1377,6 @@ if RUN_ANALYSIS:
         size_adj_highmu_list.append(info[0]["size_adj_highmu"])
         log_c_list.append(info[0]["log_c"])
         epsilon_g_list.append(env.epsilon_g)
-        z_list.append(env.epsilon_z[0])
         profits_list_noagg.append(info_noagg[0]["mean_profits"])
         mu_ij_list_noagg.append(info_noagg[0]["mean_mu_ij"])
         mu_list_noagg.append(info_noagg[0]["mu"])
@@ -1413,7 +1400,6 @@ if RUN_ANALYSIS:
         size_adj_highmu_filt_list.append(
             size_adj_highmu_list[-1] - size_adj_highmu_list_noagg[-1]
         )
-        z_list_noagg.append(env_noagg.epsilon_z[0])
 
     """ PLOT IRS and PROCESS RESULTS"""
 
@@ -1464,18 +1450,12 @@ if RUN_ANALYSIS:
     #     for i in range(SIMUL_EPISODES)
     # ]
     delta_log_c = [j - i for i, j in zip(log_c_filt_list[:-1], log_c_filt_list[1:])]
-
-
     # print("log_c_filt:", log_c_filt_list, "\n",
     #     #"delta_log_c:", delta_log_c,
     #     "\n"
     print(
         "corr betweeen cons:",
         np.corrcoef(log_c_list, log_c_list_noagg),
-    )
-    print(
-        "corr betweeen z:",
-        np.corrcoef(z_list, z_list_noagg),
     )
     plt.plot(log_c_filt_list)
     plt.title("A. Log C filtered")
@@ -1487,6 +1467,7 @@ if RUN_ANALYSIS:
     IRs_freqhigh = [0 for t in range(13)]
     IRs_sizelow = [0 for t in range(13)]
     IRs_sizehigh = [0 for t in range(13)]
+
     for t in range(0, 13):
         epsilon_g_reg = epsilon_g_list[: -(t + 1)] 
         delta_log_c_reg = delta_log_c[t:] 
@@ -1494,7 +1475,6 @@ if RUN_ANALYSIS:
         freq_adj_highmu_reg = freq_adj_highmu_list[t+1:]
         size_adj_lowmu_reg = size_adj_lowmu_list[t+1:] 
         size_adj_highmu_reg = size_adj_highmu_list[t+1:] 
-
         epsilon_g_reg_filt = [i for i in epsilon_g_reg if i > 0]
         delta_log_c_reg_filt = [
             delta_log_c_reg[i]
@@ -1604,10 +1584,8 @@ if RUN_ANALYSIS:
     # learning_plot = learning_plot.get_figure()
     plt.ylabel("Delta log C_t * 100")
     plt.xlabel("Month t")
-    plt.ylim([-2.5,15])
-    # plt.title("A. IRF - Consumption")
-    # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_" + exp_names[0] + "_min" + ".png")
+    plt.title("A. IRF - Consumption")
+    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_" + "_max_" + exp_names[0] + ".png")
     plt.show()
     plt.close()
 
@@ -1616,10 +1594,9 @@ if RUN_ANALYSIS:
     # learning_plot = learning_plot.get_figure()
     plt.ylabel("Delta log C_t * 100")
     plt.xlabel("Month t")
-    
-    # plt.title("B. Cumulative IRF - Consumption")
-    # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "cum_IRs_" + exp_names[0] + "_min" + ".png")
+    plt.title("B. Cumulative IRF - Consumption")
+
+    plt.savefig(OUTPUT_PATH_FIGURES + "cum_IRs_" +"_max_"+ exp_names[0] + ".png")
     plt.show()
     plt.close()
 
@@ -1629,9 +1606,8 @@ if RUN_ANALYSIS:
     # learning_plot = learning_plot.get_figure()
     plt.ylabel("IRF - Levels * 100")
     plt.xlabel("Month t")
-    # plt.title("IRF - Frquency of Adjustment for High vs Low Markup Firms")
-    # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_freq_" + exp_names[0] + "_min" + ".png")
+    plt.title("IRF - Frquency of Adjustment for High vs Low Markup Firms")
+    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_freq_" +"_max_"+ exp_names[0] + ".png")
     plt.show()
     plt.close()
 
@@ -1642,206 +1618,7 @@ if RUN_ANALYSIS:
     plt.ylabel("IRF - Levels * 100")
     plt.xlabel("Month t")
 
-    # plt.title("IRF - Size of Adjustment for High vs Low Markup Firms")
-    # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_size_" + exp_names[0] + "_min" + ".png")
-    plt.show()
-    plt.close()
-
-if RUN_MANUAL_IRS:
-    env_config_analysis = env_config.copy()
-    env_config_analysis["analysis_mode"] = True
-    env_config_deviation = env_config_eval.copy()
-    env_config_deviation["deviation_mode"] = True
-    env_config_analysis_noagg = env_config_analysis.copy()
-    env_config_analysis_noagg["no_agg"] = True
-    ANALYSIS_PERIODS = 13
-
-    shutdown()
-    init(
-        num_cpus = 48,
-        log_to_driver=False,
-    )
-    # register environment
-    env_label = "mon_policy_infin"
-    register_env(env_label, MonPolicy)
-
-    trained_trainer = PPOTrainer(env=env_label, config=config_algo)
-    trained_trainer.restore(INPUT_PATH_CHECKPOINT)
-
-    """ Simulate an episode (SIMUL_PERIODS timesteps) """
-    profits_list = []
-    mu_ij_list = []
-    freq_p_adj_list = []
-    size_adj_list = []
-    freq_adj_lowmu_list = []
-    freq_adj_highmu_list = []
-    size_adj_list = []
-    size_adj_lowmu_list = []
-    size_adj_highmu_list = []
-
-    log_c_list = []
-    epsilon_g_list = []
-
-    profits_list_noagg = []
-    mu_ij_list_noagg = []
-    freq_p_adj_list_noagg = []
-    freq_adj_lowmu_list_noagg = []
-    freq_adj_highmu_list_noagg = []
-    size_adj_list_noagg = []
-    size_adj_lowmu_list_noagg = []
-    size_adj_highmu_list_noagg = []
-    log_c_list_noagg = []
-
-    move_0_devs =[]
-    move_1_devs =[]
-    reset_0_devs =[]
-    reset_1_devs =[]
-    log_c_filt_list = []
-    freq_adj_lowmu_filt_list = []
-    freq_adj_highmu_filt_list = []
-    size_adj_lowmu_filt_list = []
-    size_adj_highmu_filt_list = []
-    env_analysis = MonPolicy(env_config_analysis)
-    env_analysis_noagg = MonPolicy(env_config_analysis_noagg)
-    env_devs = MonPolicy(env_config_deviation)
-
-    for t in range(ANALYSIS_PERIODS):
-        if t % env_analysis.horizon == 0:
-            # seed = random.randrange(100000)
-            # env.seed_eval = seed
-            # env_noagg.seed_eval = seed
-            print("time:", t)
-            obs = env_analysis.reset()
-            obs_noagg = env_analysis_noagg.reset()
-            obs_devs = env_devs.reset()
-            epsilon_g_list.append(env_analysis.epsilon_g)
-        action = {
-            i: trained_trainer.compute_action(obs[i], policy_id="firm_even")
-            if i % 2 == 0
-            else trained_trainer.compute_action(obs[i], policy_id="firm_odd")
-            for i in range(env_analysis.n_agents)
-        }
-        action_noagg = {
-            i: trained_trainer.compute_action(obs_noagg[i], policy_id="firm_even")
-            if i % 2 == 0
-            else trained_trainer.compute_action(obs_noagg[i], policy_id="firm_odd")
-            for i in range(env_analysis.n_agents)
-        }
-        action_devs = {
-            i: trained_trainer.compute_action(obs_devs[i], policy_id="firm_even")
-            if i % 2 == 0
-            else trained_trainer.compute_action(obs_devs[i], policy_id="firm_odd")
-            for i in range(env_analysis.n_agents)
-        }
-
-        obs, rew, done, info = env_analysis.step(action)
-        obs_devs, rew_devs, done_devs, info_devs = env_devs.step(action_devs)
-        obs_noagg, rew_noagg, done_noagg, info_noagg = env_analysis_noagg.step(
-            action_noagg
-        )
-
-
-        profits_list.append(info[0]["mean_profits"])
-        mu_ij_list.append(info[0]["mean_mu_ij"])
-        freq_p_adj_list.append(info[0]["move_freq"])
-        freq_adj_lowmu_list.append(info[0]["move_freq_lowmu"])
-        freq_adj_highmu_list.append(info[0]["move_freq_highmu"])
-        size_adj_list.append(info[0]["mean_p_change"])
-        size_adj_lowmu_list.append(info[0]["size_adj_lowmu"])
-        size_adj_highmu_list.append(info[0]["size_adj_highmu"])
-        log_c_list.append(info[0]["log_c"])
-        epsilon_g_list.append(env_analysis.epsilon_g)
-        profits_list_noagg.append(info_noagg[0]["mean_profits"])
-        mu_ij_list_noagg.append(info_noagg[0]["mean_mu_ij"])
-        freq_p_adj_list_noagg.append(info_noagg[0]["move_freq"])
-        freq_adj_lowmu_list_noagg.append(info_noagg[0]["move_freq_lowmu"])
-        freq_adj_highmu_list_noagg.append(info_noagg[0]["move_freq_highmu"])
-        size_adj_list_noagg.append(info_noagg[0]["mean_p_change"])
-        size_adj_lowmu_list_noagg.append(info_noagg[0]["size_adj_lowmu"])
-        size_adj_highmu_list_noagg.append(info_noagg[0]["size_adj_highmu"])
-        log_c_list_noagg.append(info_noagg[0]["log_c"])
-        log_c_filt_list.append(log_c_list[-1] - log_c_list_noagg[-1])
-        freq_adj_lowmu_filt_list.append(
-            freq_adj_lowmu_list[-1] - freq_adj_lowmu_list_noagg[-1]
-        )
-        freq_adj_highmu_filt_list.append(
-            freq_adj_highmu_list[-1] - freq_adj_highmu_list_noagg[-1]
-        )
-        size_adj_lowmu_filt_list.append(
-            size_adj_lowmu_list[-1] - size_adj_lowmu_list_noagg[-1]
-        )
-        size_adj_highmu_filt_list.append(
-            size_adj_highmu_list[-1] - size_adj_highmu_list_noagg[-1]
-        )
-        move_0_devs.append((action_devs[0][0] + 1) / 2)
-        move_1_devs.append((action_devs[1][0] + 1) / 2)
-        reset_0_devs.append(env_devs.mu_ij_reset[0])
-        reset_1_devs.append(env_devs.mu_ij_reset[1])
-
-
-
-    x = [i for i in range(ANALYSIS_PERIODS)]
-    plt.plot(x, epsilon_g_list[:-1])
-    # learning_plot = learning_plot.get_figure()
-    # plt.ylabel("log C_t")
-    # plt.xlabel("Month t")
-    # plt.title("A. IRF - Consumption")
-    #plt.savefig(OUTPUT_PATH_FIGURES + "IRs_analysis_" + exp_names[0] + "finite_first" + ".png")
-    plt.show()
-    plt.close()
-
-    x = [i for i in range(ANALYSIS_PERIODS)]
-    plt.plot(x, log_c_filt_list)
-    # learning_plot = learning_plot.get_figure()
-    plt.ylabel("log C_t")
-    plt.xlabel("Month t")
-    plt.title("A. IRF - Consumption")
-    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_analysis_" + exp_names[0] + "finite_first" + ".png")
-    plt.show()
-    plt.close()
-
-
-    plt.plot(x,  freq_adj_lowmu_filt_list)
-    plt.plot(x,  freq_adj_highmu_filt_list)
-    plt.legend(["Low Markup Firms", "High Markup Firms"])
-    # learning_plot = learning_plot.get_figure()
-    plt.ylabel("IRF - Levels (percentage points)")
-    plt.xlabel("Month t")
-    plt.title("IRF - Frquency of Price Adjust for High vs Low Markup")
-    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_freq_analysis" + exp_names[0] + "finite_first" + ".png")
-    plt.show()
-    plt.close()
-
-    plt.plot(x,  size_adj_lowmu_filt_list)
-    plt.plot(x,  size_adj_highmu_filt_list)
-    plt.legend(["Low Markup Firms", "High Markup Firms"])
-    # learning_plot = learning_plot.get_figure()
-    plt.ylabel("IRF - Levels (*10000)")
-    plt.xlabel("Month t")
-    plt.title("IRF - Size of Adjustment for High vs Low Markup")
-    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_size_analysis" + exp_names[0] + "finite_first" + ".png")
-    plt.show()
-    plt.close()
-
-    plt.plot(x,  move_0_devs)
-    plt.plot(x,  move_1_devs)
-    plt.legend(["Respondind Firm", "Deviationg Firms"])
-    # learning_plot = learning_plot.get_figure()
-    plt.ylabel("IRF - Levels (*10000)")
-    plt.xlabel("Month t")
-    plt.title("IRF - Prob of adjusting")
-    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_size_analysis" + exp_names[0] + "finite_first" + ".png")
-    plt.show()
-    plt.close()
-
-    plt.plot(x,  reset_0_devs)
-    plt.plot(x,  reset_1_devs)
-    plt.legend(["Respondind Firm", "Deviationg Firms"])
-    # learning_plot = learning_plot.get_figure()
-    plt.ylabel("IRF - Levels (*10000)")
-    plt.xlabel("Month t")
-    plt.title("IRF - Size of Adjustment for High vs Low Markup")
-    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_size_analysis" + exp_names[0] + "finite_first" + ".png")
+    plt.title("IRF - Size of Adjustment for High vs Low Markup Firms")
+    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_size_"+ "_max_" + exp_names[0] + ".png")
     plt.show()
     plt.close()
