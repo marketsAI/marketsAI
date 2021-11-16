@@ -37,8 +37,8 @@ import random
 """ STEP 0: Experiment configs """
 
 
-DATE = "Nov1_"
-ENV_LABEL = "mon_fin"
+DATE = "Nov15_"
+ENV_LABEL = "mon_fin_flat"
 OBS_IDSHOCK = False
 INFL_REGIME = "low"
 NATIVE = True
@@ -46,7 +46,9 @@ TEST = True
 RUN_TRAINING = True
 RUN_ANALYSIS = True
 # in case there is no training
-INFO_ANALYSIS = "/Users/matiascovarrubias/Dropbox/RL_macro/Tests/expINFO_native_mon_fin_exp_0_Nov1_PPO_test.json"
+INFO_ANALYSIS = (
+    "/scratch/mc5851/Experiments/expINFO_server_mon_fin_v2_exp_0_Oct31_PPO_run.json"
+)
 SAVE_EXP_INFO = True
 SAVE_PROGRESS = True
 PLOT_PROGRESS = True
@@ -87,7 +89,7 @@ else:
 n_firms_LIST = [2]  # list with number of agents for each run
 n_inds_LIST = [200]
 ITERS_TEST = 2  # number of iteration for test
-ITERS_RUN = 2000  # number of iteration for fullrun
+ITERS_RUN = 5000  # number of iteration for fullrun
 
 
 # Other economic Hiperparameteres.
@@ -99,11 +101,11 @@ BETA = 0.95 ** (1 / 12)  # discount parameter
 PLOT_HIST = True
 EVAL_RESULTS = True
 NO_FLEX_HORIZON = 48
-CHKPT_SELECT_REF = True
-RESULTS_REF = np.array([1.32, 1.24, 0.12, 0.08, 0.009])
+CHKPT_SELECT_REF = False
+RESULTS_REF = np.array([1.3, 0.12, 0.1, 0.005])
 CHKPT_SELECT_MANUAL = False
 CHKPT_id = 0
-CHKPT_SELECT_MIN = False
+CHKPT_SELECT_MIN = True
 CHKPT_SELECT_MAX = False
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
@@ -816,6 +818,7 @@ if RUN_ANALYSIS:
         ]
         for i in range(NUM_TRIALS)
     ]
+    print(NUM_TRIALS)
     if CHKPT_SELECT_REF:
 
         distance_agg = np.array(
@@ -847,6 +850,7 @@ if RUN_ANALYSIS:
         selected_id = distance_agg.argmin()
 
     if CHKPT_SELECT_MIN:
+        # selected_id = results["Markups"].argmin()
         selected_id = results["Markups"].argmin()
 
     if CHKPT_SELECT_MAX:
@@ -892,41 +896,26 @@ if RUN_ANALYSIS:
     markup = [1 + (i / 19) for i in range(20)]
     if not OBS_IDSHOCK:
         obs_reaction_lowmu = [
-            {
-                "obs_ind": np.array([markup[i], 1.1], dtype=np.float32),
-                "obs_agg": np.array(
-                    [1.2, math.e ** env.params["log_g_bar"]],
-                    dtype=np.float32,
-                ),
-                "time": 24,
-                "flex_index": 0,
-            }
+            np.array(
+                [markup[i], 1.2, 1.2, math.e ** env.params["log_g_bar"], 24],
+                dtype=np.float32,
+            )
             for i in range(20)
         ]
 
         obs_reaction_medmu = [
-            {
-                "obs_ind": np.array([markup[i], 1.3], dtype=np.float32),
-                "obs_agg": np.array(
-                    [1.2, math.e ** env.params["log_g_bar"]],
-                    dtype=np.float32,
-                ),
-                "time": 24,
-                "flex_index": 0,
-            }
+            np.array(
+                [markup[i], 1.3, 1.2, math.e ** env.params["log_g_bar"], 24],
+                dtype=np.float32,
+            )
             for i in range(20)
         ]
 
         obs_reaction_highmu = [
-            {
-                "obs_ind": np.array([markup[i], 1.5], dtype=np.float32),
-                "obs_agg": np.array(
-                    [1.2, math.e ** env.params["log_g_bar"]],
-                    dtype=np.float32,
-                ),
-                "time": 24,
-                "flex_index": 0,
-            }
+            np.array(
+                [markup[i], 1.5, 1.2, math.e ** env.params["log_g_bar"], 24],
+                dtype=np.float32,
+            )
             for i in range(20)
         ]
 
@@ -1043,41 +1032,26 @@ if RUN_ANALYSIS:
     # print(mon_policy)
     if not OBS_IDSHOCK:
         obs_monpol_lowmu = [
-            {
-                "obs_ind": np.array([1.1, 1.3], dtype=np.float32),
-                "obs_agg": np.array(
-                    [1.23, mon_policy[i]],
-                    dtype=np.float32,
-                ),
-                "time": 24,
-                "flex_index": 0,
-            }
+            np.array(
+                [1.2, 1.3, 1.23, mon_policy[i], 24],
+                dtype=np.float32,
+            )
             for i in range(20)
         ]
 
         obs_monpol_medmu = [
-            {
-                "obs_ind": np.array([1.3, 1.3], dtype=np.float32),
-                "obs_agg": np.array(
-                    [1.23, mon_policy[i]],
-                    dtype=np.float32,
-                ),
-                "time": 24,
-                "flex_index": 0,
-            }
+            np.array(
+                [1.3, 1.3, 1.23, mon_policy[i], 24],
+                dtype=np.float32,
+            )
             for i in range(20)
         ]
 
         obs_monpol_highmu = [
-            {
-                "obs_ind": np.array([1.5, 1.3], dtype=np.float32),
-                "obs_agg": np.array(
-                    [1.23, mon_policy[i]],
-                    dtype=np.float32,
-                ),
-                "time": 24,
-                "flex_index": 0,
-            }
+            np.array(
+                [1.5, 1.3, 1.23, mon_policy[i], 24],
+                dtype=np.float32,
+            )
             for i in range(20)
         ]
     else:
@@ -1181,41 +1155,25 @@ if RUN_ANALYSIS:
     markup = [1 + (i / 19) for i in range(20)]
     if not OBS_IDSHOCK:
         obs_reaction_lowmu = [
-            {
-                "obs_ind": np.array([1.1, markup[i]], dtype=np.float32),
-                "obs_agg": np.array(
-                    [1.2, math.e ** env.params["log_g_bar"]],
-                    dtype=np.float32,
-                ),
-                "time": 24,
-                "flex_index": 0,
-            }
+            np.array(
+                [1.2, markup[i], 1.2, math.e ** env.params["log_g_bar"], 24],
+                dtype=np.float32,
+            )
             for i in range(20)
         ]
-
         obs_reaction_medmu = [
-            {
-                "obs_ind": np.array([1.3, markup[i]], dtype=np.float32),
-                "obs_agg": np.array(
-                    [1.2, math.e ** env.params["log_g_bar"]],
-                    dtype=np.float32,
-                ),
-                "time": 24,
-                "flex_index": 0,
-            }
+            np.array(
+                [1.3, markup[i], 1.2, math.e ** env.params["log_g_bar"], 24],
+                dtype=np.float32,
+            )
             for i in range(20)
         ]
 
         obs_reaction_highmu = [
-            {
-                "obs_ind": np.array([1.5, markup[i]], dtype=np.float32),
-                "obs_agg": np.array(
-                    [1.2, math.e ** env.params["log_g_bar"]],
-                    dtype=np.float32,
-                ),
-                "time": 24,
-                "flex_index": 0,
-            }
+            np.array(
+                [1.5, markup[i], 1.2, math.e ** env.params["log_g_bar"], 24],
+                dtype=np.float32,
+            )
             for i in range(20)
         ]
 
@@ -1454,8 +1412,6 @@ if RUN_ANALYSIS:
     env_config_simul = env_config_eval.copy()
     env_config_simul["random_eval"] = False
     env_config_noagg = env_config_simul.copy()
-    env_config_noagg["no_agg"] = True
-    env_config_noagg = env_config_eval.copy()
     env_config_noagg["no_agg"] = True
     env = MonPolicyFinite(env_config_simul)
     env_noagg = MonPolicyFinite(env_config_noagg)
