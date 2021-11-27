@@ -33,13 +33,13 @@ import random
 """ STEP 0: Experiment configs """
 
 # global configss
-DATE = "Nov15_"
+DATE = "Nov6_"
 ENV_LABEL = "mon_infin"
 OBS_IDSHOCK = False
 INFL_REGIME = "low"
 NATIVE = False
 TEST = False
-RUN_TRAINING = True
+RUN_TRAINING = False
 RUN_ANALYSIS = True
 RUN_MANUAL_IRS = True
 # in case there is no training
@@ -89,7 +89,7 @@ ITERS_RUN = 5000  # number of iteration for fullrun
 
 # Other economic Hiperparameteres.
 ENV_HORIZON = 12 * 5
-EVAL_HORIZON = 12 * 400
+EVAL_HORIZON = 12 * 5
 BETA = 0.95 ** (1 / 12)  # discount parameter
 
 # Post analysis options
@@ -100,15 +100,15 @@ CHKPT_SELECT_REF = False
 RESULTS_REF = np.array([1.32, 0.12, 0.08, 0.009])
 CHKPT_SELECT_MANUAL = False
 CHKPT_id = 0
-CHKPT_SELECT_MIN = True
-CHKPT_SELECT_MAX = False
+CHKPT_SELECT_MIN = False
+CHKPT_SELECT_MAX = True
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 34
-NUM_CPUS_WORKERS = 34
+NUM_CPUS = 47
+NUM_CPUS_WORKERS = 5
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 102
-NUM_PAR_TRIALS = 34
+NUM_TRIALS = 47
+NUM_PAR_TRIALS = 47
 NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
@@ -133,9 +133,9 @@ if TEST:
     EVAL_EPISODES = 1
     SIMUL_EPISODES = 1
 else:
-    EVAL_INTERVAL = 5000
-    EVAL_EPISODES = 1
-    SIMUL_EPISODES = 1
+    EVAL_INTERVAL = 500
+    EVAL_EPISODES = 50
+    SIMUL_EPISODES = 20
 STOP = {"timesteps_total": MAX_STEPS}
 
 # Initialize ray
@@ -657,7 +657,7 @@ if RUN_TRAINING:
             plt.xlabel("Episodes (10 years)")
             # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
             learning_plot.savefig(
-                OUTPUT_PATH_FIGURES + "progress_rewards" + exp_names[ind] + "_min" + ".png"
+                OUTPUT_PATH_FIGURES + "progress_rewards" + exp_names[ind] + "_max" + ".png"
             )
             # plt.show()
             plt.close()
@@ -673,7 +673,7 @@ if RUN_TRAINING:
             plt.xlabel("Episodes (10 years)")
             # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
             learning_plot.savefig(
-                OUTPUT_PATH_FIGURES + "progress_mu_ij" + exp_names[ind] + "_min" + ".png"
+                OUTPUT_PATH_FIGURES + "progress_mu_ij" + exp_names[ind] + "_max" + ".png"
             )
             # plt.show()
             plt.close()
@@ -689,7 +689,7 @@ if RUN_TRAINING:
             plt.xlabel("Episodes (10 years)")
             # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
             learning_plot.savefig(
-                OUTPUT_PATH_FIGURES + "progress_freq_p_adj" + exp_names[ind] + "_min" + ".png"
+                OUTPUT_PATH_FIGURES + "progress_freq_p_adj" + exp_names[ind] + "_max" + ".png"
             )
             # plt.show()
             plt.close()
@@ -705,7 +705,7 @@ if RUN_TRAINING:
             plt.xlabel("Episodes (10 years)")
             # plt.legend(labels=[f"trial {i}" for i in range(NUM_TRIALS)])
             learning_plot.savefig(
-                OUTPUT_PATH_FIGURES + "progress_size_adj" + exp_names[ind] + "_min" + ".png"
+                OUTPUT_PATH_FIGURES + "progress_size_adj" + exp_names[ind] + "_max" + ".png"
             )
             # plt.show()
             plt.close()
@@ -835,21 +835,21 @@ if RUN_ANALYSIS:
     if not OBS_IDSHOCK:
         obs_reaction_lowmu = [
             np.array(
-                [markup[i], 1.2] + [1.165, math.e ** env.params["log_g_bar"]],
+                [markup[i], 1.2] + [1.35, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_medmu = [
             np.array(
-                [markup[i], 1.3] + [1.165, math.e ** env.params["log_g_bar"]],
+                [markup[i], 1.3] + [1.35, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_highmu = [
             np.array(
-                [markup[i], 1.5] + [1.165, math.e ** env.params["log_g_bar"]],
+                [markup[i], 1.5] + [1.35, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
@@ -857,21 +857,21 @@ if RUN_ANALYSIS:
     else:
         obs_reaction_lowmu = [
             np.array(
-                [markup[i], 1.2, 1, 1] + [1.165, math.e ** env.params["log_g_bar"]],
+                [markup[i], 1.2, 1, 1] + [1.35, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_medmu = [
             np.array(
-                [markup[i], 1.3, 1, 1] + [1.165, math.e ** env.params["log_g_bar"]],
+                [markup[i], 1.3, 1, 1] + [1.35, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_highmu = [
             np.array(
-                [markup[i], 1.5, 1, 1] + [1.165, math.e ** env.params["log_g_bar"]],
+                [markup[i], 1.5, 1, 1] + [1.35, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
@@ -911,7 +911,7 @@ if RUN_ANALYSIS:
     # plt.title("Probability of Adjustment")
     # plt.title("MIN")
 
-    plt.savefig(OUTPUT_PATH_FIGURES + "polown_prob_" + "_" + exp_names[0] + "_min" + ".png")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polown_prob_" + "_" + exp_names[0] + "_max" + ".png")
     plt.show()
     plt.close()
 
@@ -928,7 +928,7 @@ if RUN_ANALYSIS:
     plt.ylabel("Own Markup")
     # plt.title("Reset Markup")
     # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "polown_reset_" + "_" + exp_names[0] + "_min" + ".png")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polown_reset_" + "_" + exp_names[0] + "_max" + ".png")
     plt.show()
     plt.close()
 
@@ -958,28 +958,28 @@ if RUN_ANALYSIS:
     # print(mon_policy)
     if not OBS_IDSHOCK:
         obs_monpol_lowmu = [
-            np.array([1.2, 1.3] + [1.165, mon_policy[i]], dtype=np.float32)
+            np.array([1.2, 1.3] + [1.35, mon_policy[i]], dtype=np.float32)
             for i in range(20)
         ]
         obs_monpol_medmu = [
-            np.array([1.3, 1.3] + [1.165, mon_policy[i]], dtype=np.float32)
+            np.array([1.3, 1.3] + [1.35, mon_policy[i]], dtype=np.float32)
             for i in range(20)
         ]
         obs_monpol_highmu = [
-            np.array([1.5, 1.3] + [1.165, mon_policy[i]], dtype=np.float32)
+            np.array([1.5, 1.3] + [1.35, mon_policy[i]], dtype=np.float32)
             for i in range(20)
         ]
     else:
         obs_monpol_lowmu = [
-            np.array([1.2, 1.3, 1, 1] + [1.165, mon_policy[i]], dtype=np.float32)
+            np.array([1.2, 1.3, 1, 1] + [1.35, mon_policy[i]], dtype=np.float32)
             for i in range(20)
         ]
         obs_monpol_medmu = [
-            np.array([1.3, 1.3, 1, 1] + [1.165, mon_policy[i]], dtype=np.float32)
+            np.array([1.3, 1.3, 1, 1] + [1.35, mon_policy[i]], dtype=np.float32)
             for i in range(20)
         ]
         obs_monpol_highmu = [
-            np.array([1.5, 1.3, 1, 1] + [1.165, mon_policy[i]], dtype=np.float32)
+            np.array([1.5, 1.3, 1, 1] + [1.35, mon_policy[i]], dtype=np.float32)
             for i in range(20)
         ]
 
@@ -1013,7 +1013,7 @@ if RUN_ANALYSIS:
     plt.ylabel("Prob. of Adjustment")
     # plt.title("Effect of money growth on Prob. of Adj.")
     # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "polmon_prob_" + exp_names[0] + "_min" + ".png")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polmon_prob_" + exp_names[0] + "_max" + ".png")
     plt.show()
     plt.close()
 
@@ -1027,7 +1027,7 @@ if RUN_ANALYSIS:
 
     # plt.title("Effec of money growth on Size of Adj.")
     # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "polmon_reset_" + exp_names[0] + "_min" + ".png")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polmon_reset_" + exp_names[0] + "_max" + ".png")
     plt.show()
     plt.close()
 
@@ -1050,21 +1050,21 @@ if RUN_ANALYSIS:
     if not OBS_IDSHOCK:
         obs_reaction_lowmu = [
             np.array(
-                [1.2, markup[i]] + [1.165, math.e ** env.params["log_g_bar"]],
+                [1.2, markup[i]] + [1.35, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_medmu = [
             np.array(
-                [1.3, markup[i]] + [1.165, math.e ** env.params["log_g_bar"]],
+                [1.3, markup[i]] + [1.35, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_highmu = [
             np.array(
-                [1.5, markup[i]] + [1.165, math.e ** env.params["log_g_bar"]],
+                [1.5, markup[i]] + [1.35, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
@@ -1072,21 +1072,21 @@ if RUN_ANALYSIS:
     else:
         obs_reaction_lowmu = [
             np.array(
-                [1.2, markup[i], 1, 1] + [1.165, math.e ** env.params["log_g_bar"]],
+                [1.2, markup[i], 1, 1] + [1.35, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_medmu = [
             np.array(
-                [1.3, markup[i], 1, 1] + [1.165, math.e ** env.params["log_g_bar"]],
+                [1.3, markup[i], 1, 1] + [1.35, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_highmu = [
             np.array(
-                [1.5, markup[i], 1, 1] + [1.165, math.e ** env.params["log_g_bar"]],
+                [1.5, markup[i], 1, 1] + [1.35, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
@@ -1124,7 +1124,7 @@ if RUN_ANALYSIS:
     plt.ylabel("Prob. of Adjustment")
     # plt.title("Reaction Function - Probability of Adjustment")
     # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "polreact_prob_" + exp_names[0] + "_min" + ".png")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polreact_prob_" + exp_names[0] + "_max" + ".png")
     plt.show()
     plt.close()
 
@@ -1139,7 +1139,7 @@ if RUN_ANALYSIS:
     plt.ylabel("Reset Markup")
     # plt.title("Reaction Function - Reset Markup")
     # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "polreact_reset_" + exp_names[0] + "_min" + ".png")
+    plt.savefig(OUTPUT_PATH_FIGURES + "polreact_reset_" + exp_names[0] + "_max" + ".png")
     plt.show()
     plt.close()
 
@@ -1197,14 +1197,14 @@ if RUN_ANALYSIS:
 
         obs_reaction_zshock = [
             np.array(
-                [1.4, markup_z[i], 1, z[i]] + [1.165, math.e ** env.params["log_g_bar"]],
+                [1.4, markup_z[i], 1, z[i]] + [1.35, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
         ]
         obs_reaction_stratdev = [
             np.array(
-                [1.4, markup_z[i], 1, 1] + [1.165, math.e ** env.params["log_g_bar"]],
+                [1.4, markup_z[i], 1, 1] + [1.35, math.e ** env.params["log_g_bar"]],
                 dtype=np.float32,
             )
             for i in range(20)
@@ -1246,7 +1246,7 @@ if RUN_ANALYSIS:
         # )
         # plt.title("MIN")
 
-        plt.savefig(OUTPUT_PATH_FIGURES + "poldev_prob_" + exp_names[0] + "_min" + ".png")
+        plt.savefig(OUTPUT_PATH_FIGURES + "poldev_prob_" + exp_names[0] + "_max" + ".png")
         plt.show()
         plt.close()
 
@@ -1261,7 +1261,7 @@ if RUN_ANALYSIS:
         # plt.title("Reaction to cost shock vs strat. deviation - Reset Markup")
         # plt.title("MIN")
         
-        plt.savefig(OUTPUT_PATH_FIGURES + "poldev_reset_" + exp_names[0] + "_min" + ".png")
+        plt.savefig(OUTPUT_PATH_FIGURES + "poldev_reset_" + exp_names[0] + "_max" + ".png")
         plt.show()
         plt.close()
 
@@ -1299,7 +1299,7 @@ if RUN_ANALYSIS:
     EN_HORIZON = 50
     env_config_simul = env_config_eval.copy()
     env_config_simul["random_eval"] = False
-    #env_config_simul["n_inds"]=5000
+    env_config_simul["n_inds"]=5000
     env_config_simul["horizon"] = SIMUL_EPISODES*ENV_HORIZON
     env_config_noagg = env_config_simul.copy()
     env_config_noagg["no_agg"] = True
@@ -1607,7 +1607,7 @@ if RUN_ANALYSIS:
     plt.ylim([-2.5,15])
     # plt.title("A. IRF - Consumption")
     # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_" + exp_names[0] + "_min" + ".png")
+    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_" + exp_names[0] + "_max" + ".png")
     plt.show()
     plt.close()
 
@@ -1619,7 +1619,7 @@ if RUN_ANALYSIS:
     
     # plt.title("B. Cumulative IRF - Consumption")
     # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "cum_IRs_" + exp_names[0] + "_min" + ".png")
+    plt.savefig(OUTPUT_PATH_FIGURES + "cum_IRs_" + exp_names[0] + "_max" + ".png")
     plt.show()
     plt.close()
 
@@ -1631,7 +1631,7 @@ if RUN_ANALYSIS:
     plt.xlabel("Month t")
     # plt.title("IRF - Frquency of Adjustment for High vs Low Markup Firms")
     # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_freq_" + exp_names[0] + "_min" + ".png")
+    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_freq_" + exp_names[0] + "_max" + ".png")
     plt.show()
     plt.close()
 
@@ -1644,7 +1644,7 @@ if RUN_ANALYSIS:
 
     # plt.title("IRF - Size of Adjustment for High vs Low Markup Firms")
     # plt.title("MIN")
-    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_size_" + exp_names[0] + "_min" + ".png")
+    plt.savefig(OUTPUT_PATH_FIGURES + "IRs_size_" + exp_names[0] + "_max" + ".png")
     plt.show()
     plt.close()
 

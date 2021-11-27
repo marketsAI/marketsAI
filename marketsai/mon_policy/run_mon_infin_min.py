@@ -33,13 +33,13 @@ import random
 """ STEP 0: Experiment configs """
 
 # global configss
-DATE = "Nov15_"
+DATE = "Nov6_"
 ENV_LABEL = "mon_infin"
 OBS_IDSHOCK = False
 INFL_REGIME = "low"
 NATIVE = False
 TEST = False
-RUN_TRAINING = True
+RUN_TRAINING = False
 RUN_ANALYSIS = True
 RUN_MANUAL_IRS = True
 # in case there is no training
@@ -89,7 +89,7 @@ ITERS_RUN = 5000  # number of iteration for fullrun
 
 # Other economic Hiperparameteres.
 ENV_HORIZON = 12 * 5
-EVAL_HORIZON = 12 * 400
+EVAL_HORIZON = 12 * 5
 BETA = 0.95 ** (1 / 12)  # discount parameter
 
 # Post analysis options
@@ -104,11 +104,11 @@ CHKPT_SELECT_MIN = True
 CHKPT_SELECT_MAX = False
 """ STEP 1: Paralleliztion and batch options"""
 # Parallelization options
-NUM_CPUS = 34
-NUM_CPUS_WORKERS = 34
+NUM_CPUS = 47
+NUM_CPUS_WORKERS = 47
 NUM_CPUS_DRIVER = 1
-NUM_TRIALS = 102
-NUM_PAR_TRIALS = 34
+NUM_TRIALS = 47
+NUM_PAR_TRIALS = 47
 NUM_ROLLOUT = ENV_HORIZON * 1
 NUM_ENV_PW = 1  # num_env_per_worker
 NUM_GPUS = 0
@@ -133,9 +133,9 @@ if TEST:
     EVAL_EPISODES = 1
     SIMUL_EPISODES = 1
 else:
-    EVAL_INTERVAL = 5000
-    EVAL_EPISODES = 1
-    SIMUL_EPISODES = 1
+    EVAL_INTERVAL = 500
+    EVAL_EPISODES = 50
+    SIMUL_EPISODES = 20
 STOP = {"timesteps_total": MAX_STEPS}
 
 # Initialize ray
@@ -1299,7 +1299,7 @@ if RUN_ANALYSIS:
     EN_HORIZON = 50
     env_config_simul = env_config_eval.copy()
     env_config_simul["random_eval"] = False
-    #env_config_simul["n_inds"]=5000
+    env_config_simul["n_inds"]=5000
     env_config_simul["horizon"] = SIMUL_EPISODES*ENV_HORIZON
     env_config_noagg = env_config_simul.copy()
     env_config_noagg["no_agg"] = True
