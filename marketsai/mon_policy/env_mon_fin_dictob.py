@@ -213,7 +213,7 @@ class MonPolicyFinite(MultiAgentEnv):
             ]
 
             self.initial_markup_seeded = np.array(
-                [rng.uniform(1.2, 1.4) for i in range(self.n_agents)]
+                [rng.uniform(1.2, 1.5) for i in range(self.n_agents)]
             )
 
             if self.analysis_mode:
@@ -472,7 +472,7 @@ class MonPolicyFinite(MultiAgentEnv):
             * (self.mu_j[self.ind_per_firm[i]] / self.mu) ** (-self.params["theta"])
             * (self.mu_ij[i] - 1)
             / self.mu
-            - self.menu_cost[1] * self.move_ij[i]
+            - self.menu_cost[i] * self.move_ij[i]
             for i in range(self.n_agents)
         ]
 

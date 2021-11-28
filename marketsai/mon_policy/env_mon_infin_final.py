@@ -31,7 +31,7 @@ class MonPolicy(MultiAgentEnv):
         self.n_inds = self.env_config.get("n_inds", 2)
         self.n_agents = self.n_firms * self.n_inds
         self.eval_mode = self.env_config.get("eval_mode", False)
-        self.random_eval = self.env_config.get("random_eval", True)
+        self.random_eval = self.env_config.get("random_eval", False)
         self.analysis_mode = self.env_config.get("analysis_mode", False)
         self.deviation_mode = self.env_config.get("deviation_mode", False)
         self.no_agg = self.env_config.get("no_agg", False)
@@ -44,7 +44,7 @@ class MonPolicy(MultiAgentEnv):
             "infl_transprob", [[23 / 24, 1 / 24], [1 / 24, 23 / 24]]
         )
         self.obs_idshock = self.env_config.get("obs_idshock", False)
-        self.seed_eval = self.env_config.get("seed_eval", 10000)
+        self.seed_eval = self.env_config.get("seed_eval", 100000)
         self.seed_analysis = self.env_config.get("seed_analysis", 1000)
         self.markup_min = self.env_config.get("markup_min", 1)
         self.markup_max = self.env_config.get("markup_max", 2)
@@ -197,7 +197,7 @@ class MonPolicy(MultiAgentEnv):
         # DEFAULT: when learning, we randomize the initial observations
         else:
             self.mu_ij_next = np.array(
-                [random.uniform(1.2, 1.55) for i in range(self.n_agents)]
+                [random.uniform(1.2, 1.5) for i in range(self.n_agents)]
             )
             self.epsilon_z = np.array(
                 [random.gauss(0, 1) for i in range(self.n_agents)]
@@ -379,7 +379,7 @@ class MonPolicy(MultiAgentEnv):
             * (mu_j[self.ind_per_firm[i]] / self.mu) ** (-self.params["theta"])
             * (self.mu_ij[i] - 1)
             / self.mu
-            - self.menu_cost[1] * self.move_ij[i]
+            - self.menu_cost[i] * self.move_ij[i]
             for i in range(self.n_agents)
         ]
 
