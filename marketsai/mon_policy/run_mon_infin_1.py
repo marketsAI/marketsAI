@@ -33,12 +33,12 @@ import random
 """ STEP 0: Experiment configs """
 
 # global configss
-DATE = "Nov15_"
+DATE = "Nov27_"
 ENV_LABEL = "mon_infin_1"
 OBS_IDSHOCK = False
 INFL_REGIME = "low"
 NATIVE = False
-TEST = False
+TEST = True
 RUN_TRAINING = True
 RUN_ANALYSIS = True
 RUN_MANUAL_IRS = True
@@ -835,46 +835,58 @@ if RUN_ANALYSIS:
     markup = [1.2 + (i / 19)*(0.6) for i in range(20)]
     if not OBS_IDSHOCK:
         obs_reaction_lowmu = [
-            np.array(
-                [markup[i], 1.2] + [1.165, math.e ** env.params["log_g_bar"]],
-                dtype=np.float32,
-            )
+        {
+            "obs_ind": np.array([markup[i], 1.2], dtype=np.float32,)
+            "obs_agg": np.array([1.165, math.e ** env.params["log_g_bar"]], dtype=np.float32),
+            "time": 24,
+            "flex_index": 0,
+        }
             for i in range(20)
         ]
         obs_reaction_medmu = [
-            np.array(
-                [markup[i], 1.3] + [1.165, math.e ** env.params["log_g_bar"]],
-                dtype=np.float32,
-            )
+        {
+            "obs_ind": np.array([markup[i], 1.35], dtype=np.float32,)
+            "obs_agg": np.array([1.165, math.e ** env.params["log_g_bar"]], dtype=np.float32),
+            "time": 24,
+            "flex_index": 0,
+        }
             for i in range(20)
         ]
         obs_reaction_highmu = [
-            np.array(
-                [markup[i], 1.5] + [1.165, math.e ** env.params["log_g_bar"]],
-                dtype=np.float32,
-            )
+        {
+            "obs_ind": np.array([markup[i], 1.5], dtype=np.float32,)
+            "obs_agg": np.array([1.165, math.e ** env.params["log_g_bar"]], dtype=np.float32),
+            "time": 24,
+            "flex_index": 0,
+        }
             for i in range(20)
         ]
     else:
         obs_reaction_lowmu = [
-            np.array(
-                [markup[i], 1.2, 1, 1] + [1.165, math.e ** env.params["log_g_bar"]],
-                dtype=np.float32,
-            )
+        {
+            "obs_ind": np.array([markup[i], 1.2, 1, 1], dtype=np.float32,)
+            "obs_agg": np.array([1.165, math.e ** env.params["log_g_bar"]], dtype=np.float32),
+            "time": 24,
+            "flex_index": 0,
+        }
             for i in range(20)
         ]
         obs_reaction_medmu = [
-            np.array(
-                [markup[i], 1.3, 1, 1] + [1.165, math.e ** env.params["log_g_bar"]],
-                dtype=np.float32,
-            )
+        {
+            "obs_ind": np.array([markup[i], 1.35, 1, 1], dtype=np.float32,)
+            "obs_agg": np.array([1.165, math.e ** env.params["log_g_bar"]], dtype=np.float32),
+            "time": 24,
+            "flex_index": 0,
+        }
             for i in range(20)
         ]
         obs_reaction_highmu = [
-            np.array(
-                [markup[i], 1.5, 1, 1] + [1.165, math.e ** env.params["log_g_bar"]],
-                dtype=np.float32,
-            )
+        {
+            "obs_ind": np.array([markup[i], 1.5, 1, 1], dtype=np.float32,)
+            "obs_agg": np.array([1.165, math.e ** env.params["log_g_bar"]], dtype=np.float32),
+            "time": 24,
+            "flex_index": 0,
+        }
             for i in range(20)
         ]
 
@@ -902,7 +914,7 @@ if RUN_ANALYSIS:
     plt.plot(x, move_prob_medmu)
     plt.plot(x, move_prob_highmu)
     plt.axvline(x=1.2, linestyle='--')
-    plt.axvline(x=1.3, linestyle='--')
+    plt.axvline(x=1.35, linestyle='--')
     plt.axvline(x=1.5, linestyle='--')
     plt.legend(
         ["Low Competition Markup", "Med Competition Markup", "High Competition Markup"]
@@ -920,13 +932,13 @@ if RUN_ANALYSIS:
     plt.plot(x, reset_medmu)
     plt.plot(x, reset_highmu)
     plt.axvline(x=1.2, linestyle='--')
-    plt.axvline(x=1.3, linestyle='--')
+    plt.axvline(x=1.35, linestyle='--')
     plt.axvline(x=1.5, linestyle='--')
     plt.legend(
         ["Low Competition Markup", "Med Competition Markup", "High Competition Markup"]
     )
-    plt.xlabel("Markup of Competition")
-    plt.ylabel("Own Markup")
+    plt.xlabel("Own Markup")
+    plt.ylabel("Reset Markup")
     # plt.title("Reset Markup")
     # plt.title("MIN")
     plt.savefig(OUTPUT_PATH_FIGURES + "polown_reset_" + "_" + exp_names[0] + "_min" + ".png")
@@ -959,15 +971,21 @@ if RUN_ANALYSIS:
     # print(mon_policy)
     if not OBS_IDSHOCK:
         obs_monpol_lowmu = [
-            np.array([1.2, 1.3] + [1.165, mon_policy[i]], dtype=np.float32)
+        {
+            "obs_ind": np.array([1.2, 1.35],dtype=np.float32),
+            "obs_agg": np.array([1.25, mon_policy[i]], dtype=np.float32),
+            "time": 24,
+            "flex_index": 0,
+        }
             for i in range(20)
         ]
         obs_monpol_medmu = [
-            np.array([1.3, 1.3] + [1.165, mon_policy[i]], dtype=np.float32)
-            for i in range(20)
-        ]
-        obs_monpol_highmu = [
-            np.array([1.5, 1.3] + [1.165, mon_policy[i]], dtype=np.float32)
+        {
+            "obs_ind": np.array([1.2, 1.35],dtype=np.float32),
+            "obs_agg": np.array([1.25, mon_policy[i]], dtype=np.float32),
+            "time": 24,
+            "flex_index": 0,
+        }
             for i in range(20)
         ]
     else:
@@ -1297,7 +1315,6 @@ if RUN_ANALYSIS:
     register_env(env_label, MonPolicy)
     # We instantiate the environment to extract information.
     """ CHANGE HERE """
-    EN_HORIZON = 50
     env_config_simul = env_config_eval.copy()
     env_config_simul["random_eval"] = False
     #env_config_simul["n_inds"]=5000
