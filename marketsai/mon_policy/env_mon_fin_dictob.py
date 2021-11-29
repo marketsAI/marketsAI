@@ -660,6 +660,7 @@ class MonPolicyFinite(MultiAgentEnv):
             info_global = {
                 0: {
                     "mean_mu_ij": np.mean(self.mu_ij),
+                    "mu": self.mu,
                     "move_freq": np.mean(self.move_ij),
                     "mean_p_change": np.mean(
                         [abs(np.log(elem)) for elem in self.price_changes]
