@@ -33,7 +33,7 @@ import random
 """ STEP 0: Experiment configs """
 
 # global configss
-DATE = "Nov27_"
+DATE = "Nov29_"
 ENV_LABEL = "mon_infin_1"
 OBS_IDSHOCK = False
 INFL_REGIME = "low"
