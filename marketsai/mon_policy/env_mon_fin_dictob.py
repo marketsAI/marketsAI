@@ -247,7 +247,7 @@ class MonPolicyFinite(MultiAgentEnv):
 
         # DEFAULT: when learning, we randomize the initial observations
         else:
-            self.mu_ij_next = [random.uniform(1.15, 1.45) for i in range(self.n_agents)]
+            self.mu_ij_next = [random.uniform(1.25, 1.35) for i in range(self.n_agents)]
             self.epsilon_z = np.random.standard_normal(size=self.n_agents)
             self.epsilon_g = np.random.standard_normal()
             self.menu_cost = [
