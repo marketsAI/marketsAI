@@ -26,9 +26,9 @@ class MonPolicy(MultiAgentEnv):
         self.env_config = env_config
 
         # GLOBAL ENV CONFIGS
-        self.horizon = self.env_config.get("horizon", 60)
+        self.horizon = self.env_config.get("horizon", 120)
         self.n_firms = self.env_config.get("n_firms", 2)
-        self.n_inds = self.env_config.get("n_inds", 2)
+        self.n_inds = self.env_config.get("n_inds", 100)
         self.n_agents = self.n_firms * self.n_inds
         self.eval_mode = self.env_config.get("eval_mode", False)
         self.random_eval = self.env_config.get("random_eval", False)
@@ -47,7 +47,7 @@ class MonPolicy(MultiAgentEnv):
         self.seed_eval = self.env_config.get("seed_eval", 100000)
         self.seed_analysis = self.env_config.get("seed_analysis", 1000)
         self.markup_min = self.env_config.get("markup_min", 1)
-        self.markup_max = self.env_config.get("markup_max", 2)
+        self.markup_max = self.env_config.get("markup_max", 2.5)
         self.markup_star = self.env_config.get("markup_star", 1.3)
         self.rew_mean = self.env_config.get("rew_mean", 0)
         self.rew_std = self.env_config.get("rew_std", 1)
@@ -71,9 +71,6 @@ class MonPolicy(MultiAgentEnv):
         self.ind_per_firm = [
             int(np.floor(i / self.n_firms)) for i in range(self.n_agents)
         ]
-
-        # SPECIFIC SHOCK VALUES THAT ARE USEFUL FOR EVALUATION, ANALYSIS AND SIMULATION
-        # We first create seeds with a default random generator
 
         # CREATE SPACES
 
@@ -132,13 +129,10 @@ class MonPolicy(MultiAgentEnv):
         it specifies three types of initial obs. Random (default),
         for evaluation, and for posterior analysis"""
 
-        # to do:
-        # last check that everything is right (stochastic supports and initial poitns for evaluation and analysis)
         self.timestep = 0
 
         # create seeded elements
         if not self.random_eval and self.eval_mode:
-            # rng = np.random.default_rng(random.choice(self.seed_eval))
             rng = np.random.default_rng(self.seed_eval)
         if self.analysis_mode:
             rng = np.random.default_rng(self.seed_analysis)
@@ -163,7 +157,7 @@ class MonPolicy(MultiAgentEnv):
             ]
 
             self.initial_markup_seeded = np.array(
-                [rng.uniform(1.2, 1.4) for i in range(self.n_agents)]
+                [rng.uniform(1.2, 1.5) for i in range(self.n_agents)]
             )
             if self.analysis_mode:
                 self.epsilon_g_seeded = [0 for t in range(self.horizon + 1)]
@@ -173,8 +167,8 @@ class MonPolicy(MultiAgentEnv):
                 for t in range(self.horizon + 1):
                     self.epsilon_z_seeded[t][0] = 0
                     self.epsilon_z_seeded[t][1] = 0
-                    self.initial_markup_seeded[0] = 1.48
-                    self.initial_markup_seeded[1] = 1.2
+                    self.initial_markup_seeded[0] = 1.6
+                    self.initial_markup_seeded[1] = 1.1
 
 
         # create state
@@ -197,12 +191,10 @@ class MonPolicy(MultiAgentEnv):
         # DEFAULT: when learning, we randomize the initial observations
         else:
             self.mu_ij_next = np.array(
-                [random.uniform(1.2, 1.5) for i in range(self.n_agents)]
+                [random.uniform(1.2, 1.) for i in range(self.n_agents)]
             )
-            self.epsilon_z = np.array(
-                [random.gauss(0, 1) for i in range(self.n_agents)]
-            )
-            self.epsilon_g = random.gauss(0, 1)
+            self.epsilon_z = np.random.standard_normal(size=self.n_agents)
+            self.epsilon_g = np.random.standard_normal()
             self.menu_cost = np.array(
                 [
                     random.uniform(0, self.params["menu_cost"])
@@ -426,10 +418,8 @@ class MonPolicy(MultiAgentEnv):
             self.menu_cost = self.menu_cost_seeded[self.timestep]
 
         else:
-            self.epsilon_z = np.array(
-                [random.gauss(0, 1) for i in range(self.n_agents)]
-            )
-            self.epsilon_g = random.gauss(0, 1)
+            self.epsilon_z = np.random.standard_normal(size=self.n_agents)
+            self.epsilon_g = np.random.standard_normal()
             self.menu_cost = np.array(
                 [
                     random.uniform(0, self.params["menu_cost"])
@@ -614,14 +604,9 @@ class MonPolicy(MultiAgentEnv):
         for t in range(NUM_PERIODS):
             if t % self.horizon == 0:
                 obs = self.reset()
-            obs, rew, done, info = self.step(
-                {
-                    i: {
-                        "move_prob": self.action_space[0]["move_prob"].sample(),
-                        "reset_markup": self.action_space[0]["reset_markup"].sample(),
-                    }
-                    for i in range(self.n_agents)
-                }
+            obs, rew, done, info = self.step({i: self.action_space[i].sample()
+                for i in range(self.n_agents)
+            }
             )
             # print("g", self.g, "mu", self.mu_ij[0], "mu_reset", self.mu_ij_reset)
             epsilon_g_list.append(self.epsilon_g)
@@ -654,7 +639,7 @@ class MonPolicy(MultiAgentEnv):
             np.std(epsilon_g_list),
         ]
 
-        return (mu_ij_stats, rew_stats, mu_stats, epsilon_g_stats)
+        return {"Markups stats": mu_ij_stats, "Period Rewards stats:": rew_stats, "Aggregate Markups stats:": mu_stats, "Monetary shock stats:": epsilon_g_stats}
 
 
 """ TEST AND DEBUG CODE """
@@ -663,25 +648,23 @@ class MonPolicy(MultiAgentEnv):
 def main():
     # init environment
     n_firms = 2
-    n_inds = 2
+    n_inds = 50
     env_config = {
-        "horizon": 60,
+        "horizon": 120,
         "n_inds": n_inds,
         "n_firms": n_firms,
         "eval_mode": False,
         "analysis_mode": False,
         "noagg": False,
         "obs_idshock": False,
-        "regime_change": True,
-        "infl_regime": "high",
-        "infl_regime_scale": [3, 1.3, 2],
-        # "infl_transprob": [[0.5, 0.5], [0.5, 0.5]],
-        "infl_transprob": [[23 / 24, 1 / 24], [1 / 24, 23 / 24]],
+        "regime_change": False,
+        "infl_regime": "low",
+        # "infl_regime_scale": [3, 1.3, 2],
+        # "infl_transprob": [[23 / 24, 1 / 24], [1 / 24, 23 / 24]],
         "seed_eval": 10000,
         "seed_analisys": 3000,
         "markup_min": 1,
-        "markup_max": 2,
-        "markup_min": 1.2,
+        "markup_max": 2.5,
         "markup_start": 1.3,
         "rew_mean": 0,
         "rew_std": 1,
@@ -701,11 +684,7 @@ def main():
     obs = env.reset()
     print("INIT_OBS:", obs)
     for i in range(10):
-        actions = {
-            i: {
-                "move_prob": env.action_space[i]["move_prob"].sample(),
-                "reset_markup": env.action_space[i]["reset_markup"].sample(),
-            }
+        actions = {i: env.action_space[i].sample()
             for i in range(env.n_agents)
         }
         obs, rew, done, info = env.step(actions)
@@ -729,7 +708,7 @@ def main():
             info[0],
         )
 
-    # print(env.random_sample(1000))
+    print(env.random_sample(50000))
 
 
 if __name__ == "__main__":
