@@ -208,7 +208,6 @@ class MonPolicyFinite(MultiAgentEnv):
                 for t in range(self.horizon + 1)
             ]
 
-
             self.initial_markup_seeded = np.array(
                 [random.uniform(1.2, 1.5) for i in range(self.n_agents)]
             )
@@ -241,8 +240,8 @@ class MonPolicyFinite(MultiAgentEnv):
             self.epsilon_z = self.epsilon_z_seeded[0]
             self.epsilon_g = self.epsilon_g_seeded[0]
             self.menu_cost = self.menu_cost_seeded[0]
-        
-        elif (self.random_eval and self.eval_mode):
+
+        elif self.random_eval and self.eval_mode:
             self.mu_ij_next = [random.uniform(1.2, 1.5) for i in range(self.n_agents)]
             self.epsilon_z = np.random.standard_normal(size=self.n_agents)
             self.epsilon_g = np.random.standard_normal()
@@ -473,8 +472,6 @@ class MonPolicyFinite(MultiAgentEnv):
 
             size_adj_high_mu = list(filter(lambda x: x != 0, size_adj_high_mu))
             size_adj_low_mu = list(filter(lambda x: x != 0, size_adj_low_mu))
-
-
 
         # update shocks and states
         if (not self.random_eval and self.eval_mode) or self.analysis_mode:
@@ -721,10 +718,17 @@ class MonPolicyFinite(MultiAgentEnv):
             np.std(epsilon_g_list),
         ]
 
-        return {"Markups stats": mu_ij_stats, "Period Rewards stats:": rew_stats, "Aggregate Markups stats:": mu_stats, "Monetary shock stats:": epsilon_g_stats}
+        return {
+            "Markups stats": mu_ij_stats,
+            "Period Rewards stats:": rew_stats,
+            "Aggregate Markups stats:": mu_stats,
+            "Monetary shock stats:": epsilon_g_stats,
+        }
 
 
 """ TEST AND DEBUG CODE """
+
+
 def main():
     # init environment
     n_firms = 2

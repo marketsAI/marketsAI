@@ -162,14 +162,13 @@ class MonPolicy(MultiAgentEnv):
             if self.analysis_mode:
                 self.epsilon_g_seeded = [0 for t in range(self.horizon + 1)]
                 self.epsilon_g_seeded[0] = self.params["sigma_g"]
-            
+
             if self.deviation_mode:
                 for t in range(self.horizon + 1):
                     self.epsilon_z_seeded[t][0] = 0
                     self.epsilon_z_seeded[t][1] = 0
                     self.initial_markup_seeded[0] = 1.6
                     self.initial_markup_seeded[1] = 1.1
-
 
         # create state
         if self.infl_regime == "high":
@@ -191,7 +190,7 @@ class MonPolicy(MultiAgentEnv):
         # DEFAULT: when learning, we randomize the initial observations
         else:
             self.mu_ij_next = np.array(
-                [random.uniform(1.2, 1.) for i in range(self.n_agents)]
+                [random.uniform(1.2, 1.0) for i in range(self.n_agents)]
             )
             self.epsilon_z = np.random.standard_normal(size=self.n_agents)
             self.epsilon_g = np.random.standard_normal()
@@ -396,14 +395,14 @@ class MonPolicy(MultiAgentEnv):
 
             size_adj_low_mu = [
                 price_change_ij[i]
-                if self.mu_ij[i] <   mu_j_max[self.ind_per_firm[i]]
+                if self.mu_ij[i] < mu_j_max[self.ind_per_firm[i]]
                 else 0
                 for i in range(self.n_agents)
             ]
 
             size_adj_high_mu = [
                 0
-                if self.mu_ij[i] <  mu_j_max[self.ind_per_firm[i]]
+                if self.mu_ij[i] < mu_j_max[self.ind_per_firm[i]]
                 else price_change_ij[i]
                 for i in range(self.n_agents)
             ]
@@ -604,9 +603,8 @@ class MonPolicy(MultiAgentEnv):
         for t in range(NUM_PERIODS):
             if t % self.horizon == 0:
                 obs = self.reset()
-            obs, rew, done, info = self.step({i: self.action_space[i].sample()
-                for i in range(self.n_agents)
-            }
+            obs, rew, done, info = self.step(
+                {i: self.action_space[i].sample() for i in range(self.n_agents)}
             )
             # print("g", self.g, "mu", self.mu_ij[0], "mu_reset", self.mu_ij_reset)
             epsilon_g_list.append(self.epsilon_g)
@@ -639,7 +637,12 @@ class MonPolicy(MultiAgentEnv):
             np.std(epsilon_g_list),
         ]
 
-        return {"Markups stats": mu_ij_stats, "Period Rewards stats:": rew_stats, "Aggregate Markups stats:": mu_stats, "Monetary shock stats:": epsilon_g_stats}
+        return {
+            "Markups stats": mu_ij_stats,
+            "Period Rewards stats:": rew_stats,
+            "Aggregate Markups stats:": mu_stats,
+            "Monetary shock stats:": epsilon_g_stats,
+        }
 
 
 """ TEST AND DEBUG CODE """
@@ -684,9 +687,7 @@ def main():
     obs = env.reset()
     print("INIT_OBS:", obs)
     for i in range(10):
-        actions = {i: env.action_space[i].sample()
-            for i in range(env.n_agents)
-        }
+        actions = {i: env.action_space[i].sample() for i in range(env.n_agents)}
         obs, rew, done, info = env.step(actions)
         print(
             "ACTION:",
