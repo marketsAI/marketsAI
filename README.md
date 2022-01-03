@@ -37,6 +37,6 @@ economies: here we specify economies as environments that are suitable for RL tr
 
 ## To do
 
-- [] Cleanup folder structure
+- [ ] Cleanup folder structure
 
 
