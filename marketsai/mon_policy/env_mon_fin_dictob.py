@@ -209,7 +209,7 @@ class MonPolicyFinite(MultiAgentEnv):
             ]
 
             self.initial_markup_seeded = np.array(
-                [random.uniform(1.2, 1.5) for i in range(self.n_agents)]
+                [random.uniform(1.2, 1.6) for i in range(self.n_agents)]
             )
 
             if self.analysis_mode:
@@ -242,7 +242,7 @@ class MonPolicyFinite(MultiAgentEnv):
             self.menu_cost = self.menu_cost_seeded[0]
 
         elif self.random_eval and self.eval_mode:
-            self.mu_ij_next = [random.uniform(1.2, 1.5) for i in range(self.n_agents)]
+            self.mu_ij_next = [random.uniform(1.2, 1.6) for i in range(self.n_agents)]
             self.epsilon_z = np.random.standard_normal(size=self.n_agents)
             self.epsilon_g = np.random.standard_normal()
             self.menu_cost = [
@@ -251,7 +251,7 @@ class MonPolicyFinite(MultiAgentEnv):
             ]
         # DEFAULT: when learning, we randomize the initial observations
         else:
-            self.mu_ij_next = [random.uniform(1.2, 1.5) for i in range(self.n_agents)]
+            self.mu_ij_next = [random.uniform(1.2, 1.6) for i in range(self.n_agents)]
             self.epsilon_z = np.random.standard_normal(size=self.n_agents)
             self.epsilon_g = np.random.standard_normal()
             self.menu_cost = [
@@ -272,17 +272,17 @@ class MonPolicyFinite(MultiAgentEnv):
         # mu vector per industry:
         mu_perind = []
         for counter in range(0, self.n_agents, self.n_firms):
-            mu_perind.append(self.mu_ij_next[counter : counter + self.n_firms])
+            mu_perind.append(self.mu_ij_next[counter: counter + self.n_firms])
         # collapse to markup index:
         self.mu_j = [
-            ((2 / self.n_firms) * np.sum([i ** (1 - self.params["eta"]) for i in elem]))
-            ** (1 / (1 - self.params["eta"]))
+            ((2 / self.n_firms) * np.sum([i ** (1 - self.params["eta"]) for i in elem])) **
+            (1 / (1 - self.params["eta"]))
             for elem in mu_perind
         ]
 
         self.mu = (
-            (1 / self.n_inds)
-            * np.sum([(elem) ** (1 - self.params["theta"]) for elem in self.mu_j])
+            (1 / self.n_inds) *
+            np.sum([(elem) ** (1 - self.params["theta"]) for elem in self.mu_j])
         ) ** (1 / (1 - self.params["theta"]))
 
         mu_obsperfirm = [[] for i in range(self.n_agents)]
@@ -385,14 +385,14 @@ class MonPolicyFinite(MultiAgentEnv):
 
         self.move_ij = [
             True
-            if self.menu_cost[i]
-            <= (action_dict[i][0] + 1) / 2 * self.params["menu_cost"]
+            if self.menu_cost[i] <=
+            (action_dict[i][0] + 1) / 2 * self.params["menu_cost"]
             else False
             for i in range(self.n_agents)
         ]
         self.mu_ij_reset = [
-            self.markup_min
-            + (action_dict[i][1] + 1) / 2 * (self.markup_max - self.markup_min)
+            self.markup_min +
+            (action_dict[i][1] + 1) / 2 * (self.markup_max - self.markup_min)
             for i in range(self.n_agents)
         ]
 
@@ -413,11 +413,11 @@ class MonPolicyFinite(MultiAgentEnv):
         # markup per industry:
         mu_perind = []
         for counter in range(0, self.n_agents, self.n_firms):
-            mu_perind.append(self.mu_ij[counter : counter + self.n_firms])
+            mu_perind.append(self.mu_ij[counter: counter + self.n_firms])
         # collapse to markup index:
         self.mu_j = [
-            ((2 / self.n_firms) * np.sum([i ** (1 - self.params["eta"]) for i in elem]))
-            ** (1 / (1 - self.params["eta"]))
+            ((2 / self.n_firms) * np.sum([i ** (1 - self.params["eta"]) for i in elem])) **
+            (1 / (1 - self.params["eta"]))
             for elem in mu_perind
         ]
         # Aggregate markup
@@ -430,11 +430,11 @@ class MonPolicyFinite(MultiAgentEnv):
 
         # profits
         self.profits = [
-            (self.mu_ij[i] / self.mu_j[self.ind_per_firm[i]]) ** (-self.params["eta"])
-            * (self.mu_j[self.ind_per_firm[i]] / self.mu) ** (-self.params["theta"])
-            * (self.mu_ij[i] - 1)
-            / self.mu
-            - self.menu_cost[i] * self.move_ij[i]
+            (self.mu_ij[i] / self.mu_j[self.ind_per_firm[i]]) ** (-self.params["eta"]) *
+            (self.mu_j[self.ind_per_firm[i]] / self.mu) ** (-self.params["theta"]) *
+            (self.mu_ij[i] - 1) /
+            self.mu -
+            self.menu_cost[i] * self.move_ij[i]
             for i in range(self.n_agents)
         ]
 
@@ -516,8 +516,8 @@ class MonPolicyFinite(MultiAgentEnv):
             )[0]
         self.mu_ij_next = [
             min(
-                self.mu_ij[i]
-                / (self.g * math.e ** (self.params["sigma_z"] * self.epsilon_z[i])),
+                self.mu_ij[i] /
+                (self.g * math.e ** (self.params["sigma_z"] * self.epsilon_z[i])),
                 3,
             )
             for i in range(self.n_agents)
@@ -525,7 +525,7 @@ class MonPolicyFinite(MultiAgentEnv):
 
         mu_next_perind = []
         for counter in range(0, self.n_agents, self.n_firms):
-            mu_next_perind.append(self.mu_ij_next[counter : counter + self.n_firms])
+            mu_next_perind.append(self.mu_ij_next[counter: counter + self.n_firms])
         # Prepare obs per firm
         mu_obsperfirm = [[] for i in range(self.n_agents)]
         for i in range(self.n_agents):
