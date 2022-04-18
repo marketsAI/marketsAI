@@ -1,11 +1,12 @@
 import gym
-from gym.spaces import Discrete, Box, MultiDiscrete, Tuple, Dict
+from gym.spaces import Box, Dict
 
 import numpy as np
 import random
-import time
-import seaborn as sn
-import matplotlib.pyplot as plt
+
+# import time
+# import seaborn as sn
+# import matplotlib.pyplot as plt
 from gym.utils import seeding
 
 
@@ -91,14 +92,14 @@ class Rbc(gym.Env):
         )
 
         # SPECIFIC SHOCK VALUES THAT ARE USEFUL FOR EVALUATION
-        if self.eval_mode == True:
+        if self.eval_mode:
             self.shocks_eval = {0: 1}
             for t in range(1, self.horizon + 1):
                 self.shocks_eval[t] = (
                     1 if (t // (1 / self.shock_transition[0][1]) + 1) % 2 == 0 else 0
                 )
         # SPECIFIC SHOCK VALUES THAT ARE USEFUL FOR Analysis
-        if self.analysis_mode == True:
+        if self.analysis_mode:
             self.shocks_analysis = {0: 1}
             for t in range(1, self.horizon + 1):
                 self.shocks_analysis[t] = (
@@ -117,11 +118,11 @@ class Rbc(gym.Env):
         self.timestep = 0
 
         # to evaluate policies, we fix the initial observation
-        if self.eval_mode == True:
+        if self.eval_mode:
             obs_init = self.k_ss * 0.5
             shocks_id_init = self.shocks_eval[0]
 
-        elif self.analysis_mode == True:
+        elif self.analysis_mode:
             obs_init = self.k_ss * 0.5
             shocks_id_init = self.shocks_analysis[0]
 
@@ -168,9 +169,9 @@ class Rbc(gym.Env):
         k_new = min(k * (1 - self.params["delta"]) + s * y, self.k_ss * 3)
 
         # update shock
-        if self.eval_mode == True:
+        if self.eval_mode:
             shock_id_new = self.shocks_eval[self.timestep]
-        elif self.analysis_mode == True:
+        elif self.analysis_mode:
             shock_id_new = self.shocks_analysis[self.timestep]
         else:
             shock_id_new = random.choices(
@@ -231,7 +232,7 @@ class Rbc(gym.Env):
             if t % self.horizon == 0:
                 obs = self.reset()
                 if t > 0:
-                    print(len(rew_list[-200:]))
+                    # print(len(rew_list[-200:]))
                     rew_disc.append(
                         self.process_rewards(rew_list[-200:], self.params["beta"])
                     )

@@ -1,12 +1,15 @@
 from marketsai.rbc.env_rbc import Rbc
 import scipy.io as sio
 from scipy.interpolate import RegularGridInterpolator
-from marketsai.utils import encode
+
+# from marketsai.utils import encode
 import matplotlib.pyplot as plt
-import pandas as pd
+
+# import pandas as pd
 import numpy as np
 import seaborn as sn
-import csv
+
+# import csv
 import json
 from ray.rllib.agents.ppo import PPOTrainer
 from ray.tune.registry import register_env
@@ -74,10 +77,8 @@ exp_data_analysis_econ_dict = {
     "S.D. Agg. K": [],
     "Mean Avge. K": [],
     "S.D. Avge. K": [],
-    "S.D. Agg. K": [],
     "Max K": [],
     "Min K": [],
-    "Discounted Rewards": [],
     "Mean Price": [],
     "S.D. Price": [],
     "Max Price": [],
@@ -96,10 +97,8 @@ exp_data_simul_econ_dict = {
     "S.D. Agg. K": [],
     "Mean Avge. K": [],
     "S.D. Avge. K": [],
-    "S.D. Agg. K": [],
     "Max K": [],
     "Min K": [],
-    "Discounted Rewards": [],
     "Mean Price": [],
     "S.D. Price": [],
     "Max Price": [],
@@ -115,6 +114,7 @@ exp_data_simul_econ_dict = {
 # init ray
 shutdown()
 init()
+
 
 # useful functions
 def process_rewards(r, BETA):

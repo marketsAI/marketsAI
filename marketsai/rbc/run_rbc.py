@@ -17,8 +17,9 @@ from ray.rllib.policy import Policy
 from typing import Dict
 import numpy as np
 import seaborn as sn
-import sys
-import pandas as pd
+
+# import sys
+# import pandas as pd
 import matplotlib.pyplot as plt
 import json
 
@@ -79,7 +80,7 @@ BATCH_SIZE = NUM_ROLLOUT * (max(N_WORKERS, 1)) * NUM_ENV_PW * BATCH_ROLLOUT
 print(N_WORKERS, BATCH_SIZE)
 
 # define length of experiment (MAX_STEPS) and experiment name
-if TEST == True:
+if TEST:
     MAX_STEPS = ITERS_TEST * BATCH_SIZE
 else:
     MAX_STEPS = ITERS_RUN * BATCH_SIZE
@@ -103,6 +104,7 @@ register_env(ENV_LABEL, Rbc)
 """ STEP 2: set custom metrics such as discounted rewards to keep track of through leraning"""
 # Define custom metrics using the Callbacks class
 # See rllib documentation on Callbacks. They are a way of inserting code in different parts of the pipeline.
+
 
 # function to get discounted rewards for analysys
 def process_rewards(r):
@@ -285,7 +287,7 @@ env_configs = []
 
 
 EXP_LABEL = DEVICE + ENV_LABEL
-if TEST == True:
+if TEST:
     EXP_NAME = EXP_LABEL + DATE + ALGO + "_test"
 else:
     EXP_NAME = EXP_LABEL + DATE + ALGO + "_run"
@@ -325,8 +327,8 @@ print("max_rewards", max_rewards)
 
 # global experiment name
 if len(exp_names) > 1:
-    EXP_LABEL = DEVICE + f"_multi_firm_"
-    if TEST == True:
+    EXP_LABEL = DEVICE + "_multi_firm_"
+    if TEST:
         EXP_NAME = EXP_LABEL + ENV_LABEL + "_test_" + DATE + ALGO
     else:
         EXP_NAME = EXP_LABEL + ENV_LABEL + "_run_" + DATE + ALGO
