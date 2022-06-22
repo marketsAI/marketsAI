@@ -11,7 +11,7 @@ ray = {version = "^1.8.0", extras = ["default", "rllib", "tune"]}
 gym = "^0.21.0"
 scikit-learn = "^1.0.1"
 seaborn = "^0.11.2"
-numpy = "^1.21.4"
+numpy = "^1.22.0"
 torch = "^1.10.0"
 
 [tool.poetry.dev-dependencies]
