@@ -182,7 +182,7 @@ class MonPolicy(MultiAgentEnv):
         self.M = 1
         self.log_z = self.epsilon_z * self.params["sigma_z"]
         self.log_g = self.params["log_g_bar"] + self.params["sigma_g"] * self.epsilon_g
-        self.g = math.e ** self.log_g
+        self.g = math.e**self.log_g
 
         # mu vector per industry:
         mu_perind = []
@@ -341,7 +341,7 @@ class MonPolicy(MultiAgentEnv):
             + self.params["rho_g"] * self.log_g
             + self.params["sigma_g"] * self.epsilon_g
         )
-        self.g = math.e ** self.log_g
+        self.g = math.e**self.log_g
 
         self.mu_ij_next = [
             self.mu_ij[i]

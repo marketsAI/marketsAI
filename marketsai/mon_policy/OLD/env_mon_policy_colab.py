@@ -145,7 +145,7 @@ class MonPolicyColab(MultiAgentEnv):
             self.params["sigma_z"] * self.epsilon_z[i] for i in range(self.n_agents)
         ]
         self.log_g = self.params["log_g_bar"] + self.params["sigma_g"] * self.epsilon_g
-        self.g = math.e ** self.log_g
+        self.g = math.e**self.log_g
         # mu vector per industry:
         mu_perind = []
         for counter in range(0, self.n_agents, self.n_firms):
@@ -272,7 +272,7 @@ class MonPolicyColab(MultiAgentEnv):
             + self.params["rho_g"] * self.log_g
             + self.params["sigma_g"] * self.epsilon_g
         )
-        self.g = math.e ** self.log_g
+        self.g = math.e**self.log_g
 
         self.mu_ij_next = [
             self.mu_ij[i]

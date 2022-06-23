@@ -4,6 +4,7 @@ from ray.rllib.env.multi_agent_env import MultiAgentEnv
 import numpy as np
 import random
 import math
+
 # import seaborn as sn
 # import matplotlib.pyplot as plt
 
@@ -84,9 +85,9 @@ class MonPolicy(MultiAgentEnv):
                 [0 for i in range(n_obs_ind)] + [0 for i in range(n_obs_agg)]
             )
             high = np.array(
-                [3 for i in range(self.n_firms)] +
-                [3 for i in range(self.n_firms)] +
-                [3, 3, 1]
+                [3 for i in range(self.n_firms)]
+                + [3 for i in range(self.n_firms)]
+                + [3, 3, 1]
             )
         elif self.obs_idshock and not self.regime_change:
             n_obs_ind = self.n_firms * 2
@@ -209,20 +210,20 @@ class MonPolicy(MultiAgentEnv):
             for i in range(self.n_agents)
         ]
         self.log_g = min(log_g_bar + sigma_g * self.epsilon_g, 1.0986)
-        self.g = math.e ** self.log_g
+        self.g = math.e**self.log_g
 
         # mu vector per industry:
         mu_perind = []
 
         for counter in range(0, self.n_agents, self.n_firms):
-            mu_perind.append(self.mu_ij_next[counter: counter + self.n_firms])
+            mu_perind.append(self.mu_ij_next[counter : counter + self.n_firms])
 
         # z vecot per industry
         if self.obs_idshock:
             z = [math.e ** self.log_z[i] for i in range(self.n_agents)]
             z_perind = []
             for counter in range(0, self.n_agents, self.n_firms):
-                z_perind.append(z[counter: counter + self.n_firms])
+                z_perind.append(z[counter : counter + self.n_firms])
             z_obsperfirm = [[] for i in range(self.n_agents)]
             for i in range(self.n_agents):
                 z_obsperfirm[i] = [z[i]] + [
@@ -233,17 +234,17 @@ class MonPolicy(MultiAgentEnv):
 
         # collapse to markup index:
         mu_j = [
-            ((2 / self.n_firms) * np.sum([i ** (1 - self.params["eta"]) for i in elem])) **
-            (1 / (1 - self.params["eta"]))
+            ((2 / self.n_firms) * np.sum([i ** (1 - self.params["eta"]) for i in elem]))
+            ** (1 / (1 - self.params["eta"]))
             for elem in mu_perind
         ]
 
         self.mu = min(
             (
-                (1 / self.n_inds) *
-                np.sum([(elem) ** (1 - self.params["theta"]) for elem in mu_j])
-            ) **
-            (1 / (1 - self.params["theta"])),
+                (1 / self.n_inds)
+                * np.sum([(elem) ** (1 - self.params["theta"]) for elem in mu_j])
+            )
+            ** (1 / (1 - self.params["theta"])),
             3,
         )
 
@@ -259,9 +260,9 @@ class MonPolicy(MultiAgentEnv):
         if self.obs_idshock and self.regime_change:
             self.obs_next = {
                 i: np.array(
-                    mu_obsperfirm[i] +
-                    z_obsperfirm[i] +
-                    [
+                    mu_obsperfirm[i]
+                    + z_obsperfirm[i]
+                    + [
                         self.mu,
                         self.g,
                         high_regime_index,
@@ -281,8 +282,8 @@ class MonPolicy(MultiAgentEnv):
         elif not self.obs_idshock and self.regime_change:
             self.obs_next = {
                 i: np.array(
-                    mu_obsperfirm[i] +
-                    [
+                    mu_obsperfirm[i]
+                    + [
                         self.mu,
                         self.g,
                         high_regime_index,
@@ -320,14 +321,14 @@ class MonPolicy(MultiAgentEnv):
 
         self.move_ij = [
             True
-            if self.menu_cost[i] <=
-            (action_dict[i][0] + 1) / 2 * self.params["menu_cost"]
+            if self.menu_cost[i]
+            <= (action_dict[i][0] + 1) / 2 * self.params["menu_cost"]
             else False
             for i in range(self.n_agents)
         ]
         self.mu_ij_reset = [
-            self.markup_min +
-            (action_dict[i][1] + 1) / 2 * (self.markup_max - self.markup_min)
+            self.markup_min
+            + (action_dict[i][1] + 1) / 2 * (self.markup_max - self.markup_min)
             for i in range(self.n_agents)
         ]
         self.mu_ij = [
@@ -344,31 +345,31 @@ class MonPolicy(MultiAgentEnv):
         # markup per industry:
         mu_perind = []
         for counter in range(0, self.n_agents, self.n_firms):
-            mu_perind.append(self.mu_ij[counter: counter + self.n_firms])
+            mu_perind.append(self.mu_ij[counter : counter + self.n_firms])
         # collapse to markup index:
         mu_j = [
-            ((2 / self.n_firms) * np.sum([i ** (1 - self.params["eta"]) for i in elem])) **
-            (1 / (1 - self.params["eta"]))
+            ((2 / self.n_firms) * np.sum([i ** (1 - self.params["eta"]) for i in elem]))
+            ** (1 / (1 - self.params["eta"]))
             for elem in mu_perind
         ]
 
         # Aggregate markup
         self.mu = min(
             (
-                (1 / self.n_inds) *
-                np.sum([(elem) ** (1 - self.params["theta"]) for elem in mu_j])
-            ) **
-            (1 / (1 - self.params["theta"])),
+                (1 / self.n_inds)
+                * np.sum([(elem) ** (1 - self.params["theta"]) for elem in mu_j])
+            )
+            ** (1 / (1 - self.params["theta"])),
             3,
         )
 
         # profits
         self.profits = [
-            (self.mu_ij[i] / mu_j[self.ind_per_firm[i]]) ** (-self.params["eta"]) *
-            (mu_j[self.ind_per_firm[i]] / self.mu) ** (-self.params["theta"]) *
-            (self.mu_ij[i] - 1) /
-            self.mu -
-            self.menu_cost[i] * self.move_ij[i]
+            (self.mu_ij[i] / mu_j[self.ind_per_firm[i]]) ** (-self.params["eta"])
+            * (mu_j[self.ind_per_firm[i]] / self.mu) ** (-self.params["theta"])
+            * (self.mu_ij[i] - 1)
+            / self.mu
+            - self.menu_cost[i] * self.move_ij[i]
             for i in range(self.n_agents)
         ]
 
@@ -436,15 +437,15 @@ class MonPolicy(MultiAgentEnv):
             ((1 - rho_g) * log_g_bar + rho_g * self.log_g + sigma_g * self.epsilon_g),
             1.0986,
         )
-        self.g = math.e ** self.log_g
+        self.g = math.e**self.log_g
         high_regime_index = 1 if self.infl_regime == "high" else 0
         self.infl_regime = random.choices(
             ["low", "high"], self.infl_transprob[high_regime_index]
         )[0]
         self.mu_ij_next = [
             min(
-                self.mu_ij[i] /
-                (self.g * math.e ** (self.params["sigma_z"] * self.epsilon_z[i])),
+                self.mu_ij[i]
+                / (self.g * math.e ** (self.params["sigma_z"] * self.epsilon_z[i])),
                 3,
             )
             for i in range(self.n_agents)
@@ -452,7 +453,7 @@ class MonPolicy(MultiAgentEnv):
 
         mu_next_perind = []
         for counter in range(0, self.n_agents, self.n_firms):
-            mu_next_perind.append(self.mu_ij_next[counter: counter + self.n_firms])
+            mu_next_perind.append(self.mu_ij_next[counter : counter + self.n_firms])
         # Prepare obs per firm
         mu_obsperfirm = [[] for i in range(self.n_agents)]
         for i in range(self.n_agents):
@@ -467,7 +468,7 @@ class MonPolicy(MultiAgentEnv):
             z = [math.e ** self.log_z[i] for i in range(self.n_agents)]
             z_perind = []
             for counter in range(0, self.n_agents, self.n_firms):
-                z_perind.append(z[counter: counter + self.n_firms])
+                z_perind.append(z[counter : counter + self.n_firms])
             z_obsperfirm = [[] for i in range(self.n_agents)]
             for i in range(self.n_agents):
                 z_obsperfirm[i] = [z[i]] + [
@@ -481,9 +482,9 @@ class MonPolicy(MultiAgentEnv):
         if self.obs_idshock and self.regime_change:
             self.obs_next = {
                 i: np.array(
-                    mu_obsperfirm[i] +
-                    z_obsperfirm[i] +
-                    [
+                    mu_obsperfirm[i]
+                    + z_obsperfirm[i]
+                    + [
                         self.mu,
                         self.g,
                         high_regime_index,
@@ -503,8 +504,8 @@ class MonPolicy(MultiAgentEnv):
         elif not self.obs_idshock and self.regime_change:
             self.obs_next = {
                 i: np.array(
-                    mu_obsperfirm[i] +
-                    [
+                    mu_obsperfirm[i]
+                    + [
                         self.mu,
                         self.g,
                         high_regime_index,

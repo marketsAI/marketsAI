@@ -254,7 +254,7 @@ class MonPolicyFinite(MultiAgentEnv):
             for i in range(self.n_agents)
         ]
         self.log_g = min(log_g_bar + sigma_g * self.epsilon_g, 1.0986)
-        self.g = math.e ** self.log_g
+        self.g = math.e**self.log_g
         # mu vector per industry:
         mu_perind = []
         for counter in range(0, self.n_agents, self.n_firms):
@@ -521,7 +521,7 @@ class MonPolicyFinite(MultiAgentEnv):
             (1 - rho_g) * log_g_bar + rho_g * self.log_g + sigma_g * self.epsilon_g,
             1.0986,
         )
-        self.g = math.e ** self.log_g
+        self.g = math.e**self.log_g
         self.mu_ij_next = [
             min(
                 self.mu_ij[i]

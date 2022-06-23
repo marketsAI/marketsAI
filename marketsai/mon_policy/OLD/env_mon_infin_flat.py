@@ -217,7 +217,7 @@ class MonPolicy(MultiAgentEnv):
             for i in range(self.n_agents)
         ]
         self.log_g = min(log_g_bar + sigma_g * self.epsilon_g, 1.0986)
-        self.g = math.e ** self.log_g
+        self.g = math.e**self.log_g
 
         # mu vector per industry:
         mu_perind = []
@@ -438,7 +438,7 @@ class MonPolicy(MultiAgentEnv):
             ((1 - rho_g) * log_g_bar + rho_g * self.log_g + sigma_g * self.epsilon_g),
             1.0986,
         )
-        self.g = math.e ** self.log_g
+        self.g = math.e**self.log_g
         high_regime_index = 1 if self.infl_regime == "high" else 0
         self.infl_regime = random.choices(
             ["low", "high"], self.infl_transprob[high_regime_index]

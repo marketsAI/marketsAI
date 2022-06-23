@@ -55,7 +55,7 @@ def CES(coeff: float = 0.5):
             for i in range(n_inputs):
                 output += inputs[i] ** (coeff)
         else:
-            output = inputs ** coeff
+            output = inputs**coeff
         return output
 
     return evaluate

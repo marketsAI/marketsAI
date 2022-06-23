@@ -106,7 +106,7 @@ class DiffDemand(MultiAgentEnv):
             if self.space_type == "Discrete":
                 self.action_space[f"agent_{i}"] = Discrete(self.gridpoints)
                 self.observation_space[f"agent_{i}"] = Discrete(
-                    self.gridpoints ** self.n_agents
+                    self.gridpoints**self.n_agents
                 )
 
             if self.space_type == "MultiDiscrete":

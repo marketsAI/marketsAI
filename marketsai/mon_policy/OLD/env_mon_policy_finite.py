@@ -212,7 +212,7 @@ class MonPolicyFinite(MultiAgentEnv):
             self.params["sigma_z"] * self.epsilon_z[i] for i in range(self.n_agents)
         ]
         self.log_g = log_g_bar + sigma_g * self.epsilon_g
-        self.g = math.e ** self.log_g
+        self.g = math.e**self.log_g
         # mu vector per industry:
         mu_perind = []
         for counter in range(0, self.n_agents, self.n_firms):
@@ -408,7 +408,7 @@ class MonPolicyFinite(MultiAgentEnv):
         self.log_g = (
             (1 - rho_g) * log_g_bar + rho_g * self.log_g + sigma_g * self.epsilon_g
         )
-        self.g = math.e ** self.log_g
+        self.g = math.e**self.log_g
         self.infl_regime = random.choices(
             ["low", "high"], self.infl_transprob[high_regime_index]
         )[0]
