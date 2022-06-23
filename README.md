@@ -3,7 +3,6 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 marketsAI is a modular framework designed to simulate economies and markets. Each economy or market is an OpenAI Gym compatible environment.
-change
 
 ## Installation
 
@@ -23,10 +22,6 @@ The main code is in the `marketsai/` folder. The relevant sub-folers are:
 
 - Scripts starting in analysis_ take trained models and evaluate them on the eval_model of the environemnts. Here we create graphs as well.
 
-economies: here we specify economies as environments that are suitable for RL training. Write know there are two folders, one with single-agent environemnts and one wil multi-agent environments.
-
-
-
 ## Economies
 
 - Growth Model
@@ -34,9 +29,3 @@ economies: here we specify economies as environments that are suitable for RL tr
 - Krusell Smith
 - Heterogenous entrepreneurs
 - Townsend
-
-## To do
-
-- [ ] Cleanup folder structure
-
-
